@@ -1,0 +1,22 @@
+.progress-bar {
+  width: 100%;
+  background-color: #e2e8f0; /* slate-200 */
+  border-radius: 0.5rem;
+  height: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.progress-bar-inner {
+  height: 100%;
+  border-radius: 0.5rem;
+  transition: width 0.3s;
+}
+.progress-bar-blue {
+  background-color: #3b82f6; /* blue-500 */
+}
+.progress-bar-purple {
+  background-color: #8b5cf6; /* purple-500 */
+}
+.progress-bar-teal {
+  background-color: #14b8a6; /* teal-500 */
+}
