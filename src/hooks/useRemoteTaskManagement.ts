@@ -1,24 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Task } from '../../types';
-import { 
-  assignTaskToChild, 
-  getAssignedTasksForChild, 
-  updateAssignedTaskStatus,
-  getNotificationsForUser,
-  markNotificationAsRead,
-  listenToAssignedTasks,
-  listenToNotifications,
-  TaskNotification
-} from '../firebase/remoteAssignment';
-import { getCurrentUserProfile, UserProfile, UserRole } from '../firebase/auth';
+// Firebase bağımlılıkları kaldırıldı. Bu dosya şu an işlevsizdir.
+// import { 
+//   assignTaskToChild, 
+//   getAssignedTasksForChild, 
+//   updateAssignedTaskStatus,
+//   getNotificationsForUser,
+//   markNotificationAsRead,
+//   listenToAssignedTasks,
+//   listenToNotifications,
+//   TaskNotification
+// } from '../firebase/remoteAssignment';
+// import { getCurrentUserProfile, UserProfile, UserRole } from '../firebase/auth';
 
 // Remote task management hook
 export const useRemoteTaskManagement = () => {
-  const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
-  const [notifications, setNotifications] = useState<TaskNotification[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [userProfile] = useState<UserProfile | null>(getCurrentUserProfile());
+  // Firebase kaldırıldığı için bu hook işlevsizdir. Kullanmayınız.
+  return {
+    assignedTasks: [],
+    todaysAssignedTasks: [],
+    notifications: [],
+    unreadCount: 0,
+    loading: false,
+    error: 'Firebase kaldırıldı',
+    userProfile: null,
+    assignTask: () => null,
+    updateTaskStatus: () => null,
+    markAsRead: () => null,
+    isParent: false,
+    isChild: false,
+    familyId: null
+  };
 
   // Parent: Çocuğa görev ata
   const assignTask = useCallback(async (task: Omit<Task, 'id' | 'assignedTo'>, childId?: string) => {
