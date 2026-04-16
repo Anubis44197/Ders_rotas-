@@ -1,0 +1,5 @@
+{
+  "tasks": [
+    { "id": "t1", "title": "Bozuk JSON" }
+  ],
+  "courses": ["Matematik"],

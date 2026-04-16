@@ -1,0 +1,40 @@
+{
+  "courses": [
+    {
+      "id": "c-qa-math",
+      "name": "Matematik"
+    }
+  ],
+  "tasks": [],
+  "performanceData": [],
+  "rewards": [],
+  "badges": [
+    {
+      "id": "b1",
+      "name": "Ilk Adim",
+      "description": "Ilk gorevini tamamladin!"
+    }
+  ],
+  "successPoints": 0,
+  "curriculum": {
+    "Matematik": [
+      {
+        "name": "Unite 1",
+        "topics": [
+          {
+            "name": "Konu A",
+            "completed": false
+          },
+          {
+            "name": "Konu B",
+            "completed": false
+          }
+        ]
+      }
+    ]
+  },
+  "weeklySchedule": {
+    "Pazartesi": "Matematik"
+  },
+  "studyPlans": []
+}

@@ -1,262 +1,272 @@
+# DersRotasi
 
-<div align="center">
-  <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+DersRotasi, ebeveyn ve cocuk icin ayni uygulama icinde calisan, offline-first odakli bir ders takip, planlama ve analiz uygulamasidir.
 
-# Eğitim Asistanı (AI Destekli Ebeveyn Paneli)
+Uygulama su problemi cozmeyi hedefler:
 
-Bu proje, ebeveynlerin çocuklarının akademik gelişimini takip etmelerini ve çocukların öğrenme süreçlerini desteklemeyi amaçlayan modern bir eğitim platformu arayüzüdür. Yapay zeka destekli analizler, görev yönetimi, ödül sistemi ve detaylı raporlama gibi birçok özellik sunar.
+- dersleri tek merkezden tanimlamak
+- mufredat, gorev ve sinav kayitlarini ayni veri omurgasina baglamak
+- cocugun uygulamadaki calisma performansini okul sonucu ile ayni tabloda okumak
+- ebeveyn icin duzenli, karar odakli bir kontrol paneli sunmak
 
-## 🚀 Son Güncellemeler (12 Ekim 2025) - Firebase Hazırlık Tamamlandı!
+Mevcut surum, React + TypeScript + Vite tabanli olarak calisir ve yerel veri saklama mantigi ile gelistirilmektedir.
 
-### 🎯 Sistematik Todo Completion - %100 BAŞARILI
+## Mevcut Durum
 
-Firebase aktarımı öncesi **5 kritik özellik** sistematik olarak tamamlandı:
+Repo su anda aktif gelistirme altindadir.
 
-#### ✅ **1. Firebase Remote Task Assignment System**
-- **Durum**: Tamamlandı ✅
-- **Özellikler**: 
-  - Anonymous authentication ile ebeveyn/çocuk rolleri
-  - Real-time task assignment sistemi
-  - Firestore integration altyapısı
-  - Role-based permissions
-- **Dosyalar**: `src/firebase/`, `src/hooks/useFirebaseSync.ts`
+Calisan ana alanlar:
 
-#### ✅ **2. Real-time Notification System**
-- **Durum**: Tamamlandı ✅
-- **Özellikler**:
-  - Firebase-based notification system
-  - In-app notification management
-  - Task assignment/completion notifications
-  - Push notification hazırlığı
-- **Dosyalar**: `src/firebase/remoteAssignment.ts`, Notification components
+- ebeveyn paneli
+- cocuk paneli
+- gorev olusturma ve tamamlama akisi
+- ders ve mufredat baglantili planlama altyapisi
+- analiz motoru
+- okul sinavi ve genel sinav veri modeli
+- veri disa aktarma / ice aktarma
 
-#### ✅ **3. AssignedTo Field Integration**
-- **Durum**: Tamamlandı ✅
-- **Özellikler**:
-  - Task assignment to specific children
-  - Visual indicators for remote tasks
-  - Assignment type filters
-  - Parent-child task flow
-- **Dosyalar**: `types.ts`, Task components
-
-#### ✅ **4. Timezone Handling Fixes**
-- **Durum**: Tamamlandı ✅
-- **Özellikler**:
-  - Timezone-safe date utilities
-  - `toISOString().split('T')[0]` problemleri çözüldü
-  - Consistent local date handling
-  - Cross-device compatibility
-- **Dosyalar**: `utils/dateUtils.ts`
-
-#### ✅ **5. Balanced Scoring Algorithm**
-- **Durum**: Tamamlandı ✅
-- **Özellikler**:
-  - Eski cömert sistem (60+ puan) → Yeni dengeli sistem (10-30 puan)
-  - Performance-based bonuses
-  - Difficulty multipliers
-  - Conservative point calculation
-- **Dosyalar**: `utils/scoringAlgorithm.ts`
-
-### 🔍 Kapsamlı Sistem Sağlık Analizi
-
-#### 📊 **Genel Durum: GÜÇLÜ (A- Seviye)**
-- **Kritik hatalar**: 0 ❌
-- **Çökme riski**: Çok düşük 🟢
-- **Memory leak riski**: Düşük 🟢
-- **Performance**: İyi 🟢
-- **Type safety**: Güçlü ✅
-
-#### ✅ **Memory Management - MÜKEMMEL**
-- Timer cleanup'ları: ✅ Tüm `intervalRef.current` temizleniyor
-- useEffect cleanup: ✅ Event listener'lar güvenli
-- localStorage cleanup: ✅ Task silme durumlarında temizleniyor
-- Component unmounting: ✅ Güvenli patterns
-
-#### ✅ **Error Handling - KAPSAMLI**
-- ErrorBoundary: ✅ Component-level error isolation
-- Try-catch blokları: ✅ Strategic noktalarda
-- Null/undefined safety: ✅ Kapsamlı checking
-- Type safety: ✅ TypeScript strict mode
-
-#### ⚠️ **Minor Risk Areas (Firebase sonrası temizlenecek)**
-- Dead code cleanup: Anubis klasörü + duplicate files
-- Unused imports: Bundle size optimization
-- localStorage optimization: Auto cleanup for old timer states
-- Test coverage: Unit + Integration tests
-
-#### 🎯 **Firebase Aktarımı: GÜVENLİ DEVAM ET**
-
-**Sistem kalitesi:** **85/100 (A-)**
-- ✅ Authentication system hazır
-- ✅ Data structure Firestore compatible  
-- ✅ Real-time sync infrastructure
-- ✅ Error handling comprehensive
-- ✅ Performance optimized
-
-### 🚀 **Production Readiness Status**
+En son dogrulanan teknik durum:
 
 ```bash
-✅ TypeScript Compilation: PASS
-✅ Vite Build: PASS  
-✅ No Runtime Errors: PASS
-✅ Memory Usage: ~20MB (healthy)
-✅ localStorage: ~100KB (optimal)
-✅ Chart Performance: <100ms
-✅ Timer Precision: 1000ms accurate
+npm run build
 ```
 
-**🎉 Sonuç: Firebase aktarımı için sistem tamamen hazır!** 🚀
+Build basariyla alinmistir.
 
-### 🔐 **Güvenlik Güncellemesi (12 Ekim 2025 - 19:10)**
+## Urun Modulleri
 
-#### ✅ **Ebeveyn Sayfası Şifre Koruması - TAMAMLANDI**
+### 1. Genel Bakis
 
-**Sorun**: Çocuklar ebeveyn sayfasına serbestçe girebiliyordu  
-**Çözüm**: Her ebeveyn sayfası geçişinde şifre kontrolü eklendi
+Ebeveyn icin ozet ve yonlendirme ekranidir.
 
-**Güvenlik Özellikleri:**
-- 🔒 **Çocuk → Ebeveyn**: Her zaman şifre ister (1234)
-- ✅ **Ebeveyn → Çocuk**: Serbestçe geçiş
-- 🔐 **Session Koruması**: Her oturum başında şifre
-- 🛡️ **localStorage Koruması**: Güvenlik durumu korunuyor
+Amac:
 
-**Test Sonuçları:**
+- gunun kritik durumunu gormek
+- geciken gorevleri fark etmek
+- riskli alanlari hizli gormek
+- ilgili modullere gecis yapmak
+
+### 2. Planlama
+
+Planlama modulu su katmanlari birlestirir:
+
+- haftalik program
+- mufredat girisi
+- plan motoru
+- plan gecmisi
+
+Bu modulin hedefi, ebeveynin akademik omurgayi kurmasidir.
+
+### 3. Dersler ve Gorevler
+
+Bu modulde su akislar bulunur:
+
+- ders tanimlama
+- cocuga gorev atama
+- gorev listesi yonetimi
+- ders bazli sinav girisi
+- genel sinav / deneme kaydi
+
+Ana urun karari:
+
+ders tek merkezden tanimlanir ve diger tum moduller bu merkezi ders listesini kullanir.
+
+### 4. Analiz
+
+Analiz modulu su katmanlari uretir:
+
+- task/session tabanli performans sinyalleri
+- ders bazli mastery ve risk hesabi
+- okul sonucu ve uygulama performansi karsilastirmasi
+- okul vs ev uyum yorumu
+- grafikler ve raporlar
+
+## Cekirdek Ozellikler
+
+### Ebeveyn Tarafi
+
+- ders olusturma ve yonetme
+- unite / konu baglantili gorev atama
+- haftalik plan olusturma altyapisi
+- okul sinavi ve genel sinav kaydi ekleme
+- risk ve performans takibi
+- veri export / import
+
+### Cocuk Tarafi
+
+- aktif gorevleri goruntuleme
+- sureli gorev tamamlama
+- kitap okuma gorevleri
+- soru cozme ve performans kaydi
+- puan, odul ve rozet akisi
+
+### Analiz ve Performans
+
+- konu bazli hakimiyet puani
+- odak, verim ve dogruluk analizi
+- retention / tekrar ihtiyaci sinyalleri
+- ders bazli okul skoru ve tahmini okul skoru
+- schoolScore / predictedSchoolScore / alignmentGap modeli
+
+## Okul Sinavi Entegrasyonu
+
+Mevcut surumde okul verisi analiz motoruna baglanmistir.
+
+Desteklenen veri tipleri:
+
+- school-written
+- school-quiz
+- school-oral
+- mock-exam
+- state-exam
+- report-card
+
+Uretilen ana analiz alanlari:
+
+- studyScore
+- schoolScore
+- predictedSchoolScore
+- alignmentGap
+- alignmentStatus
+
+Bu modelin detay referansi: [docs/okul-sinavi-ve-donemsel-performans-modeli-2026-04-14.md](docs/okul-sinavi-ve-donemsel-performans-modeli-2026-04-14.md)
+
+## Mimari Yonu
+
+Projede izlenen ana mimari hedefler:
+
+- offline-first calisma
+- tek cihazda ebeveyn + cocuk akisi
+- ders merkezli veri baglantisi
+- gorev ile gercek performansi ayri okuyabilen analiz mantigi
+- buyuyen veri icin moduler ebeveyn paneli
+
+Bu kapsamda hazirlanan refactor referansi:
+
+[docs/ebeveyn-paneli-modul-mimari-ve-ux-refactor-plani-2026-04-16.md](docs/ebeveyn-paneli-modul-mimari-ve-ux-refactor-plani-2026-04-16.md)
+
+## Teknolojiler
+
+- React 19
+- TypeScript
+- Vite
+- Recharts
+- date-fns
+- @google/genai
+
+## Kurulum
+
+### Gereksinimler
+
+- Node.js 20+
+- npm 10+
+
+### Kurulum Adimlari
+
 ```bash
-✅ İlk açılış: Ebeveyn paneli kilitli
-✅ Şifre kontrolü: 1234 ile açılma
-✅ Geçiş koruması: Çocuk → Ebeveyn bloklandı  
-✅ Serbest erişim: Ebeveyn → Çocuk açık
-✅ Sürekli koruma: Tekrar şifre isteme
+npm install
 ```
 
-**Firebase Deploy:**
-- 📅 **Deployment**: 12 Ekim 2025, 19:10
-- 🌐 **Live URL**: https://ders-tak.web.app
-- 🔐 **Güvenlik**: Aktif ve test edildi
-- 📊 **Bundle**: 517.45 kB (optimized)
+Gelistirme ortami:
 
-**Artık çocuklar ebeveyn sayfasına erişemez!** 🛡️
+```bash
+npm run dev
+```
 
-## İçindekiler
-- [Eğitim Asistanı (AI Destekli Ebeveyn Paneli)](#eğitim-asistanı-ai-destekli-ebeveyn-paneli)
-  - [İçindekiler](#i̇çindekiler)
-  - [Özellikler](#özellikler)
-  - [Kullanılan Teknolojiler](#kullanılan-teknolojiler)
-  - [Kurulum ve Çalıştırma](#kurulum-ve-çalıştırma)
-    - [Gereksinimler](#gereksinimler)
-    - [Adımlar](#adımlar)
-  - [Klasör Yapısı](#klasör-yapısı)
-    - [Önemli Klasörler ve Dosyalar](#önemli-klasörler-ve-dosyalar)
-  - [Ana Bileşenler ve Özellikler](#ana-bileşenler-ve-özellikler)
-  - [Son Güncellemeler (5 Ekim 2025)](#son-güncellemeler-5-ekim-2025)
-    - [AI Asistanı ve Gelişmiş İstatistikler](#ai-asistanı-ve-gelişmiş-i̇statistikler)
-    - [Geçmiş Tarihli Görev Tamamlama Sistemi](#geçmiş-tarihli-görev-tamamlama-sistemi)
-    - [Kritik Hata Düzeltmeleri ve Optimizasyonlar](#kritik-hata-düzeltmeleri-ve-optimizasyonlar)
-  - [🧪 Kapsamlı Uygulama Test Raporu (5 Ekim 2025)](#-kapsamlı-uygulama-test-raporu-5-ekim-2025)
-    - [🎯 Test Özeti](#-test-özeti)
-    - [✅ Başarıyla Test Edilen Özellikler](#-başarıyla-test-edilen-özellikler)
-      - [📱 **Ana Arayüz \& Navigasyon**](#-ana-arayüz--navigasyon)
-      - [👨‍👩‍👧 **Ebeveyn Paneli (100% Başarılı)**](#-ebeveyn-paneli-100-başarılı)
-      - [👶 **Çocuk Paneli (95% Başarılı)**](#-çocuk-paneli-95-başarılı)
-      - [🕙 **Manuel Görev Tamamlama Sistemi (100% Başarılı)**](#-manuel-görev-tamamlama-sistemi-100-başarılı)
-      - [📊 **Veri Görselleştirme (100% Başarılı)**](#-veri-görselleştirme-100-başarılı)
-      - [🤖 **AI Entegrasyonu (100% Başarılı)**](#-ai-entegrasyonu-100-başarılı)
-      - [🎨 **Tasarım \& UX (100% Başarılı)**](#-tasarım--ux-100-başarılı)
-    - [🧪 Test Metodolojisi](#-test-metodolojisi)
-    - [⚠️ Tespit Edilen Minor Sorunlar](#️-tespit-edilen-minor-sorunlar)
-    - [📈 Test Metrikleri](#-test-metrikleri)
-    - [🚀 Production Readiness](#-production-readiness)
-    - [🎯 Sonuç](#-sonuç)
-  - [🚀 Son UX İyileştirmeleri (6 Ekim 2025)](#-son-ux-i̇yileştirmeleri-6-ekim-2025)
-    - [🎯 9 UX Probleminin Çözümü - %89 Başarı Oranı](#-9-ux-probleminin-çözümü---89-başarı-oranı)
-      - [✅ **Tamamlanan İyileştirmeler (8/9)**](#-tamamlanan-i̇yileştirmeler-89)
-      - [⏸️ **Ertelenen İyileştirme (1/9)**](#️-ertelenen-i̇yileştirme-19)
-    - [🛡️ **Güvenlik ve Stabilite Kontrolü**](#️-güvenlik-ve-stabilite-kontrolü)
-      - [✅ **Build Başarı Kontrolü**](#-build-başarı-kontrolü)
-      - [✅ **TypeScript Kontrolü**](#-typescript-kontrolü)
-      - [✅ **Code Quality Metrikleri**](#-code-quality-metrikleri)
-    - [📊 **İyileştirme İstatistikleri**](#-i̇yileştirme-i̇statistikleri)
-    - [🎉 **Final Durum Özeti**](#-final-durum-özeti)
-  - [🎯 Kapsamlı UX İyileştirme Süreci (6 Ekim 2025) - %100 BAŞARILI](#-kapsamlı-ux-i̇yileştirme-süreci-6-ekim-2025---100-başarili)
-    - [📋 9 Kritik UX Probleminin Sistematik Çözümü](#-9-kritik-ux-probleminin-sistematik-çözümü)
-      - [✅ **Görev 1: Görev Ata Kartı - Form Temizleme Sorunu**](#-görev-1-görev-ata-kartı---form-temizleme-sorunu)
-      - [✅ **Görev 2: Soru Sayısı Input Formatting Sorunu**](#-görev-2-soru-sayısı-input-formatting-sorunu)
-      - [✅ **Görev 3: Timer Durdurmama Sorunu**](#-görev-3-timer-durdurmama-sorunu)
-      - [✅ **Görev 4: Haftalık Puanlar Grafik Sorunu**](#-görev-4-haftalık-puanlar-grafik-sorunu)
-      - [✅ **Görev 5: Bilgi Simgesi (i) Eksikliği**](#-görev-5-bilgi-simgesi-i-eksikliği)
-      - [✅ **Görev 6: Görev Silme Yetkisi Sorunu**](#-görev-6-görev-silme-yetkisi-sorunu)
-      - [✅ **Görev 7: Görev Hatırlatma Tekrarı**](#-görev-7-görev-hatırlatma-tekrarı)
-      - [✅ **Görev 8: Kitap Analizi ve Yapay Zeka Açıklamalar**](#-görev-8-kitap-analizi-ve-yapay-zeka-açıklamalar)
-      - [✅ **Görev 9: Hata Mesajları İyileştirme**](#-görev-9-hata-mesajları-i̇yileştirme)
-    - [🛡️ **Güvenlik ve Kalite Kontrolü**](#️-güvenlik-ve-kalite-kontrolü)
-      - [✅ **TypeScript Kontrolü**](#-typescript-kontrolü-1)
-      - [✅ **Code Quality Metrikleri**](#-code-quality-metrikleri-1)
-    - [📊 **Final İstatistikler**](#-final-i̇statistikler)
-    - [🎉 **Sonuç: Tam Başarı!**](#-sonuç-tam-başarı)
-  - [🔧 Son Kritik Düzeltmeler (5 Ekim 2025)](#-son-kritik-düzeltmeler-5-ekim-2025)
-    - [TypeScript Strict Mode Hatalarının Çözümü](#typescript-strict-mode-hatalarının-çözümü)
-    - [Package.json Standardizasyonu](#packagejson-standardizasyonu)
-    - [TypeScript Strict Mode Entegrasyonu](#typescript-strict-mode-entegrasyonu)
-    - [Test Sonuçları](#test-sonuçları)
-    - [Firebase Deployment Öncesi Kontrol Listesi](#firebase-deployment-öncesi-kontrol-listesi)
-  - [🚨 Kritik Sistem Düzeltmeleri (5 Ekim 2025 - Son Güncelleme)](#-kritik-sistem-düzeltmeleri-5-ekim-2025---son-güncelleme)
-    - [Ödül Sistemi Real-Time Synchronization Sorununun Çözümü](#ödül-sistemi-real-time-synchronization-sorununun-çözümü)
-    - [AI Assistant Stabilizasyon](#ai-assistant-stabilizasyon)
-    - [Serbest Çalışma Sistemi Otomatik Timestamp](#serbest-çalışma-sistemi-otomatik-timestamp)
-    - [Real-Time Data Synchronization](#real-time-data-synchronization)
-    - [Sistem Güvenilirliği Artırıldı](#sistem-güvenilirliği-artırıldı)
-  - [🔄 Final Production Updates (6 Ekim 2025)](#-final-production-updates-6-ekim-2025)
-    - [Timer Persistence \& Resume Functionality](#timer-persistence--resume-functionality)
-    - [Smart Notification System](#smart-notification-system)
-    - [Comprehensive Application Audit](#comprehensive-application-audit)
-      - [⚠️ **Minor Risk Areas:**](#️-minor-risk-areas)
-      - [✅ **Confirmed Safe Areas:**](#-confirmed-safe-areas)
-    - [Production Readiness Confirmation](#production-readiness-confirmation)
-  - [🛠️ Son Kritik Modal Düzeltmeleri (6 Ekim 2025)](#️-son-kritik-modal-düzeltmeleri-6-ekim-2025)
-    - [ParentDashboard UX Problemlerinin Sistematik Çözümü](#parentdashboard-ux-problemlerinin-sistematik-çözümü)
-      - [✅ **Problem 1: Mantık Hatası - Serbest Okumada Ders Seçimi**](#-problem-1-mantık-hatası---serbest-okumada-ders-seçimi)
-      - [✅ **Problem 2: Modal Boyut ve Scrollbar Sorunu**](#-problem-2-modal-boyut-ve-scrollbar-sorunu)
-      - [✅ **Problem 3: Form Validation Güçlendirmesi**](#-problem-3-form-validation-güçlendirmesi)
-      - [✅ **Problem 4: Özel CourseId Sistemi**](#-problem-4-özel-courseid-sistemi)
-    - [🔍 Detaylı Derinlemesine Kontrol Raporu](#-detaylı-derinlemesine-kontrol-raporu)
-  - [🆕 Final Düzeltmeler ve Optimizasyonlar (6 Ekim 2025)](#-final-düzeltmeler-ve-optimizasyonlar-6-ekim-2025)
-    - [Kritik UX Bug Fix Implementasyonu - 4 Adımlık Sistem Düzeltmesi](#kritik-ux-bug-fix-implementasyonu---4-adımlık-sistem-düzeltmesi)
-      - [1. dayNames Array Duplication Sorunu (ChildDashboard.tsx)](#1-daynames-array-duplication-sorunu-childdashboardtsx)
-      - [2. Date Formatting Enhancement (ChildDashboard.tsx)](#2-date-formatting-enhancement-childdashboardtsx)
-      - [3. Comprehensive Reading Analytics System (ReadingAnalytics.tsx)](#3-comprehensive-reading-analytics-system-readinganalyticstsx)
-      - [4. Data Persistence Backup Enhancement (App.tsx)](#4-data-persistence-backup-enhancement-apptsx)
-    - [Comprehensive System Quality Analysis](#comprehensive-system-quality-analysis)
-      - [Memory Management \& Performance](#memory-management--performance)
-      - [Data Safety \& Validation](#data-safety--validation)
-      - [Scalability Assessment (1-Year Usage)](#scalability-assessment-1-year-usage)
-      - [Offline Functionality Validation](#offline-functionality-validation)
-    - [Production Readiness Final Report](#production-readiness-final-report)
-    - [✅ Kritik UX Sorunlarının Çözümü](#-kritik-ux-sorunlarının-çözümü)
-    - [🔧 Teknik İyileştirmeler](#-teknik-i̇yileştirmeler)
-    - [📊 Final Test Sonuçları](#-final-test-sonuçları)
-  - [Katkı ve Geliştirme](#katkı-ve-geliştirme)
-  - [Lisans](#lisans)
+Production build:
 
-## Özellikler
-- **Görev Yönetimi:** Çocuğa ders, kitap okuma veya soru çözme görevleri atama ve takip etme
-- **Serbest Çalışma Sistemi:** Çocukların kendi görevlerini oluşturabileceği gelişmiş serbest çalışma modülü
-- **Ders Yönetimi:** Ders ekleme, silme ve analiz
-- **Performans Analizi:** Başarı ve odak puanları, haftalık/aylık/yıllık grafikler
-- **Yapay Zeka Destekli Raporlar:** AI ile özet, öneri ve konu analizi
-- **Ödül Sistemi:** Puan biriktirme ve ödül kazanma
-- **Günlük Özet:** AI ile ebeveyne özel günlük özet ve öneriler
-- **Modern ve Duyarlı Arayüz:** React + Tailwind CSS ile responsive tasarım
-- **Firebase Entegrasyonu:** Gerçek zamanlı veri senkronizasyonu
+```bash
+npm run build
+```
 
-## Kullanılan Teknolojiler
-- [React 19](https://react.dev/)
-- [Vite](https://vitejs.dev/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Recharts](https://recharts.org/) (grafikler için)
-- [@google/genai](https://www.npmjs.com/package/@google/genai) (Yapay zeka entegrasyonu)
+Preview:
 
-## Kurulum ve Çalıştırma
+```bash
+npm run preview
+```
+
+## Ortam Degiskenleri
+
+Yapay zeka ile ilgili alanlar icin asagidaki degisken kullanilir:
+
+```bash
+VITE_GOOGLE_AI_API_KEY=...
+```
+
+Bu degisken olmadan uygulamanin cekirdek gorev, planlama ve analiz akislarinin buyuk bolumu calisir; AI destekli alanlar sinirli kalabilir.
+
+## Proje Yapisi
+
+```text
+components/
+  child/
+  parent/
+  shared/
+docs/
+scripts/
+utils/
+App.tsx
+types.ts
+index.css
+vite.config.ts
+```
+
+One cikan dosyalar:
+
+- [App.tsx](App.tsx): ust seviye state, ebeveyn/cocuk akis yonetimi
+- [types.ts](types.ts): domain modelleri
+- [utils/analysisEngine.ts](utils/analysisEngine.ts): analiz motoru
+- [utils/planEngine.ts](utils/planEngine.ts): planlama yardimcilari
+- [components/parent/ParentDashboard.tsx](components/parent/ParentDashboard.tsx): ebeveyn gorev ve analiz paneli
+- [components/parent/AnalysisGraphCenter.tsx](components/parent/AnalysisGraphCenter.tsx): grafik merkezi
+
+## Dokumantasyon
+
+Repo icindeki docs klasoru aktif urun ve mimari kararlarini tutar.
+
+Onemli belgeler:
+
+- [docs/planlama-motoru-mvp-ve-organizasyonu-2026-04-15.md](docs/planlama-motoru-mvp-ve-organizasyonu-2026-04-15.md)
+- [docs/okul-sinavi-ve-donemsel-performans-modeli-2026-04-14.md](docs/okul-sinavi-ve-donemsel-performans-modeli-2026-04-14.md)
+- [docs/ebeveyn-paneli-modul-mimari-ve-ux-refactor-plani-2026-04-16.md](docs/ebeveyn-paneli-modul-mimari-ve-ux-refactor-plani-2026-04-16.md)
+- [docs/repo-analizi.md](docs/repo-analizi.md)
+- [docs/dersrotasi-birlesim-plani.md](docs/dersrotasi-birlesim-plani.md)
+
+## Su Anki Bilinen Gelisim Basliklari
+
+Bir sonraki ana gelisim eksenleri sunlardir:
+
+- ders icin tek kaynakli veri modeli
+- ParentDashboard parcali modul yapisina gecis
+- sinav merkezinin bilgi mimarisinde dogru yere alinmasi
+- okul performansinin tum analiz katmanlarina esit dagitilmasi
+- kart yogunlugunu azaltan UX refactoru
+
+## GitHub Aktarim Notu
+
+Bu repo, calisir durumdaki mevcut surumu ve aktif docs belgelerini birlikte tasimak uzere hazirlanmaktadir.
+
+Aktarim ilkesi:
+
+- calisan kod once korunur
+- gecici test/artifact dosyalari repo disinda tutulur
+- aktif urun belgeleri repo icinde kalir
+- build alan surum esas alinarak ilerlenir
+
+## Katki
+
+Bu repo su anda ana urun refactor ve gelisim surecindedir.
+
+Degisiklik yaparken su kurallar korunmalidir:
+
+- ders tek merkezden tanimlanmali
+- ayni is farkli yerlerde tekrar modellenmemeli
+- bir ekran tek ana amaca hizmet etmeli
+- buyuyen veri, yeni kart yiginlariyla degil daha iyi bilgi mimarisi ile yonetilmeli
+
+## Lisans
+
+Bu repo icin acik bir lisans bildirimi henuz eklenmemistir.
 
 ### Gereksinimler
 - [Node.js](https://nodejs.org/) (v18+ önerilir)

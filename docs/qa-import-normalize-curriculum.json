@@ -1,0 +1,36 @@
+{
+  "courses": [
+    {
+      "id": "c-fizik-1",
+      "name": "fizik"
+    }
+  ],
+  "tasks": [],
+  "performanceData": [],
+  "rewards": [],
+  "badges": [
+    {
+      "id": "b1",
+      "name": "Ilk Adim",
+      "description": "Ilk gorevini tamamladin!"
+    }
+  ],
+  "successPoints": 0,
+  "curriculum": {
+    "FİZİK": [
+      {
+        "name": "Unite 1",
+        "topics": [
+          {
+            "name": "Konu A",
+            "completed": false
+          }
+        ]
+      }
+    ]
+  },
+  "weeklySchedule": {
+    "Pazartesi": "fizik"
+  },
+  "studyPlans": []
+}

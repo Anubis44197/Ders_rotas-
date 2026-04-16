@@ -25,8 +25,7 @@ export default defineConfig(({ mode }) => {
             manualChunks: {
               'react-vendor': ['react', 'react-dom'],
               'charts-vendor': ['recharts'],
-              'ai-vendor': ['@google/genai'],
-              'firebase-vendor': ['firebase/app', 'firebase/firestore']
+              'ai-vendor': ['@google/genai']
             }
           }
         },

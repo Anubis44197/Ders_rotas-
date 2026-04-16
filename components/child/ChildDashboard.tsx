@@ -1,1147 +1,729 @@
-import React, { useState, useEffect, useMemo } from 'react';
-// Yüzdeye göre genişlik class'ı döndür
-function getProgressWidthClass(percent: number | null | undefined) {
-    if (!percent || percent <= 0) return 'w-0';
-    if (percent >= 100) return 'w-full';
-    if (percent >= 90) return 'w-[90%]';
-    if (percent >= 80) return 'w-[80%]';
-    if (percent >= 70) return 'w-[70%]';
-    if (percent >= 60) return 'w-[60%]';
-    if (percent >= 50) return 'w-[50%]';
-    if (percent >= 40) return 'w-[40%]';
-    if (percent >= 30) return 'w-[30%]';
-    if (percent >= 20) return 'w-[20%]';
-    if (percent >= 10) return 'w-[10%]';
-    return 'w-0';
-}
-import { ChildDashboardProps, Task, Reward, Badge, ChildView, TaskFilter } from '../../types';
-import { BarChart as RechartsBarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
-import { CheckCircle, Clock, PlusCircle, Target, Play, Pause, Coffee, StopCircle, Trophy, Gift, BadgeCheck, BarChart, Calendar, BookOpen, BookMarked, Zap, Trash2, Bell, Brain, Info, Settings, Home } from '../icons';
-import { getIconComponent } from '../../constants';
-import ActiveReadingSession from './ActiveReadingSession';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { BarChart as RechartsBarChart, Bar, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { ChildDashboardProps, Task, TaskFilter, ChildView, CurriculumUnit } from '../../types';
 import ActiveTaskTimer from './ActiveTaskTimer';
-import ManualTaskCompletionModal from './ManualTaskCompletionModal';
-import FloatingNotification from '../shared/FloatingNotification';
+import ActiveReadingSession from './ActiveReadingSession';
+import StudyStats from './StudyStats';
+import { Trophy, PlusCircle, Play, Gift, BadgeCheck, Target, BarChart, Brain, BookMarked, Calendar, CheckCircle } from '../icons';
+import { getTodayString, getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
+import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
 
-import PersonalizedLearningAssistant from '../shared/PersonalizedLearningAssistant';
-import StudyStats from '../shared/StudyStats';
-import ErrorBoundary from '../shared/ErrorBoundary';
-import RemoteNotificationCenter from '../shared/RemoteNotificationCenter';
-import { useRemoteTaskManagement } from '../../src/hooks/useRemoteTaskManagement';
-import { getLocalDateString, getTodayString, parseDate } from '../../utils/dateUtils';
-import './progress-bar.css';
+const card = 'rounded-[26px] border border-slate-200 bg-white p-4 shadow-sm';
+const subtleCard = 'rounded-[26px] border border-slate-200 bg-white/95 p-4 shadow-sm';
+const looksCorrupted = (value?: string) => typeof value === 'string' && (value.includes('\u00C3') || value.includes('\u00C2') || value.includes('\u00E2'));
 
-const Modal: React.FC<{ show: boolean, onClose: () => void, title: string, children: React.ReactNode }> = ({ show, onClose, title, children }) => {
-    if (!show) return null;
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} aria-label="Kapat" title="Kapat" className="text-slate-500 hover:text-slate-800 text-3xl font-light">&times;</button>
-                </div>
-                {children}
-            </div>
-        </div>
-    );
-};
+const repairText = (value?: string) => {
+  if (typeof value !== 'string' || !value) return value;
 
-const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-};
-
-interface TimerState {
-    mainTime: number;
-    breakTime: number;
-    pauseTime: number;
-    status: 'running' | 'paused' | 'break';
-    isPaused?: boolean;
-    pausedAt?: number;
-    note?: string;
-}
-
-const TaskCard: React.FC<{ task: Task, courses: ChildDashboardProps['courses'], onStart: (task: Task) => void }> = ({ task, courses, onStart }) => {
-    // Check if task has saved timer state
-    const savedState = localStorage.getItem(`timerState_${task.id}`);
-    let isPaused = false;
-    let pausedNote = '';
-    
-    if (savedState) {
-        try {
-            const parsedState = JSON.parse(savedState);
-            isPaused = parsedState.isPaused || false;
-            pausedNote = parsedState.note || '';
-        } catch (e) {
-            // Ignore parsing errors
-        }
+  let next = value;
+  for (let i = 0; i < 3; i += 1) {
+    if (!looksCorrupted(next)) break;
+    try {
+      const bytes = Uint8Array.from(Array.from(next).map((char) => char.charCodeAt(0) & 0xff));
+      const repaired = new TextDecoder('utf-8').decode(bytes);
+      if (!repaired || repaired === next) break;
+      next = repaired;
+    } catch {
+      break;
     }
-    const course = courses.find(c => c.id === task.courseId);
-    const isReadingTask = task.taskType === 'kitap okuma';
-    const isSelfAssigned = task.isSelfAssigned;
-    const borderColor = isSelfAssigned ? 'border-indigo-500' : isReadingTask ? 'border-teal-500' : 'border-primary-500';
-    const iconColor = isSelfAssigned ? 'text-indigo-600' : isReadingTask ? 'text-teal-600' : 'text-primary-600';
-    const textColor = isSelfAssigned ? 'text-indigo-700' : isReadingTask ? 'text-teal-700' : 'text-primary-700';
-    const Icon = isSelfAssigned ? Zap : isReadingTask ? BookMarked : (course?.icon ? (typeof course.icon === 'string' ? getIconComponent(course.icon) : course.icon) : BookOpen);
+  }
 
-    return (
-        <div className={`bg-white p-5 rounded-xl shadow-md border-l-4 ${borderColor} ${task.status === 'tamamlandı' ? 'bg-slate-50' : 'hover:shadow-lg transition-shadow'} max-w-md w-full mx-auto`}>
-            <div className="flex justify-between items-start">
-                <div>
-                    <div className="flex items-center space-x-2 mb-1">
-                        <Icon className={`w-5 h-5 ${iconColor}`} />
-                        <span className={`text-sm font-semibold ${textColor}`}>{isSelfAssigned ? 'Serbest Çalışma' : isReadingTask ? 'Kitap Okuma' : course?.name}</span>
-                    </div>
-                    <h4 className="text-lg font-bold text-slate-800">{isReadingTask ? task.bookTitle : task.title}</h4>
-                    {/* Açıklama satırı kaldırıldı */}
-                    {isPaused && pausedNote && (
-                        <div className="mt-2 p-2 bg-orange-50 border-l-2 border-orange-300 rounded">
-                            <div className="flex items-start space-x-2">
-                                <Bell className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <p className="text-xs font-semibold text-orange-700">Yarım Kalmış - Notun:</p>
-                                    <p className="text-xs text-orange-600 mt-1">{pausedNote}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-                {task.status === 'tamamlandı' ? 
-                    <div className="flex-shrink-0 ml-4">
-                        <CheckCircle className="w-10 h-10 text-green-500" />
-                    </div>
-                    : null
-                }
-            </div>
-            <div className="mt-4 pt-4 border-t border-slate-200">
-                 {task.status === 'tamamlandı' ? (
-                    <div className="space-y-3">
-                        <div>
-                            <div className="flex items-center justify-between text-sm mb-1">
-                                <span className="font-bold text-blue-700">{task.successScore ?? 0}%</span>
-                            </div>
-                            <div className="progress-bar" aria-label="Başarı yüzdesi">
-                                <div className={`progress-bar-inner progress-bar-blue ${getProgressWidthClass(task.successScore ?? 0)}`} aria-hidden="true"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex items-center justify-between text-sm mb-1">
-                                <span className="font-bold text-purple-700">{task.focusScore ?? 0}%</span>
-                            </div>
-                            <div className="progress-bar" aria-label="Odak yüzdesi">
-                                <div className={`progress-bar-inner progress-bar-purple ${getProgressWidthClass(task.focusScore ?? 0)}`} aria-hidden="true"></div>
-                            </div>
-                        </div>
-                        {task.startTimestamp && task.completionTimestamp && (
-                            <div className="flex justify-between text-xs text-slate-500 mb-2">
-                                <span>Başlangıç: {new Date(task.startTimestamp).toLocaleTimeString()}</span>
-                                <span>Bitiş: {new Date(task.completionTimestamp).toLocaleTimeString()}</span>
-                            </div>
-                        )}
-                         <div className="text-right pt-2">
-                            <span className="text-lg font-bold text-amber-600">+{task.pointsAwarded || 0} BP</span>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex justify-between items-center">
-                        <div className="text-xs text-slate-500 font-medium flex space-x-4">
-                            <span>{task.dueDate}</span>
-                            <span>{task.plannedDuration} dk</span>
-                            {task.taskType === 'soru çözme' && <span>{task.questionCount}</span>}
-                        </div>
-                        <button onClick={() => onStart(task)} className={`${isPaused ? 'bg-orange-600 hover:bg-orange-700' : 'bg-primary-600 hover:bg-primary-700'} text-white px-4 py-2 text-sm rounded-lg transition font-semibold flex items-center`}>
-                            {isPaused ? (
-                                <>
-                                    <Clock className="w-4 h-4 mr-2"/> Devam Et
-                                </>
-                            ) : (
-                                <>
-                                    <Play className="w-4 h-4 mr-2"/> Görevi Başlat
-                                </>
-                            )}
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
-    )
-}
-
-
-
-const RewardStore: React.FC<{rewards: Reward[], successPoints: number, claimReward: (id: string) => void}> = ({ rewards, successPoints, claimReward }) => {
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-xl font-bold mb-4 flex items-center"><Gift className="w-6 h-6 mr-2 text-amber-500"/> Ödül Mağazası</h3>
-            {rewards.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
-                    <Gift className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>Henüz ödül eklenmemiş</p>
-                    <p className="text-sm">Ebeveyn panelinden ödül ekleyebilirsiniz</p>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {rewards.map(reward => {
-                const canAfford = successPoints >= reward.cost;
-                
-                // Savunmacı icon render mantığı
-                let IconComponent;
-                try {
-                    if (!reward.icon) {
-                        IconComponent = Gift; // Varsayılan icon
-                    } else if (typeof reward.icon === 'string') {
-                        IconComponent = getIconComponent(reward.icon);
-                    } else {
-                        IconComponent = reward.icon;
-                    }
-                } catch (error) {
-                    console.warn('Reward icon render hatası:', error, reward);
-                    IconComponent = Gift; // Fallback icon
-                }
-                
-                return (
-                    <div key={reward.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                            <IconComponent className="w-6 h-6 text-amber-500"/>
-                            <div>
-                                <p className="font-semibold">{reward.name}</p>
-                                <p className="text-sm font-bold text-amber-600">{reward.cost} BP</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => claimReward(reward.id)}
-                            disabled={!canAfford}
-                            className={`px-3 py-1 text-sm font-semibold rounded-lg transition ${
-                                canAfford 
-                                ? 'bg-green-500 text-white hover:bg-green-600' 
-                                : 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                            }`}
-                        >
-                            Talep Et
-                        </button>
-                    </div>
-                );
-            })}
-                </div>
-            )}
-        </div>
-    );
+  return next;
 };
 
-const MyAchievements: React.FC<{badges: Badge[]}> = ({ badges }) => (
-     <div className="bg-white p-6 rounded-xl shadow-md">
-        <h3 className="text-xl font-bold mb-4 flex items-center"><BadgeCheck className="w-6 h-6 mr-2 text-blue-500"/> Başarılarım</h3>
-        <div className="flex flex-wrap gap-4">
-            {badges.map(badge => {
-                // Savunmacı icon render mantığı
-                let IconComponent;
-                try {
-                    if (!badge.icon) {
-                        IconComponent = BadgeCheck; // Varsayılan badge icon
-                    } else if (typeof badge.icon === 'string') {
-                        IconComponent = getIconComponent(badge.icon);
-                    } else {
-                        IconComponent = badge.icon;
-                    }
-                } catch (error) {
-                    console.warn('Badge icon render hatası:', error, badge);
-                    IconComponent = BadgeCheck; // Fallback icon
-                }
-                
-                return (
-                    <div key={badge.id} className="flex flex-col items-center text-center p-2" title={badge.description}>
-                        <IconComponent className="w-12 h-12 text-blue-500" />
-                        <p className="text-xs font-semibold mt-1">{badge.name}</p>
-                    </div>
-                );
-            })}
-        </div>
-    </div>
-)
-
-const ReadingLog: React.FC<{ tasks: Task[], onClose: () => void }> = ({ tasks, onClose }) => {
-    const readingTasks = useMemo(() => 
-        tasks.filter(t => t.taskType === 'kitap okuma' && t.status === 'tamamlandı')
-             .sort((a,b) => (b.completionTimestamp || 0) - (a.completionTimestamp || 0)),
-        [tasks]
-    );
-
-    const dersReadingTasks = useMemo(() => 
-        readingTasks.filter(t => t.readingType === 'ders' || !t.readingType), // Default to ders for existing tasks
-        [readingTasks]
-    );
-
-    const serbestReadingTasks = useMemo(() => 
-        readingTasks.filter(t => t.readingType === 'serbest'),
-        [readingTasks]
-    );
-
-    const weeklyChartData = useMemo(() => {
-        const data: { name: string, pages: number }[] = [];
-        const today = new Date();
-        const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']; // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(today.getDate() - i);
-            const dateString = date.toISOString().split('T')[0];
-            const dayName = dayNames[date.getDay()]; // getDay() returns 0-6, matches our array
-
-            const pagesForDay = readingTasks
-                .filter(task => task.completionDate === dateString)
-                .reduce((total, task) => total + (task.pagesRead || 0), 0);
-            
-            data.push({ name: dayName, pages: pagesForDay });
-        }
-        return data;
-    }, [readingTasks]);
-
-    const [selectedTab, setSelectedTab] = useState<'ders' | 'serbest'>('ders');
-
-    return (
-        <div className="space-y-6">
-            <div>
-                <h4 className="font-bold mb-2 flex items-center">Haftalık Okuma Aktivitesi (Sayfa Sayısı) <div className="ml-2" title="Son 7 günde okuduğunuz toplam sayfa sayısı"><Info className="w-4 h-4 text-slate-400 cursor-help" /></div></h4>
-                 <ResponsiveContainer width="100%" height={200}>
-                    <RechartsBarChart data={weeklyChartData}>
-                        <XAxis dataKey="name" fontSize={12} />
-                        <YAxis fontSize={12} />
-                        <Tooltip />
-                        <Bar dataKey="pages" name="Okunan Sayfa" fill="#14b8a6" radius={[4, 4, 0, 0]} />
-                    </RechartsBarChart>
-                </ResponsiveContainer>
-            </div>
-            
-            {/* Reading Type Tabs */}
-            <div className="border-b border-slate-200">
-                <div className="flex space-x-4">
-                    <button
-                        onClick={() => setSelectedTab('ders')}
-                        className={`py-2 px-4 font-medium text-sm border-b-2 transition-colors ${
-                            selectedTab === 'ders' 
-                                ? 'border-teal-500 text-teal-600' 
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        Ders Okuması ({dersReadingTasks.length})
-                    </button>
-                    <button
-                        onClick={() => setSelectedTab('serbest')}
-                        className={`py-2 px-4 font-medium text-sm border-b-2 transition-colors ${
-                            selectedTab === 'serbest' 
-                                ? 'border-teal-500 text-teal-600' 
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        Serbest Okuma ({serbestReadingTasks.length})
-                    </button>
-                </div>
-            </div>
-            
-            <div>
-                 <h4 className="font-bold mb-2">
-                    {selectedTab === 'ders' ? 'Ders Okuma Seansları' : 'Serbest Okuma Seansları'}
-                 </h4>
-                 <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
-                    {(selectedTab === 'ders' ? dersReadingTasks : serbestReadingTasks).length > 0 ? 
-                        (selectedTab === 'ders' ? dersReadingTasks : serbestReadingTasks).map(task => (
-                        <div key={task.id} className="p-3 bg-slate-100 rounded-lg text-sm">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <span className="font-semibold">{task.bookTitle}</span>
-                                    <span className="text-slate-500 ml-2">
-                                        ({task.completionDate ? new Date(task.completionDate).toLocaleDateString('tr-TR', { 
-                                            day: '2-digit', 
-                                            month: '2-digit', 
-                                            year: 'numeric' 
-                                        }) : 'Tarih yok'})
-                                    </span>
-                                </div>
-                                <div className="font-bold text-teal-600">
-                                    {task.pagesRead} Sayfa
-                                </div>
-                            </div>
-                        </div>
-                    )) : <p className="text-slate-500">Okuma seansı bulunamadı.</p>}
-                 </div>
-            </div>
-        </div>
-    );
+const safeText = (value?: string, fallback = '') => {
+  const repaired = repairText(value);
+  if (!repaired || looksCorrupted(repaired)) return fallback;
+  return repaired;
 };
 
-const MyLibrary: React.FC<{tasks: Task[]}> = ({ tasks }) => {
-    const [isLogVisible, setLogVisible] = useState(false);
-    const library = useMemo(() => {
-        const books: { [key: string]: { totalPages: number, title: string } } = {};
-        const readingTasks = tasks.filter(t => t.taskType === 'kitap okuma' && t.status === 'tamamlandı' && t.bookTitle);
-        
-        readingTasks.forEach(task => {
-            if (!books[task.bookTitle!]) {
-                books[task.bookTitle!] = { totalPages: 0, title: task.bookTitle! };
-            }
-            books[task.bookTitle!].totalPages += task.pagesRead || 0;
-        });
+const safeBadgeName = (value?: string) => safeText(value, 'Ilk Adim');
+const safeBadgeDescription = (value?: string) => safeText(value, 'Rozet aciklamasi yakinda guncellenecek.');
+const goalLabelMap: Record<string, string> = {
+  'test-cozme': 'Test cozme',
+  'olcme-degerlendirme': 'Olcme degerlendirme',
+  'sinav-hazirlik': 'Sinav hazirligi',
+  'konu-tekrari': 'Konu tekrari',
+  'eksik-konu-tamamlama': 'Eksik konu tamamlama',
+  'ders calisma': 'Ders calismasi',
+  'ders \u00e7al\u0131\u015fma': 'Ders calismasi',
+};
+const planSourceLabelMap: Record<string, string> = { manual: 'Elle atandi', 'weekly-plan': 'Haftalik plan', 'ai-plan': 'Akilli plan', 'free-study': 'Serbest calisma' };
+const safeGoalText = (value?: string) => goalLabelMap[safeText(value, '')] || safeText(value, 'Calisma hedefi');
+const safePlanSource = (value?: string) => planSourceLabelMap[safeText(value, '')] || 'Atanan gorev';
+const getTaskDateKey = (value?: string) => {
+  if (typeof value !== 'string' || !value) return '';
+  return value.split('T')[0];
+};
 
-        return Object.values(books).sort((a,b) => b.totalPages - a.totalPages);
-    }, [tasks]);
+const parseSavedTimerState = (taskId: string): ResumeTimerState | undefined => {
+  const saved = window.localStorage.getItem(`timerState_${taskId}`);
+  if (!saved) return undefined;
+  try {
+    return JSON.parse(saved) as ResumeTimerState;
+  } catch {
+    return undefined;
+  }
+};
 
-    return (
-        <>
-            <Modal show={isLogVisible} onClose={() => setLogVisible(false)} title="Okuma Günlüğüm">
-                <ReadingLog tasks={tasks} onClose={() => setLogVisible(false)} />
-            </Modal>
-            <div className="bg-white p-6 rounded-xl shadow-md">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold flex items-center"><BookMarked className="w-6 h-6 mr-2 text-teal-500"/> Kütüphanem</h3>
-                    <button onClick={() => setLogVisible(true)} className="text-sm font-semibold text-primary-600 hover:text-primary-800">Detayları Gör</button>
-                </div>
-                <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                    {library.length > 0 ? library.map(book => (
-                        <div key={book.title} className="p-3 bg-slate-50 rounded-lg">
-                            <p className="font-bold text-slate-800">{book.title}</p>
-                            <div className="flex items-center mt-1">
-                                <div className="progress-bar mr-2">
-                                    <div className="progress-bar-inner progress-bar-teal w-full" aria-hidden="true"></div>
-                                </div>
-                                <span className="text-sm font-semibold text-teal-600">{book.totalPages} sayfa</span>
-                            </div>
-                        </div>
-                    )) : (
-                        <p className="text-sm text-slate-500 text-center py-4">Henüz hiç kitap okuma görevi tamamlamadın.</p>
-                    )}
-                </div>
-            </div>
-        </>
-    );
+const formatTaskType = (value: Task['taskType']) => {
+  if (value === 'soru \u00e7\u00f6zme') return 'Soru cozumu';
+  if (value === 'kitap okuma') return 'Kitap okuma';
+  return 'Ders calismasi';
+};
+
+const getChildTaskPriority = (task: Task, today: string) => {
+  const dueDate = getTaskDateKey(task.dueDate);
+  if (task.status === 'tamamland\u0131') return 6;
+  if (dueDate < today && !task.isSelfAssigned) return 0;
+  if (dueDate < today) return 1;
+  if (dueDate === today && !task.isSelfAssigned) return 2;
+  if (dueDate === today) return 3;
+  if (!task.isSelfAssigned) return 4;
+  return 5;
+};
+
+const sortChildTasks = (items: Task[], today: string) => {
+  return [...items].sort((a, b) => {
+    const priorityDiff = getChildTaskPriority(a, today) - getChildTaskPriority(b, today);
+    if (priorityDiff !== 0) return priorityDiff;
+    const dateDiff = getTaskDateKey(a.dueDate).localeCompare(getTaskDateKey(b.dueDate));
+    if (dateDiff !== 0) return dateDiff;
+    return a.title.localeCompare(b.title);
+  });
+};
+
+const normalizeForLookup = (value: string) =>
+  value
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+interface ResumeTimerState {
+  mainTime: number;
+  breakTime: number;
+  pauseTime: number;
+  status: 'running' | 'paused' | 'break';
+  isPaused?: boolean;
+  pausedAt?: number;
+  note?: string;
 }
 
-
-const WeeklyPointsChart: React.FC<{tasks: Task[]}> = ({ tasks }) => {
-    const weeklyData = useMemo(() => {
-        const data: { name: string, points: number }[] = [];
-        const today = new Date();
-        const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt']; // 0=Pazar, 1=Pazartesi, ..., 6=Cumartesi
-
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(today.getDate() - i);
-            const dateString = date.toISOString().split('T')[0];
-            const dayName = dayNames[date.getDay()]; // getDay() returns 0-6, matches our array
-
-            const pointsForDay = tasks
-                .filter(task => task.completionDate === dateString)
-                .reduce((total, task) => total + (task.pointsAwarded || 0), 0);
-            
-            data.push({ name: dayName, points: pointsForDay });
-        }
-        return data;
-    }, [tasks]);
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-xl font-bold mb-4 flex items-center"><BarChart className="w-6 h-6 mr-2 text-green-500"/> Haftalık Puanlarım <div className="ml-2" title="Son 7 günde tamamladığınız görevlerden kazandığınız puanlar"><Info className="w-4 h-4 text-slate-400 cursor-help" /></div></h3>
-            <ResponsiveContainer width="100%" height={200}>
-                <RechartsBarChart data={weeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                    <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip 
-                        cursor={{fill: 'rgba(59, 130, 246, 0.1)'}}
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-white p-2 border rounded-lg shadow-sm">
-                                <p className="text-sm font-bold">{`${label}: ${payload[0].value} BP`}</p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                    />
-                    <Bar dataKey="points" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                </RechartsBarChart>
-            </ResponsiveContainer>
-        </div>
-    );
-}
-
-// Types moved to types.ts
-
-const ChildDashboard: React.FC<ChildDashboardProps> = (props) => {
-    const { tasks, courses, rewards, badges, successPoints, startTask, completeTask, claimReward, addTask, ai } = props;
-    // Sadece tek çocuk için atanmış sınavları göster
-
-    // Remote task management for child users
-    const { 
-        assignedTasks, 
-        todaysAssignedTasks,
-        notifications, 
-        updateTaskStatus, 
-        isChild 
-    } = useRemoteTaskManagement();
-
-    const [activeTask, setActiveTask] = useState<Task | null>(null);
-    const [activeReadingTask, setActiveReadingTask] = useState<Task | null>(null);
-    const [persistedTimerState, setPersistedTimerState] = useState<TimerState | undefined>(undefined);
-    // Geçmiş görev için manuel modal state
-    const [manualTaskModal, setManualTaskModal] = useState<{ show: boolean, task: Task | null }>({ show: false, task: null });
-
-    const [taskFilter, setTaskFilter] = useState<TaskFilter>('today');
-    const [isFreeStudyModalOpen, setIsFreeStudyModalOpen] = useState(false);
-    const [activeView, setActiveView] = useState<ChildView>('tasks');
-    
-    // State for handling unfinished sessions
-    const [unfinishedSessionTask, setUnfinishedSessionTask] = useState<Task | null>(null);
-    const [showUnfinishedSessionModal, setShowUnfinishedSessionModal] = useState(false);
-
-    // Yeni bileşenler için state'ler
-    const [showLearningAssistant, setShowLearningAssistant] = useState(false);
-    const [showAdvancedStats, setShowAdvancedStats] = useState(false);
-
-
-    // Free Study Modal State
-    const [freeStudyTitle, setFreeStudyTitle] = useState('');
-    const [freeStudyCourseId, setFreeStudyCourseId] = useState(courses[0]?.id || '');
-    const [freeStudyDueDate, setFreeStudyDueDate] = useState(() => {
-        return getTodayString();
+const WeeklyPointsPanel: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
+  const weeklyData = useMemo(() => {
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = getDaysAgo(6 - index);
+      const dateString = getLocalDateString(date);
+      return {
+        day: date.toLocaleDateString('tr-TR', { weekday: 'short' }),
+        points: tasks.filter((task) => task.completionDate === dateString).reduce((sum, task) => sum + (task.pointsAwarded || 0), 0),
+      };
     });
-    const [freeStudyDueTime, setFreeStudyDueTime] = useState(() => {
-        // Otomatik olarak şu anki saati ayarla
-        const now = new Date();
-        return now.toTimeString().slice(0, 5); // HH:MM formatı
-    });
-    const [freeStudyDuration, setFreeStudyDuration] = useState('');
-    const [freeStudyTaskType, setFreeStudyTaskType] = useState<'soru çözme' | 'ders çalışma' | 'kitap okuma'>('ders çalışma');
-    const [freeStudyQuestionCount, setFreeStudyQuestionCount] = useState('');
-    const [freeStudyBookTitle, setFreeStudyBookTitle] = useState('');
-    const [freeStudyBookGenre, setFreeStudyBookGenre] = useState<'Hikaye' | 'Bilim' | 'Tarih' | 'Macera' | 'Şiir' | 'Diğer'>('Hikaye');
+  }, [tasks]);
 
-    const [selectedTab, setSelectedTab] = useState<'ders' | 'serbest'>('ders');
-    const [drawerOpen, setDrawerOpen] = useState(false);
-
-    // Update freeStudyCourseId when courses prop changes
-    useEffect(() => {
-        if (courses.length > 0 && !freeStudyCourseId) {
-            setFreeStudyCourseId(courses[0].id);
-        }
-    }, [courses, freeStudyCourseId]);
-
-    const handleStartTask = (task: Task) => {
-        // Check for saved timer state first
-        const savedState = localStorage.getItem(`timerState_${task.id}`);
-        let resumeState: TimerState | undefined;
-        
-        if (savedState) {
-            try {
-                const parsedState = JSON.parse(savedState);
-                if (parsedState.isPaused) {
-                    resumeState = parsedState;
-                }
-            } catch (e) {
-                console.error("Failed to parse saved timer state", e);
-                localStorage.removeItem(`timerState_${task.id}`);
-            }
-        }
-        
-        // Geçmiş tarihli görev mi?
-        const todayStr = getTodayString();
-        if (task.dueDate < todayStr && !resumeState) {
-            // Zamanlayıcı başlatma, manuel modal aç (sadece resume state yoksa)
-            setManualTaskModal({ show: true, task });
-        } else {
-            startTask(task.id);
-            setPersistedTimerState(resumeState);
-            
-            // If this is a remote task, update its status
-            if (task.id.startsWith('remote_')) {
-                updateTaskStatus(task.id, { status: 'bekliyor' }); // Keep as pending while working
-            }
-            
-            if (task.taskType === 'kitap okuma') {
-                setActiveReadingTask(task);
-            } else {
-                setActiveTask(task);
-            }
-        }
-    };
-
-
-
-    const handleStartFreeStudy = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        // Validation for task type specific fields
-        const isValid = courses.length > 0 && freeStudyTitle.trim() && freeStudyCourseId && freeStudyDueDate &&
-            freeStudyDueTime.trim() && freeStudyDuration.trim() && Number(freeStudyDuration) > 0 &&
-            (freeStudyTaskType !== 'soru çözme' || (freeStudyQuestionCount.trim() && Number(freeStudyQuestionCount) > 0)) &&
-            (freeStudyTaskType !== 'kitap okuma' || freeStudyBookTitle.trim());
-            
-        if (isValid) {
-            // Tarih ve saati birleştirerek doğru ISO string oluştur
-            const dueDateTimeString = `${freeStudyDueDate}T${freeStudyDueTime}:00`;
-            
-            const newTask = addTask({
-                title: freeStudyTitle,
-                courseId: freeStudyCourseId,
-                dueDate: dueDateTimeString,
-                taskType: freeStudyTaskType,
-                plannedDuration: Number(freeStudyDuration),
-                isSelfAssigned: true,
-                ...(freeStudyTaskType === 'soru çözme' && { questionCount: Number(freeStudyQuestionCount) }),
-                ...(freeStudyTaskType === 'kitap okuma' && { bookTitle: freeStudyBookTitle, readingType: 'serbest', bookGenre: freeStudyBookGenre })
-            });
-            // UX Improvement: Immediately start the created task
-            const taskResult = await newTask;
-            handleStartTask(taskResult);
-            setIsFreeStudyModalOpen(false);
-            setFreeStudyTitle('');
-            setFreeStudyDueDate(getTodayString());
-            setFreeStudyDueTime(new Date().toTimeString().slice(0, 5));
-            setFreeStudyDuration('');
-            setFreeStudyCourseId(courses[0]?.id || '');
-            setFreeStudyTaskType('ders çalışma');
-            setFreeStudyQuestionCount('');
-            setFreeStudyBookTitle('');
-            setFreeStudyBookGenre('Hikaye');
-        }
-    };
-
-    // Check for unfinished sessions on initial load
-    useEffect(() => {
-        for (const task of tasks) {
-            if (task.status === 'bekliyor') {
-                const savedState = localStorage.getItem(`timerState_${task.id}`);
-                if (savedState) {
-                    try {
-                        const parsedState = JSON.parse(savedState);
-                        setPersistedTimerState(parsedState);
-                        setUnfinishedSessionTask(task);
-                        setShowUnfinishedSessionModal(true);
-                        // Stop checking after finding the first unfinished session
-                        return;
-                    } catch (e) {
-                        console.error("Failed to parse saved timer state", e);
-                        localStorage.removeItem(`timerState_${task.id}`);
-                    }
-                }
-            }
-        }
-    }, []); // Run only once on component mount
-
-    const handleContinueSession = () => {
-        if (unfinishedSessionTask) {
-            handleStartTask(unfinishedSessionTask);
-            setShowUnfinishedSessionModal(false);
-            setUnfinishedSessionTask(null);
-        }
-    };
-
-    const handlePostponeTask = () => {
-        if (unfinishedSessionTask) {
-            localStorage.removeItem(`timerState_${unfinishedSessionTask.id}`);
-            setShowUnfinishedSessionModal(false);
-            setUnfinishedSessionTask(null);
-            setPersistedTimerState(undefined);
-        }
-    };
-
-    const allPendingTasks = useMemo(() => {
-        // Combine local tasks with remote assigned tasks
-        const localTasks = tasks.filter(t => t.status === 'bekliyor');
-        const remoteTasks = assignedTasks.filter(t => t.status === 'bekliyor');
-        
-        return [...localTasks, ...remoteTasks]
-            .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-    }, [tasks, assignedTasks]);
-
-    const filteredPendingTasks = useMemo(() => {
-        const todayStr = getTodayString();
-
-        if (taskFilter === 'today') {
-            return allPendingTasks.filter(t => t.dueDate === todayStr);
-        }
-        if (taskFilter === 'upcoming') {
-            return allPendingTasks.filter(t => t.dueDate > todayStr);
-        }
-        return allPendingTasks;
-    }, [allPendingTasks, taskFilter]);
-
-    const todayStr = getTodayString();
-    const completedTodayTasks = tasks.filter(t => t.status === 'tamamlandı' && t.completionDate === todayStr);
-
-    // Kullanıcı performans verilerini hesapla
-    const userPerformance = useMemo(() => {
-        const completedTasks = tasks.filter(t => t.status === 'tamamlandı');
-        const totalTasks = tasks.length;
-        const completionRate = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
-        
-        const averageScore = completedTasks.length > 0 
-            ? Math.round(completedTasks.reduce((sum, task) => sum + (task.successScore || 0), 0) / completedTasks.length)
-            : 0;
-
-        // Ders bazlı performans analizi
-        const subjectPerformance: { [key: string]: number[] } = {};
-        completedTasks.forEach(task => {
-            const courseName = courses.find(c => c.id === task.courseId)?.name || 'Bilinmeyen';
-            if (!subjectPerformance[courseName]) {
-                subjectPerformance[courseName] = [];
-            }
-            subjectPerformance[courseName].push(task.successScore || 0);
-        });
-
-        const subjectAverages = Object.entries(subjectPerformance).map(([subject, scores]) => ({
-            subject,
-            average: scores.reduce((sum, score) => sum + score, 0) / scores.length
-        }));
-
-        const strongSubjects = subjectAverages
-            .filter(s => s.average >= averageScore + 10)
-            .map(s => s.subject);
-        
-        const weakSubjects = subjectAverages
-            .filter(s => s.average < averageScore - 10)
-            .map(s => s.subject);
-
-        return {
-            completionRate,
-            averageScore,
-            strongSubjects,
-            weakSubjects,
-            learningStyle: 'mixed' as const // Bu gerçek uygulamada kullanıcı tercihi veya AI analizi ile belirlenebilir
-        };
-    }, [tasks]);
-
-    // FloatingNotification handler
-    const handleDismissAllNotifications = () => {
-        // Tüm bildirimler kapatıldı
-    };
-
-    const handleSuggestStudyPlan = (plan: any) => {
-        // Çalışma planı önerildi
-    };
-    
-    const handlePauseForLater = (taskId: string, timerState: TimerState) => {
-        // Timer state already saved to localStorage by ActiveTaskTimer
-    };
-
-    if (activeTask) {
-        const onCompleteHandler = (taskId: string, data: any) => {
-            completeTask(taskId, data);
-            
-            // If this is a remote task, update its status to completed
-            if (taskId.startsWith('remote_')) {
-                updateTaskStatus(taskId, { 
-                    status: 'tamamlandı',
-                    completionDate: getTodayString(),
-                    successScore: data.successScore || 0,
-                    focusScore: data.focusScore || 0,
-                    pointsAwarded: data.pointsAwarded || 0
-                });
-            }
-        };
-        return <ActiveTaskTimer task={activeTask} tasks={tasks} onComplete={onCompleteHandler} onFinishSession={() => setActiveTask(null)} onPauseForLater={handlePauseForLater} initialTimerState={persistedTimerState} />;
-    }
-    // Geçmiş görev için manuel modal göster
-    const handleManualModalClose = () => setManualTaskModal({ show: false, task: null });
-
-    const handleManualModalComplete = (taskId: string, data: any) => {
-        completeTask(taskId, data);
-        
-        // If this is a remote task, update its status to completed
-        if (taskId.startsWith('remote_')) {
-            updateTaskStatus(taskId, { 
-                status: 'tamamlandı',
-                completionDate: getTodayString(),
-                successScore: data.successScore || 0,
-                focusScore: data.focusScore || 0,
-                pointsAwarded: data.pointsAwarded || 0
-            });
-        }
-        
-        setManualTaskModal({ show: false, task: null });
-    };
-    // Modal her zaman render edilir, show ile kontrol edilir
-    // ...diğer return'den önce eklenmeli
-    // ...
-    // ...
-    // Ana return'in hemen başına ekle
-    if (manualTaskModal.show && manualTaskModal.task) {
-        return <ManualTaskCompletionModal show={manualTaskModal.show} onClose={handleManualModalClose} task={manualTaskModal.task} onComplete={handleManualModalComplete} />;
-    }
-
-    if (activeReadingTask) {
-        return <ActiveReadingSession task={activeReadingTask} tasks={tasks} onComplete={completeTask} onFinishSession={() => setActiveReadingTask(null)} initialTimerState={persistedTimerState} />;
-    }
-
-    const FilterButton: React.FC<{label: string, filter: TaskFilter}> = ({label, filter}) => (
-        <button
-            onClick={() => setTaskFilter(filter)}
-            className={`px-4 py-1.5 text-sm font-semibold rounded-full transition ${taskFilter === filter ? 'bg-primary-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
-        >
-            {label}
-        </button>
-    );
-
-    const getGreeting = () => {
-        const hour = new Date().getHours();
-        if (hour < 12) return "Günaydın, Genç Kaşif!";
-        if (hour < 18) return "İyi çalışmalar!";
-        return "İyi akşamlar!";
-    };
-
-    // NavLink component for drawer navigation
-    const NavLink: React.FC<{ view: ChildView; icon: React.ReactNode; label: string; onClick?: () => void }> = ({ view, icon, label, onClick }) => (
-        <button
-            onClick={() => { setActiveView(view); if (onClick) onClick(); }}
-            className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                activeView === view ? 'bg-primary-100 text-primary-700 font-semibold' : 'text-slate-600 hover:bg-slate-100'
-            }`}
-        >
-            <span className="mr-3">{icon}</span>
-            {label}
-        </button>
-    );
-  
   return (
-        <div className="relative">
-            {/* Header - notification center ve hamburger menü */}
-            <div className="md:hidden fixed top-4 left-4 right-4 z-50 flex justify-between items-center">
-                {/* Hamburger menü - sadece mobilde görünür */}
-                <button
-                    className="bg-primary-600 text-white p-2 rounded-lg shadow-lg"
-                    onClick={() => setDrawerOpen(true)}
-                    aria-label="Menüyü Aç"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-7 h-7">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-                
-                {/* Remote notification center - mobilde */}
-                {isChild && (
-                    <RemoteNotificationCenter 
-                        notifications={notifications}
-                        unreadCount={notifications.filter(n => !n.read).length}
-                        onMarkAsRead={(id) => {/* Handle mark as read */}}
-                    />
-                )}
-            </div>
-
-            {/* Desktop header - masaüstünde notification center */}
-            <div className="hidden md:flex fixed top-4 right-4 z-50">
-                {isChild && (
-                    <RemoteNotificationCenter 
-                        notifications={notifications}
-                        unreadCount={notifications.filter(n => !n.read).length}
-                        onMarkAsRead={(id) => {/* Handle mark as read */}}
-                    />
-                )}
-            </div>
-
-            {/* Drawer - mobilde açılır menü */}
-            {drawerOpen && (
-                <div className="fixed inset-0 z-40 bg-black bg-opacity-40 flex md:hidden">
-                    <div className="w-64 bg-white p-4 space-y-2 h-full shadow-xl relative transform transition-transform duration-300 ease-in-out">
-                        <button
-                            className="absolute top-3 right-3 text-slate-500 hover:text-primary-600 text-3xl font-light"
-                            onClick={() => setDrawerOpen(false)}
-                            aria-label="Menüyü Kapat"
-                        >
-                            &times;
-                        </button>
-                        {/* Kullanıcı bilgisi */}
-                        <div className="mb-4 flex items-center space-x-3">
-                            <Target className="w-7 h-7 text-primary-600" />
-                            <span className="font-bold text-lg text-primary-700">Çocuk Paneli</span>
-                        </div>
-                        <NavLink view="tasks" icon={<Target className="w-5 h-5"/>} label="Görev Panosu" onClick={() => setDrawerOpen(false)} />
-                        <NavLink view="treasures" icon={<Trophy className="w-5 h-5"/>} label="Hazine Odası" onClick={() => setDrawerOpen(false)} />
-                        <NavLink view="stats" icon={<BarChart className="w-5 h-5"/>} label="İstatistikler" onClick={() => setDrawerOpen(false)} />
-                        <NavLink view="assistant" icon={<Brain className="w-5 h-5"/>} label="AI Asistan" onClick={() => setDrawerOpen(false)} />
-                    </div>
-                    {/* Drawer dışına tıklayınca kapansın */}
-                    <div className="flex-1" onClick={() => setDrawerOpen(false)} />
-                </div>
-            )}
-
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-
-        {/* Unfinished Session Modal */}
-        {unfinishedSessionTask && (
-             <Modal show={showUnfinishedSessionModal} onClose={() => {}} title="Yarım Kalmış Seans">
-                <div className="text-center">
-                    <p className="text-lg text-slate-700">Görünüşe göre yarım kalmış bir <strong>'{unfinishedSessionTask.title}'</strong> seansın var.</p>
-                    <p className="mt-2 text-sm text-slate-500">Ne yapmak istersin?</p>
-                    <div className="mt-6 flex justify-center space-x-4">
-                        <button onClick={handlePostponeTask} className="px-6 py-2 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 flex items-center">
-                            <Clock className="w-4 h-4 mr-2" /> Daha Sonra Yap
-                        </button>
-                         <button onClick={handleContinueSession} className="px-6 py-2 text-sm font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700 flex items-center">
-                           <Play className="w-4 h-4 mr-2" /> Devam Et
-                        </button>
-                    </div>
-                </div>
-            </Modal>
-        )}
-
-        <Modal show={isFreeStudyModalOpen} onClose={() => {
-            setIsFreeStudyModalOpen(false);
-            // Reset form when modal is closed
-            setFreeStudyTitle('');
-            setFreeStudyDueDate(getTodayString());
-            setFreeStudyDueTime(new Date().toTimeString().slice(0, 5));
-            setFreeStudyDuration('');
-            setFreeStudyCourseId(courses[0]?.id || '');
-            setFreeStudyTaskType('ders çalışma');
-            setFreeStudyQuestionCount('');
-            setFreeStudyBookTitle('');
-            setFreeStudyBookGenre('Hikaye');
-        }} title="Serbest Çalışma Başlat">
-            <form onSubmit={handleStartFreeStudy} className="space-y-4">
-                <div>
-                    <label htmlFor="free-study-title" className="block text-sm font-medium text-slate-700 mb-1">Çalışma Konusu</label>
-                    <input id="free-study-title" type="text" value={freeStudyTitle} onChange={e => setFreeStudyTitle(e.target.value)} placeholder="Örn: Geometri Sınavı Tekrarı" required className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label htmlFor="free-study-due-date" className="block text-sm font-medium text-slate-700 mb-1">Hedef Tarih</label>
-                        <input id="free-study-due-date" type="date" value={freeStudyDueDate} onChange={e => setFreeStudyDueDate(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                    </div>
-                    <div>
-                        <label htmlFor="free-study-due-time" className="block text-sm font-medium text-slate-700 mb-1">Hedef Saat</label>
-                        <input id="free-study-due-time" type="time" value={freeStudyDueTime} onChange={e => setFreeStudyDueTime(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                    </div>
-                </div>
-                <div>
-                    <label htmlFor="free-study-course" className="block text-sm font-medium text-slate-700 mb-1">Ders</label>
-                    <select id="free-study-course" value={freeStudyCourseId} onChange={e => setFreeStudyCourseId(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" title="Ders seçimi" disabled={courses.length === 0}>
-                        {courses.length === 0 ? (
-                            <option value="">Henüz ders eklenmemiş</option>
-                        ) : (
-                            courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
-                        )}
-                    </select>
-                </div>
-                <div>
-                    <label htmlFor="free-study-type" className="block text-sm font-medium text-slate-700 mb-1">Çalışma Türü</label>
-                    <select id="free-study-type" value={freeStudyTaskType} onChange={e => setFreeStudyTaskType(e.target.value as any)} required className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" title="Çalışma Türü">
-                        <option value="ders çalışma">Ders Çalışması</option>
-                        <option value="soru çözme">Soru Çözme</option>
-                        <option value="kitap okuma">Kitap Okuma</option>
-                    </select>
-                </div>
-                {freeStudyTaskType === 'soru çözme' && (
-                    <div>
-                        <label htmlFor="free-study-question-count" className="block text-sm font-medium text-slate-700 mb-1">Soru Sayısı</label>
-                        <input id="free-study-question-count" type="number" value={freeStudyQuestionCount} onChange={e => setFreeStudyQuestionCount(e.target.value)} required min="1" placeholder="Çözeceğiniz soru sayısı" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                    </div>
-                )}
-                {freeStudyTaskType === 'kitap okuma' && (
-                    <div className="space-y-3">
-                        <div>
-                            <label htmlFor="free-study-book-genre" className="block text-sm font-medium text-slate-700 mb-1">Kitap Türü</label>
-                            <select 
-                                id="free-study-book-genre" 
-                                value={freeStudyBookGenre} 
-                                onChange={e => setFreeStudyBookGenre(e.target.value as any)}
-                                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            >
-                                <option value="Hikaye">Hikaye</option>
-                                <option value="Bilim">Bilim</option>
-                                <option value="Tarih">Tarih</option>
-                                <option value="Macera">Macera</option>
-                                <option value="Şiir">Şiir</option>
-                                <option value="Diğer">Diğer</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="free-study-book-title" className="block text-sm font-medium text-slate-700 mb-1">Kitap Adı</label>
-                            <input id="free-study-book-title" type="text" value={freeStudyBookTitle} onChange={e => setFreeStudyBookTitle(e.target.value)} required placeholder="Okuyacağınız kitabın adı" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                        </div>
-                    </div>
-                )}
-                <div>
-                    <label htmlFor="free-study-duration" className="block text-sm font-medium text-slate-700 mb-1">Planlanan Süre (dk)</label>
-                    <input id="free-study-duration" type="number" value={freeStudyDuration} onChange={e => setFreeStudyDuration(e.target.value === '' ? '' : e.target.value.replace(/^0+/, ''))} required min="1" placeholder="Süre (dk)" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                </div>
-                <button type="submit" disabled={courses.length === 0} className="w-full bg-primary-600 text-white px-4 py-3 rounded-lg hover:bg-primary-700 transition font-bold flex items-center justify-center disabled:bg-primary-300 disabled:cursor-not-allowed" title={courses.length === 0 ? "Çalışma oluşturmak için önce bir ders eklemelisiniz." : "Çalışmayı Oluştur ve Başlat"}>
-                    <Zap className="w-5 h-5 mr-2" /> Çalışmayı Oluştur ve Başlat
-                </button>
-            </form>
-        </Modal>
-
-        <div className="mb-8 p-6 bg-white rounded-xl shadow-md flex justify-between items-center">
-            <div>
-                <h2 className="text-3xl font-bold text-slate-800">{getGreeting()}</h2>
-                {(() => {
-                    const todayTasks = allPendingTasks.filter(t => new Date(t.dueDate) <= new Date());
-                    const overdueTasks = allPendingTasks.filter(t => new Date(t.dueDate) < new Date());
-                    
-                    if (overdueTasks.length > 0) {
-                        return (
-                            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-red-700 font-semibold flex items-center">
-                                    <Bell className="w-4 h-4 mr-2" />
-                                    {overdueTasks.length} görevin süresi geçmiş! Acilen tamamlaman gerekiyor.
-                                </p>
-                            </div>
-                        );
-                    }
-                    
-                    return <p className="text-slate-500 mt-1">Bugün seni bekleyen {todayTasks.length} görev var. Başarılar!</p>;
-                })()}
-            </div>
-            <div className="text-center">
-                <div className="flex items-center justify-center space-x-2">
-                    <Trophy className="w-8 h-8 text-amber-500" />
-                    <span className="text-4xl font-bold text-amber-600">{successPoints}</span>
-                </div>
-                 <p className="text-sm font-semibold text-slate-600">Başarı Puanı</p>
-            </div>
+    <div className={subtleCard}>
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">Haftalik puan akisi</h3>
+          <p className="text-sm text-slate-500">Son 7 gunde topladigin basari puanlari.</p>
         </div>
-
-        {/* Yatay menü - masaüstünde görünür */}
-        <div className="mb-6 border-b border-slate-200 hidden md:block">
-            <div className="flex space-x-4 overflow-x-auto">
-                <button onClick={() => setActiveView('tasks')} className={`flex items-center space-x-2 pb-3 font-semibold whitespace-nowrap ${activeView === 'tasks' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-slate-500'}`}>
-                    <Target className="w-5 h-5" />
-                    <span>Görev Panosu</span>
-                </button>
-                <button onClick={() => setActiveView('treasures')} className={`flex items-center space-x-2 pb-3 font-semibold whitespace-nowrap ${activeView === 'treasures' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-slate-500'}`}>
-                    <Trophy className="w-5 h-5" />
-                    <span>Hazine Odası</span>
-                </button>
-                <button onClick={() => setActiveView('stats')} className={`flex items-center space-x-2 pb-3 font-semibold whitespace-nowrap ${activeView === 'stats' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-slate-500'}`}>
-                    <BarChart className="w-5 h-5" />
-                    <span>İstatistikler</span>
-                </button>
-                <button onClick={() => setActiveView('assistant')} className={`flex items-center space-x-2 pb-3 font-semibold whitespace-nowrap ${activeView === 'assistant' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-slate-500'}`}>
-                    <Brain className="w-5 h-5" />
-                    <span>AI Asistan</span>
-                </button>
-            </div>
-        </div>
-
-        {/* Mobil için aktif view başlığı */}
-        <div className="mb-6 md:hidden">
-            <h2 className="text-2xl font-bold text-slate-800 flex items-center">
-                {activeView === 'tasks' && (
-                    <>
-                        <Target className="w-6 h-6 mr-2 text-primary-600" />
-                        Görev Panosu
-                    </>
-                )}
-                {activeView === 'treasures' && (
-                    <>
-                        <Trophy className="w-6 h-6 mr-2 text-primary-600" />
-                        Hazine Odası
-                    </>
-                )}
-                {activeView === 'stats' && (
-                    <>
-                        <BarChart className="w-6 h-6 mr-2 text-primary-600" />
-                        İstatistikler
-                    </>
-                )}
-                {activeView === 'assistant' && (
-                    <>
-                        <Brain className="w-6 h-6 mr-2 text-primary-600" />
-                        AI Asistan
-                    </>
-                )}
-            </h2>
-        </div>
-
-        {activeView === 'tasks' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-xl font-bold">Aktif Görevlerim</h3>
-                        <div className="flex items-center space-x-2">
-                            <div className="group relative">
-                                <button onClick={() => setIsFreeStudyModalOpen(true)} className="flex items-center bg-indigo-100 text-indigo-700 px-3 py-1.5 text-sm font-semibold rounded-full hover:bg-indigo-200 transition">
-                                    <PlusCircle className="w-4 h-4 mr-2" />
-                                    Serbest Çalışma Başlat
-                                </button>
-                                <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                    Kendi çalışma seansınızı oluşturun - istediğiniz dersi seçin ve çalışmaya başlayın! 🚀
-                                </div>
-                            </div>
-                            <FilterButton label="Bugün" filter="today" />
-                            <FilterButton label="Yaklaşanlar" filter="upcoming" />
-                            <FilterButton label="Tümü" filter="all" />
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-
-                        
-                        {/* Normal Görevler */}
-                        {filteredPendingTasks.length > 0 ? (
-                            filteredPendingTasks.map(task => <TaskCard key={task.id} task={task} courses={courses} onStart={handleStartTask} />)
-                        ) : (
-                            <div className="text-center py-10 bg-white rounded-lg shadow-sm">
-                                <p className="text-slate-500">Bu filtreye uygun bekleyen görevin yok.</p>
-                                <p className="text-slate-400 text-sm mt-1">Harika iş!</p>
-                           </div>
-                        )}
-                    </div>
-                    {completedTodayTasks.length > 0 && (
-                        <div className="mt-8">
-                            <h3 className="text-xl font-bold flex items-center text-slate-600"><CheckCircle className="w-6 h-6 mr-2 text-green-500"/> Bugün Tamamlananlar</h3>
-                            <div className="space-y-4 mt-4">
-                                {completedTodayTasks.map(task => <TaskCard key={task.id} task={task} courses={courses} onStart={() => {}} />)}
-                            </div>
-                        </div>
-                    )}
-                </div>
-                <div className="lg:col-span-1 space-y-6 sticky top-24">
-                    <WeeklyPointsChart tasks={tasks} />
-                    <MyLibrary tasks={tasks} />
-                </div>
-            </div>
-        )}
-
-        {activeView === 'treasures' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <RewardStore rewards={rewards} successPoints={successPoints} claimReward={claimReward} />
-                 <MyAchievements badges={badges} />
-            </div>
-        )}
-
-        {activeView === 'stats' && (
-            <div className="space-y-8">
-                <StudyStats tasks={tasks} />
-            </div>
-        )}
-
-        {activeView === 'assistant' && (
-            <div className="space-y-8">
-                {tasks && tasks.length >= 0 ? (
-                    <ErrorBoundary>
-                        <PersonalizedLearningAssistant 
-                            tasks={tasks}
-                            userPerformance={userPerformance}
-                            onSuggestStudyPlan={handleSuggestStudyPlan}
-                            ai={ai}
-                        />
-                    </ErrorBoundary>
-                ) : (
-                    <div className="bg-white p-8 rounded-xl shadow-lg text-center">
-                        <div className="text-slate-500">Veriler yükleniyor...</div>
-                    </div>
-                )}
-            </div>
-        )}
-
-        {/* Floating Notification System */}
-        <FloatingNotification
-            tasks={tasks}
-            onDismissAll={handleDismissAllNotifications}
-        />
+        <BarChart className="h-5 w-5 text-emerald-500" />
+      </div>
+      <ResponsiveContainer width="100%" height={150}>
+        <RechartsBarChart data={weeklyData} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+          <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={12} />
+          <YAxis tickLine={false} axisLine={false} fontSize={12} />
+          <Tooltip formatter={(value) => [`${value} BP`, 'Puan']} />
+          <Bar dataKey="points" radius={[10, 10, 0, 0]} fill="#2563eb" />
+        </RechartsBarChart>
+      </ResponsiveContainer>
     </div>
+  );
+};
+
+const ReadingLibraryPanel: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
+  const books = useMemo(() => {
+    const map = new Map<string, number>();
+    tasks
+      .filter((task) => task.taskType === 'kitap okuma' && task.status === 'tamamland\u0131' && task.bookTitle)
+      .forEach((task) => {
+        const title = safeText(task.bookTitle, 'Kitap');
+        map.set(title, (map.get(title) || 0) + (task.pagesRead || 0));
+      });
+
+    return Array.from(map.entries())
+      .map(([title, pages]) => ({ title, pages }))
+      .sort((a, b) => b.pages - a.pages)
+      .slice(0, 3);
+  }, [tasks]);
+
+  return (
+    <div className={subtleCard}>
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">Okuma kutuphanesi</h3>
+          <p className="text-sm text-slate-500">Tamamlanan kitap okumalarindan biriken sayfalar.</p>
         </div>
+        <BookMarked className="h-5 w-5 text-teal-500" />
+      </div>
+      <div className="space-y-3">
+        {books.length === 0 && <div className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">Henuz tamamlanmis kitap okuma oturumu yok.</div>}
+        {books.map((book) => (
+          <div key={book.title} className="rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate font-semibold text-slate-800">{book.title}</div>
+                <div className="text-xs text-slate-500">Toplam okunan sayfa</div>
+              </div>
+              <div className="rounded-full bg-teal-100 px-3 py-1 text-sm font-bold text-teal-700">{book.pages}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task, timerState?: ResumeTimerState) => void; completed?: boolean; today: string; isStarting?: boolean }> = ({ task, courseName, onStart, completed = false, today, isStarting = false }) => {
+  const savedState = parseSavedTimerState(task.id);
+  let isPaused = false;
+  let resumeState: ResumeTimerState | undefined;
+
+  if (savedState) {
+    isPaused = savedState.isPaused || false;
+    if (isPaused) {
+      resumeState = savedState;
+    }
+  }
+
+  const isOverdue = !completed && getTaskDateKey(task.dueDate) < today;
+
+  return (
+    <div className={`rounded-[24px] border bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md ${isOverdue ? 'border-rose-200' : 'border-slate-200'}`}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <span>{safeText(courseName, 'Ders')}</span>
+            <span className="text-slate-300">/</span>
+            <span>{formatTaskType(task.taskType)}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] tracking-normal text-slate-600">{safeText(task.planLabel, '') || safePlanSource(task.planSource)}</span>
+            {task.isSelfAssigned && <span className="rounded-full bg-indigo-100 px-2 py-1 text-[11px] tracking-normal text-indigo-700">Serbest</span>}
+            {isOverdue && <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] tracking-normal text-rose-700">Gecikti</span>}
+          </div>
+          <h4 className="mt-2 text-lg font-bold leading-7 text-slate-900">{safeText(task.bookTitle || task.title, 'Gorev')}</h4>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{task.plannedDuration} dk</span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{task.dueDate}</span>
+            {task.questionCount ? <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-700">{task.questionCount} soru</span> : null}
+            {task.curriculumUnitName ? <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">Unite: {safeText(task.curriculumUnitName, 'Unite')}</span> : null}
+            {task.curriculumTopicName ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">Konu: {safeText(task.curriculumTopicName, 'Konu')}</span> : null}
+            {task.taskGoalType ? <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Hedef: {safeGoalText(task.taskGoalType)}</span> : null}
+          </div>
+          {completed ? (
+            <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+              <div className="rounded-2xl bg-slate-50 px-3 py-2"><div className="text-slate-400">Basari</div><div className="font-bold text-slate-800">{task.successScore || 0}</div></div>
+              <div className="rounded-2xl bg-slate-50 px-3 py-2"><div className="text-slate-400">Odak</div><div className="font-bold text-slate-800">{task.focusScore || 0}</div></div>
+              <div className="rounded-2xl bg-slate-50 px-3 py-2"><div className="text-slate-400">Puan</div><div className="font-bold text-amber-600">+{task.pointsAwarded || 0}</div></div>
+            </div>
+          ) : null}
+        </div>
+        {completed ? (
+          <div className="flex items-center gap-2 self-start rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+            <CheckCircle className="h-4 w-4" /> Tamamlandi
+          </div>
+        ) : (
+          <button
+            onClick={() => onStart(task, resumeState)}
+            disabled={isStarting}
+            className={`self-start rounded-2xl px-5 py-3 text-sm font-bold text-white ${isStarting ? 'cursor-not-allowed bg-slate-300 text-slate-600' : isPaused ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-600 hover:bg-primary-700'}`}
+          >
+            <Play className="mr-2 inline h-4 w-4" />
+            {isStarting ? 'Baslatiliyor...' : isPaused ? 'Devam et' : 'Baslat'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ChildDashboard: React.FC<ChildDashboardProps> = ({
+  tasks,
+  courses,
+  rewards,
+  badges,
+  successPoints,
+  startTask,
+  completeTask,
+  claimReward,
+  addTask,
+  curriculum,
+  ai,
+}) => {
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('today');
+  const [activeView, setActiveView] = useState<ChildView>('tasks');
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeReadingTask, setActiveReadingTask] = useState<Task | null>(null);
+  const [resumedTimerState, setResumedTimerState] = useState<ResumeTimerState | undefined>(undefined);
+  const [showFreeStudy, setShowFreeStudy] = useState(false);
+  const [freeTitle, setFreeTitle] = useState('');
+  const [freeCourseId, setFreeCourseId] = useState(courses[0]?.id || '');
+  const [freeType, setFreeType] = useState<'soru \u00e7\u00f6zme' | 'ders \u00e7al\u0131\u015fma' | 'kitap okuma'>('ders \u00e7al\u0131\u015fma');
+  const [freeDuration, setFreeDuration] = useState('30');
+  const [freeQuestionCount, setFreeQuestionCount] = useState('20');
+  const [freeBookTitle, setFreeBookTitle] = useState('');
+  const [freeUnitName, setFreeUnitName] = useState('');
+  const [freeTopicName, setFreeTopicName] = useState('');
+  const [freeGoalType, setFreeGoalType] = useState('ders calisma');
+  const [claimingRewardId, setClaimingRewardId] = useState<string | null>(null);
+  const [creatingFreeStudy, setCreatingFreeStudy] = useState(false);
+  const [startingTaskId, setStartingTaskId] = useState<string | null>(null);
+
+  const today = getTodayString();
+  const courseNameMap = useMemo(() => new Map(courses.map((course) => [course.id, safeText(course.name, course.id)])), [courses]);
+  const analysis = useMemo(() => deriveAnalysisSnapshot(tasks, courses), [tasks, courses]);
+  const selectedCourseName = courseNameMap.get(freeCourseId) || '';
+  const activeUnits = useMemo<CurriculumUnit[]>(() => {
+    if (!selectedCourseName) return [];
+    const directUnits = curriculum[selectedCourseName];
+    if (Array.isArray(directUnits) && directUnits.length > 0) return directUnits;
+    const normalizedCourseName = normalizeForLookup(selectedCourseName);
+    const matchedSubject = Object.keys(curriculum).find((subject) => normalizeForLookup(subject) === normalizedCourseName);
+    if (!matchedSubject) return Array.isArray(directUnits) ? directUnits : [];
+    return curriculum[matchedSubject];
+  }, [curriculum, selectedCourseName]);
+  const activeTopics = useMemo(() => (freeUnitName ? activeUnits.find((unit) => unit.name === freeUnitName)?.topics || [] : []), [activeUnits, freeUnitName]);
+
+  useEffect(() => {
+    if (!freeCourseId && courses[0]?.id) setFreeCourseId(courses[0].id);
+  }, [courses, freeCourseId]);
+
+  useEffect(() => {
+    setFreeUnitName('');
+    setFreeTopicName('');
+  }, [freeCourseId]);
+
+  useEffect(() => {
+    setFreeTopicName('');
+  }, [freeUnitName]);
+
+  useEffect(() => {
+    const resumeTaskId = window.localStorage.getItem('resumeTaskId');
+    if (!resumeTaskId) return;
+
+    const task = tasks.find((item) => item.id === resumeTaskId);
+    const savedState = parseSavedTimerState(resumeTaskId);
+
+    if (!task || !savedState) return;
+
+    try {
+      const parsed = savedState;
+      if (task.taskType === 'kitap okuma') {
+        setResumedTimerState(parsed);
+        setActiveReadingTask(task);
+      } else {
+        setResumedTimerState(parsed);
+        setActiveTask(task);
+      }
+      window.localStorage.removeItem('resumeTaskId');
+    } catch (error) {
+      console.error('Resume state parse error:', error);
+    }
+  }, [tasks]);
+
+  const pendingTasks = useMemo(() => {
+    const base = tasks.filter((task) => task.status === 'bekliyor');
+    if (taskFilter === 'today') return sortChildTasks(base.filter((task) => getTaskDateKey(task.dueDate) <= today), today);
+    if (taskFilter === 'upcoming') return sortChildTasks(base.filter((task) => getTaskDateKey(task.dueDate) > today), today);
+    return sortChildTasks(base, today);
+  }, [tasks, taskFilter, today]);
+
+  const assignedPendingTasks = useMemo(() => pendingTasks.filter((task) => !task.isSelfAssigned), [pendingTasks]);
+  const freePendingTasks = useMemo(() => pendingTasks.filter((task) => task.isSelfAssigned), [pendingTasks]);
+  const completedToday = useMemo(() => tasks.filter((task) => task.status === 'tamamland\u0131' && task.completionDate === today), [tasks, today]);
+  const assignedTodayCount = useMemo(() => tasks.filter((task) => !task.isSelfAssigned && getTaskDateKey(task.dueDate) <= today).length, [tasks, today]);
+  const waitingTodayCount = useMemo(() => tasks.filter((task) => task.status === 'bekliyor' && getTaskDateKey(task.dueDate) <= today).length, [tasks, today]);
+  const completedTasksForSummary = useMemo(() => tasks.filter((task) => task.status === 'tamamlandı'), [tasks]);
+  const solvedQuestionCount = useMemo(() => completedTasksForSummary
+    .filter((task) => task.taskType === 'soru çözme')
+    .reduce((sum, task) => {
+      const hasRecordedCounts = typeof task.correctCount === 'number' || typeof task.incorrectCount === 'number';
+      const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
+      if (hasRecordedCounts) return sum + answered;
+      return sum + (task.questionCount || 0);
+    }, 0), [completedTasksForSummary]);
+  const studiedMinutes = useMemo(() => Math.round(completedTasksForSummary
+    .filter((task) => task.taskType !== 'kitap okuma')
+    .reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0)), [completedTasksForSummary]);
+  const readPages = useMemo(() => completedTasksForSummary
+    .filter((task) => task.taskType === 'kitap okuma')
+    .reduce((sum, task) => sum + (task.pagesRead || 0), 0), [completedTasksForSummary]);
+
+  const topTopic = analysis.topics[0];
+  const weakestTopic = analysis.topics.find((topic) => topic.needsRevision) || analysis.topics[0];
+
+  const startSelectedTask = (task: Task, timerState?: ResumeTimerState) => {
+    if (startingTaskId) return;
+    const resolvedTimerState = timerState || parseSavedTimerState(task.id);
+    setStartingTaskId(task.id);
+    startTask(task.id);
+    if (task.taskType === 'kitap okuma') {
+      setResumedTimerState(resolvedTimerState);
+      setActiveReadingTask(task);
+      window.setTimeout(() => setStartingTaskId((current) => (current === task.id ? null : current)), 350);
+      return;
+    }
+    setResumedTimerState(resolvedTimerState);
+    setActiveTask(task);
+    window.setTimeout(() => setStartingTaskId((current) => (current === task.id ? null : current)), 350);
+  };
+
+  const handleClaimReward = (rewardId: string) => {
+    if (claimingRewardId) return;
+    setClaimingRewardId(rewardId);
+    claimReward(rewardId);
+    window.setTimeout(() => {
+      setClaimingRewardId((current) => (current === rewardId ? null : current));
+    }, 350);
+  };
+
+  const handlePauseForLater = (_taskId: string, timerState: ResumeTimerState) => {
+    setResumedTimerState(timerState);
+    setActiveTask(null);
+  };
+
+  const handleCreateFreeStudy = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (creatingFreeStudy) return;
+    if (!freeTitle.trim() || !freeCourseId || !freeDuration) return;
+
+    setCreatingFreeStudy(true);
+    try {
+      const created = await addTask({
+        title: freeTitle.trim(),
+        courseId: freeCourseId,
+        dueDate: today,
+        taskType: freeType,
+        plannedDuration: Number(freeDuration),
+        isSelfAssigned: true,
+        ...(freeType === 'soru \u00e7\u00f6zme' ? { questionCount: Number(freeQuestionCount) } : {}),
+        ...(freeType === 'kitap okuma' ? { bookTitle: freeBookTitle, readingType: 'serbest', bookGenre: 'Hikaye' } : {}),
+        ...(freeUnitName ? { curriculumUnitName: freeUnitName } : {}),
+        ...(freeTopicName ? { curriculumTopicName: freeTopicName } : {}),
+        ...(freeType !== 'kitap okuma' ? { taskGoalType: freeGoalType || undefined } : {}),
+        planSource: 'free-study',
+      });
+
+      setShowFreeStudy(false);
+      setFreeTitle('');
+      setFreeType('ders \u00e7al\u0131\u015fma');
+      setFreeDuration('30');
+      setFreeQuestionCount('20');
+      setFreeBookTitle('');
+      setFreeUnitName('');
+      setFreeTopicName('');
+      setFreeGoalType('ders calisma');
+      startSelectedTask(created);
+    } finally {
+      setCreatingFreeStudy(false);
+    }
+  };
+
+  if (activeTask) {
+    return (
+      <ActiveTaskTimer
+        task={activeTask}
+        tasks={tasks}
+        onComplete={completeTask}
+        onFinishSession={() => {
+          setActiveTask(null);
+          setResumedTimerState(undefined);
+        }}
+        onPauseForLater={handlePauseForLater}
+        initialTimerState={resumedTimerState}
+      />
     );
+  }
+
+  if (activeReadingTask) {
+    return <ActiveReadingSession task={activeReadingTask} tasks={tasks} onComplete={completeTask} onFinishSession={() => { setActiveReadingTask(null); setResumedTimerState(undefined); }} initialTimerState={resumedTimerState} />;
+  }
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 lg:px-6">
+      <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.14),_transparent_34%),linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 py-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center rounded-full border border-blue-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Cocuk paneli</div>
+            <h2 className="text-[28px] font-black tracking-tight text-slate-900">Bugunku calisma alani</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Atanan gorevler, serbest calisma ve ilerleme ozetleri tek yerde. Burada once ne calisacagini net gorursun.</p>
+          </div>
+          <div className="flex items-center gap-3 self-start rounded-[24px] bg-slate-950 px-4 py-3 text-white shadow-lg shadow-slate-300/40">
+            <Trophy className="h-6 w-6 text-amber-300" />
+            <div>
+              <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Basari Puani</div>
+              <div className="text-2xl font-black text-amber-300">{successPoints} BP</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bugun atanan</div><div className="mt-2 text-2xl font-black text-slate-900">{assignedTodayCount}</div><div className="mt-1 text-sm text-slate-500">Planlanan gorev</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bugun biten</div><div className="mt-2 text-2xl font-black text-emerald-600">{completedToday.length}</div><div className="mt-1 text-sm text-slate-500">Tamamlanan oturum</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Odak</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageFocus}</div><div className="mt-1 text-sm text-slate-500">Genel ortalama</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hakimiyet</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageMastery}</div><div className="mt-1 text-sm text-slate-500">Konu tabanli skor</div></div>
+      </section>
+
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+        <button onClick={() => setActiveView('tasks')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'tasks' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 shadow-sm'}`}><Target className="mr-2 inline h-4 w-4" />Gorevler</button>
+        <button onClick={() => setActiveView('treasures')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'treasures' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 shadow-sm'}`}><Gift className="mr-2 inline h-4 w-4" />Oduller</button>
+        <button onClick={() => setActiveView('stats')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'stats' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 shadow-sm'}`}><BarChart className="mr-2 inline h-4 w-4" />Istatistik</button>
+        <button onClick={() => setActiveView('assistant')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'assistant' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 shadow-sm'}`}><Brain className="mr-2 inline h-4 w-4" />Koc</button>
+      </div>
+
+      {activeView === 'tasks' && (
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-4">
+            <div className={card}>
+              <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">Gorev panosu</h3>
+                  <p className="text-sm text-slate-500">Atanan gorevler once, serbest calisma ikinci adim.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setShowFreeStudy((value) => !value)} className="rounded-full bg-indigo-100 px-4 py-2 text-sm font-semibold text-indigo-700"><PlusCircle className="mr-2 inline h-4 w-4" />Serbest calisma</button>
+                  <button onClick={() => setTaskFilter('today')} className={`rounded-full px-4 py-2 text-sm font-semibold ${taskFilter === 'today' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Bugun + Geciken</button>
+                  <button onClick={() => setTaskFilter('upcoming')} className={`rounded-full px-4 py-2 text-sm font-semibold ${taskFilter === 'upcoming' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Yaklasan</button>
+                  <button onClick={() => setTaskFilter('all')} className={`rounded-full px-4 py-2 text-sm font-semibold ${taskFilter === 'all' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Tumu</button>
+                </div>
+              </div>
+
+              {showFreeStudy && (
+                <form onSubmit={handleCreateFreeStudy} className="mb-5 rounded-[28px] border border-indigo-100 bg-[linear-gradient(135deg,#eef2ff_0%,#ffffff_55%,#f8fafc_100%)] p-5 shadow-sm">
+                  <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <h3 className="text-lg font-black text-slate-900">Serbest calisma baslat</h3>
+                      <p className="text-sm text-slate-500">Atanan gorev yoksa kendi calismani ders, unite ve konuya bagla.</p>
+                    </div>
+                    <div className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-indigo-700 shadow-sm">Kaynak: Serbest calisma</div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_260px]">
+                    <section className="rounded-3xl border border-white bg-white/85 p-4 shadow-sm">
+                      <div className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400">1 Calisma alani</div>
+                      <div className="space-y-3">
+                        <input value={freeTitle} onChange={(e) => setFreeTitle(e.target.value)} placeholder="Ne calisacaksin?" className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" required />
+                        <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                          {courses.map((course) => <option key={course.id} value={course.id}>{safeText(course.name, course.id)}</option>)}
+                        </select>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <select value={freeUnitName} onChange={(e) => setFreeUnitName(e.target.value)} className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                            <option value="">Unite sec</option>
+                            {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
+                          </select>
+                          <select value={freeTopicName} onChange={(e) => setFreeTopicName(e.target.value)} className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" disabled={!freeUnitName}>
+                            <option value="">Konu sec</option>
+                            {activeTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="rounded-3xl border border-white bg-white/85 p-4 shadow-sm">
+                      <div className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400">2 Calisma turu</div>
+                      <div className="space-y-3">
+                        <select value={freeType} onChange={(e) => setFreeType(e.target.value as 'soru \u00e7\u00f6zme' | 'ders \u00e7al\u0131\u015fma' | 'kitap okuma')} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                          <option value="ders \u00e7al\u0131\u015fma">Ders calismasi</option>
+                          <option value="soru \u00e7\u00f6zme">Soru cozumu</option>
+                          <option value="kitap okuma">Kitap okuma</option>
+                        </select>
+                        <input value={freeDuration} onChange={(e) => setFreeDuration(e.target.value)} type="number" min="1" className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" placeholder="Sure (dk)" required />
+                        {freeType === 'soru \u00e7\u00f6zme' && <input value={freeQuestionCount} onChange={(e) => setFreeQuestionCount(e.target.value)} type="number" min="1" className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" placeholder="Soru sayisi" />}
+                        {freeType === 'kitap okuma' && <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" placeholder="Kitap adi" />}
+                        {freeType !== 'kitap okuma' && (
+                          <select value={freeGoalType} onChange={(e) => setFreeGoalType(e.target.value)} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                            <option value="ders calisma">Ders calismasi</option>
+                            <option value="konu-tekrari">Konu tekrari</option>
+                            <option value="eksik-konu-tamamlama">Eksik konu tamamlama</option>
+                            <option value="test-cozme">Test cozme</option>
+                          </select>
+                        )}
+                      </div>
+                    </section>
+
+                    <section className="flex flex-col justify-between rounded-3xl bg-slate-900 p-4 text-white shadow-sm">
+                      <div>
+                        <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">3 Baslat</div>
+                        <p className="mt-3 text-sm leading-6 text-slate-300">Bu kayit analizde planli gorevden ayri tutulur ama konu performansina destek veri olarak eklenir.</p>
+                        <div className="mt-4 rounded-2xl bg-white/10 px-3 py-3 text-xs leading-5 text-slate-300">
+                          {selectedCourseName || 'Ders'} {freeUnitName ? `/ ${freeUnitName}` : ''} {freeTopicName ? `/ ${freeTopicName}` : ''}
+                        </div>
+                      </div>
+                      <button type="submit" disabled={creatingFreeStudy} className={`mt-4 rounded-2xl px-5 py-3 text-sm font-black ${creatingFreeStudy ? 'cursor-not-allowed bg-slate-200 text-slate-500' : 'bg-white text-slate-900 hover:bg-indigo-50'}`}>
+                        {creatingFreeStudy ? 'Olusturuluyor...' : 'Olustur ve baslat'}
+                      </button>
+                    </section>
+                  </div>
+                </form>
+              )}
+
+              <div className="space-y-4">
+                {pendingTasks.length === 0 && <div className="rounded-[24px] bg-slate-50 p-8 text-center text-slate-500">Bu filtreye uygun bekleyen gorev yok.</div>}
+                {assignedPendingTasks.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">Atanan gorevler</div>
+                    {assignedPendingTasks.map((task) => (
+                      <TaskCard key={task.id} task={task} courseName={courseNameMap.get(task.courseId) || task.courseId} onStart={startSelectedTask} today={today} isStarting={startingTaskId === task.id} />
+                    ))}
+                  </div>
+                )}
+                {freePendingTasks.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">Serbest calisma kayitlari</div>
+                    {freePendingTasks.map((task) => (
+                      <TaskCard key={task.id} task={task} courseName={courseNameMap.get(task.courseId) || task.courseId} onStart={startSelectedTask} today={today} isStarting={startingTaskId === task.id} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {completedToday.length > 0 && (
+              <div className={card}>
+                <div className="mb-4 flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-emerald-500" />
+                  <h3 className="text-xl font-black text-slate-900">Bugun tamamlananlar</h3>
+                </div>
+                <div className="space-y-3">
+                  {completedToday.map((task) => (
+                    <TaskCard key={task.id} task={task} courseName={courseNameMap.get(task.courseId) || task.courseId} onStart={startSelectedTask} completed today={today} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className={subtleCard}>
+              <h3 className="mb-3 text-base font-bold text-slate-900">Bugun ozeti</h3>
+              <div className="grid gap-2 text-sm text-slate-600">
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Bekleyen bugun</span><strong>{waitingTodayCount}</strong></div>
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Cozulen soru</span><strong>{solvedQuestionCount}</strong></div>
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Calisma suresi</span><strong>{studiedMinutes} dk</strong></div>
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Okunan sayfa</span><strong>{readPages}</strong></div>
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Toplam tamamlanan</span><strong>{analysis.overall.completedTasks}</strong></div>
+              </div>
+            </div>
+
+            <WeeklyPointsPanel tasks={tasks} />
+            <ReadingLibraryPanel tasks={tasks} />
+
+            <div className={subtleCard}>
+              <h3 className="mb-3 text-base font-bold text-slate-900">Rozetler</h3>
+              <div className="space-y-3">
+                {badges.length === 0 && <div className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">Henuz rozet yok.</div>}
+                {badges.slice(0, 4).map((badge) => (
+                  <div key={badge.id} className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3">
+                    <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+                    <div className="min-w-0">
+                      <div className="font-medium text-slate-800">{safeBadgeName(badge.name)}</div>
+                      <div className="break-words text-xs leading-5 text-slate-500">{safeBadgeDescription(badge.description)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeView === 'treasures' && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className={card}>
+            <div className="mb-2 flex items-center gap-2"><Gift className="h-5 w-5 text-amber-500" /><h3 className="text-xl font-black text-slate-900">Odul magazasi</h3></div>
+            <p className="mb-4 text-sm text-slate-500">Talep et butonu sadece puanin odul maliyetine esit veya fazlaysa aktif olur.</p>
+            <div className="space-y-3">
+              {rewards.length === 0 && <div className="rounded-[24px] bg-slate-50 p-8 text-center text-slate-500">Henuz odul eklenmemis.</div>}
+              {rewards.map((reward) => {
+                const canAfford = successPoints >= reward.cost;
+                const missingPoints = Math.max(0, reward.cost - successPoints);
+                return (
+                  <div key={reward.id} className="flex items-center justify-between rounded-[24px] bg-slate-50 p-4">
+                    <div>
+                      <div className="font-bold text-slate-800">{safeText(reward.name, 'Odul')}</div>
+                      <div className="text-sm text-amber-600">{reward.cost} BP</div>
+                      <div className={`mt-1 text-xs font-semibold ${canAfford ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {canAfford ? 'Talep etmeye uygun' : `${missingPoints} BP daha gerekli`}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleClaimReward(reward.id)}
+                      disabled={!canAfford || claimingRewardId === reward.id}
+                      title={canAfford ? 'Yeterli puanin var' : `Bu odul icin ${missingPoints} BP daha gerekiyor`}
+                      className={`rounded-2xl px-4 py-2 text-sm font-bold ${canAfford && claimingRewardId !== reward.id ? 'bg-amber-500 text-white' : 'cursor-not-allowed bg-slate-200 text-slate-500'}`}
+                    >
+                      {claimingRewardId === reward.id ? 'Talep ediliyor...' : 'Talep et'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={card}>
+            <div className="mb-4 flex items-center gap-2"><BadgeCheck className="h-5 w-5 text-blue-600" /><h3 className="text-xl font-black text-slate-900">Basarilarim</h3></div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {badges.length === 0 && <div className="rounded-[24px] bg-slate-50 p-8 text-center text-slate-500 sm:col-span-2">Rozet olustukca burada gosterilecek.</div>}
+              {badges.map((badge) => (
+                <div key={badge.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 inline-flex rounded-2xl bg-blue-100 p-3 text-blue-700"><BadgeCheck className="h-5 w-5" /></div>
+                  <div className="font-bold text-slate-800">{safeBadgeName(badge.name)}</div>
+                  <div className="mt-1 text-sm leading-6 text-slate-500">{safeBadgeDescription(badge.description)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeView === 'stats' && <StudyStats tasks={tasks} courses={courses} />}
+
+      {activeView === 'assistant' && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className={card}>
+            <div className="mb-3 flex items-center gap-2 text-slate-900"><Target className="h-5 w-5 text-blue-600" /><h3 className="text-lg font-black">Guclu alan</h3></div>
+            <div className="text-sm leading-6 text-slate-600">{topTopic ? `${topTopic.courseName} / ${topTopic.unitName} / ${topTopic.topicName} alaninda hakimiyet skoru ${topTopic.masteryScore}.` : 'Henuz yeterli calisma verisi yok.'}</div>
+          </div>
+          <div className={card}>
+            <div className="mb-3 flex items-center gap-2 text-slate-900"><Calendar className="h-5 w-5 text-amber-500" /><h3 className="text-lg font-black">Odaklanilacak konu</h3></div>
+            <div className="text-sm leading-6 text-slate-600">{weakestTopic ? `${weakestTopic.courseName} / ${weakestTopic.unitName} / ${weakestTopic.topicName} daha fazla tekrar istiyor. Mevcut skor ${weakestTopic.masteryScore}.` : 'Eksik konu analizi icin daha fazla tamamlanan gorev gerekiyor.'}</div>
+          </div>
+          <div className={card}>
+            <div className="mb-3 flex items-center gap-2 text-slate-900"><Brain className="h-5 w-5 text-violet-600" /><h3 className="text-lg font-black">Calisma kocu</h3></div>
+            <div className="text-sm leading-6 text-slate-600">{ai ? 'AI baglantisi mevcut. Sonraki adimda burada konu bazli calisma onerileri ve gunluk uyari sistemi acilacak.' : 'Bu alan simdilik kural tabanli. Once planli gorevleri bitir, sonra serbest calismaya gec.'}</div>
+            <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Ortalama verim: <strong>{analysis.overall.averageEfficiency}</strong> / Ortalama dogruluk: <strong>{analysis.overall.averageAccuracy ?? 0}</strong></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default ChildDashboard;
+
+
+
+
+
+
+
+

@@ -1,1745 +1,1309 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { BarChart as BarChartIcon, BookOpen, ClipboardList, FileText, Home, PlusCircle, Trash2, TrendingUp, TrendingDown, CheckCircle, Clock, ListFilter, Brain, Zap, Gift, Printer, Download, ArrowUpDown, Trophy, Sparkles, BookMarked, AlertTriangle, Info, Settings, Send } from '../icons';
-import { getIconComponent } from '../../constants';
-import { DailyBriefingData, PerformanceData, ReportData, Task, ParentDashboardProps, Course, Reward } from '../../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
-import { GoogleGenAI, Type } from "@google/genai";
-import EmptyState from '../shared/EmptyState';
-import TaskTypeAnalysis from './TaskTypeAnalysis';
-import BestPeriodAnalysis from './BestPeriodAnalysis';
-import CompletionSpeedAnalysis from './CompletionSpeedAnalysis';
-import CourseTimeDistribution from './CourseTimeDistribution';
-import ReadingAnalytics from './ReadingAnalytics';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ExamType, ParentDashboardProps, Task, CurriculumUnit, Reward, ReportData } from '../../types';
+import { PlusCircle, Trash2, BookOpen, ClipboardList, Trophy, Download, Settings, FileText, Target, TrendingUp, AlertTriangle, CheckCircle, Upload } from '../icons';
+import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
+import { getTodayString } from '../../utils/dateUtils';
+import AnalysisGraphCenter from './AnalysisGraphCenter';
 
-import DataManagementPanel from './DataManagementPanel';
-import TimeRangeFilter, { type TimeFilterValue } from '../shared/TimeRangeFilter';
-import RemoteNotificationCenter from '../shared/RemoteNotificationCenter';
-import { useRemoteTaskManagement } from '../../src/hooks/useRemoteTaskManagement';
-import { isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
-import { getLocalDateString, getShortDisplayDate, getDaysAgo, parseDate, isSameDay } from '../../utils/dateUtils';
+const card = 'bg-white rounded-2xl shadow-sm border border-slate-200 p-6';
+const statCard = 'rounded-2xl border p-5 shadow-sm';
 
-
-const Modal: React.FC<{ show: boolean, onClose: () => void, title: string, children: React.ReactNode }> = ({ show, onClose, title, children }) => {
-    if (!show) return null;
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} aria-label="Kapat" title="Kapat" className="text-slate-500 hover:text-slate-800 text-3xl font-light">&times;</button>
-                </div>
-                {children}
-            </div>
-        </div>
-    );
+const taskGoalLabelMap: Record<string, string> = {
+  'test-cozme': 'Test cozme',
+  'olcme-degerlendirme': 'Olcme degerlendirme',
+  'sinav-hazirlik': 'Sinav hazirligi',
+  'konu-tekrari': 'Konu tekrari',
+  'eksik-konu-tamamlama': 'Eksik konu tamamlama',
+  'ders calisma': 'Ders calismasi',
+  'ders \u00e7al\u0131\u015fma': 'Ders calismasi',
 };
 
-const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode }> = ({ title, value, icon }) => (
-    <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
-        <div className="bg-primary-100 p-3 rounded-full">
-            {icon}
-        </div>
-        <div>
-            <p className="text-sm text-slate-500">{title}</p>
-            <p className="text-2xl font-bold text-slate-800">{value}</p>
-        </div>
-    </div>
-);
-
-const CoursesManager: React.FC<{ courses: Course[], addCourse: (name: string) => void, deleteCourse: (id: string) => void }> = ({ courses, addCourse, deleteCourse }) => {
-    const [courseName, setCourseName] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (courseName.trim()) {
-            addCourse(courseName.trim());
-            setCourseName('');
-        }
-    };
-    
-    return (
-        <div>
-            <form onSubmit={handleSubmit} className="flex space-x-2 mb-4">
-                <input 
-                    type="text"
-                    value={courseName}
-                    onChange={(e) => setCourseName(e.target.value)}
-                    placeholder="Ders Adı (örn: Tarih)"
-                    className="flex-grow border bg-white border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition flex items-center" aria-label="Ders Ekle" title="Ders Ekle">
-                    <PlusCircle className="w-5 h-5 mr-2" /> Ekle
-                </button>
-            </form>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-                {courses.map(course => {
-                    let IconComponent: React.ComponentType<{ className?: string }> = Gift; // Varsayılan ikon
-                    if (typeof course.icon === 'string') {
-                        IconComponent = getIconComponent(course.icon);
-                    } else if (typeof course.icon === 'function') {
-                        IconComponent = course.icon as React.ComponentType<{ className?: string }>;
-                    }
-                    return (
-                        <div key={course.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-lg">
-                            <div className="flex items-center space-x-3">
-                                <IconComponent className="w-6 h-6 text-primary-600" />
-                                <span className="font-semibold">{course.name}</span>
-                            </div>
-                            <button onClick={() => deleteCourse(course.id)} className="text-red-500 hover:text-red-700 flex items-center space-x-1" title="Bu dersi ve tüm görevlerini kalıcı olarak sil" aria-label={`${course.name} dersini sil`}>
-                                <Trash2 className="w-5 h-5" />
-                                <span className="sr-only">Sil</span>
-                            </button>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    )
-}
-
-const TaskManager: React.FC<{ 
-    tasks: Task[], 
-    courses: Course[], 
-    addTask: (task: Omit<Task, 'id' | 'status'>) => Promise<Task>, 
-    deleteTask: (id: string) => void,
-    assignTask?: (task: Omit<Task, 'id' | 'assignedTo'>) => Promise<string | null>
-}> = ({ tasks, courses, addTask, deleteTask, assignTask }) => {
-    // Tek çocuklu kullanım, çoklu kullanıcıya gerek yok
-    const [showModal, setShowModal] = useState(false);
-
-    // Görev erteleme fonksiyonu
-    const postponeTask = (taskId: string) => {
-        // State güncellemesi için ana görevler dizisini güncelle
-        if (typeof window !== 'undefined' && window.localStorage) {
-            const tasksRaw = window.localStorage.getItem('tasks');
-            let tasksArr: any[] = [];
-            if (tasksRaw) {
-                try { tasksArr = JSON.parse(tasksRaw); } catch {}
-            }
-            tasksArr = tasksArr.map(t => t.id === taskId ? { ...t, postponed: true } : t);
-            window.localStorage.setItem('tasks', JSON.stringify(tasksArr));
-        }
-        // Eğer props ile setTasks fonksiyonu geliyorsa, burada çağrılabilir
-        // Alternatif olarak, bir callback ile ana state güncellenebilir
-        // Bu örnekte localStorage güncellendi, ana state güncellemesi App.tsx'de yapılmalı
-        alert('Görev daha sonra yapılacak olarak işaretlendi.');
-    };
-    const [title, setTitle] = useState('');
-    // Açıklama kaldırıldı
-    const [dueDate, setDueDate] = useState('');
-    const [courseId, setCourseId] = useState(courses[0]?.id || '');
-    const [taskType, setTaskType] = useState<'soru çözme' | 'ders çalışma' | 'kitap okuma'>('soru çözme');
-    const [plannedDuration, setPlannedDuration] = useState<string>('');
-    const [questionCount, setQuestionCount] = useState<number | ''>('');
-    const [bookTitle, setBookTitle] = useState('');
-    const [readingType, setReadingType] = useState<'ders' | 'serbest'>('ders');
-    const [bookGenre, setBookGenre] = useState<'Hikaye' | 'Bilim' | 'Tarih' | 'Macera' | 'Şiir' | 'Diğer'>('Hikaye');
-    const [assignmentType, setAssignmentType] = useState<'local' | 'remote'>('local');
-    // (Yukarıda tanımlandı, tekrar tanımlanmasına gerek yok)
-
-    // Filtering and Sorting State
-    const [filterCourse, setFilterCourse] = useState('all');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'bekliyor' | 'tamamlandı'>('all');
-    const [filterAssignment, setFilterAssignment] = useState<'all' | 'local' | 'remote'>('all');
-    const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-
-    const filteredAndSortedTasks = useMemo(() => {
-        let tempTasks = [...tasks];
-
-        // Filtering
-        if (filterCourse !== 'all') {
-            tempTasks = tempTasks.filter(t => t.courseId === filterCourse);
-        }
-        if (filterStatus !== 'all') {
-            tempTasks = tempTasks.filter(t => t.status === filterStatus);
-        }
-        if (filterAssignment !== 'all') {
-            tempTasks = tempTasks.filter(t => {
-                const isRemote = t.assignedTo !== undefined && t.assignedTo !== null;
-                return filterAssignment === 'remote' ? isRemote : !isRemote;
-            });
-        }
-
-        // Sorting
-        tempTasks.sort((a, b) => {
-            const dateA = new Date(a.dueDate).getTime();
-            const dateB = new Date(b.dueDate).getTime();
-            // FIX: Corrected a typo in the sort comparison from `b` to `dateA`.
-            return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
-        });
-
-        return tempTasks;
-    }, [tasks, filterCourse, filterStatus, filterAssignment, sortOrder]);
-
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const isFreeReading = taskType === 'kitap okuma' && readingType === 'serbest';
-        const isValidCourse = isFreeReading || courseId; // Serbest okumada courseId zorunlu değil
-        if(title.trim() && dueDate && isValidCourse && plannedDuration && Number(plannedDuration) > 0) {
-            const taskData: Omit<Task, 'id' | 'status'> = {
-                title,
-                dueDate,
-                courseId: (taskType === 'kitap okuma' && readingType === 'serbest') ? 'serbest-okuma' : courseId,
-                taskType,
-                plannedDuration: Number(plannedDuration),
-                ...(taskType === 'soru çözme' && { questionCount: Number(questionCount) }),
-                ...(taskType === 'kitap okuma' && { bookTitle: bookTitle, readingType: readingType, bookGenre: bookGenre }),
-                // assignedTo field - remote görevler için doldurulacak
-                ...(assignmentType === 'remote' && { assignedTo: 'child_user' })
-            };
-
-            try {
-                if (assignmentType === 'remote' && assignTask) {
-                    // Uzaktan görev atama - type uyumsuzluğunu çöz
-                    const remoteTaskData = { ...taskData, status: 'bekliyor' as const };
-                    const remoteTaskId = await assignTask(remoteTaskData);
-                    if (remoteTaskId) {
-                        alert('Görev başarıyla uzaktan atandı!');
-                    } else {
-                        alert('Uzaktan görev atama başarısız oldu. Yerel olarak ekleniyor...');
-                        await addTask(taskData);
-                    }
-                } else {
-                    // Yerel görev ekleme
-                    await addTask(taskData);
-                }
-            } catch (error) {
-                console.error('Görev ekleme hatası:', error);
-                alert('Görev ekleme başarısız oldu.');
-            }
-
-            // UX Improvement: Clear form completely for consistent UX
-            setTitle(''); 
-            setDueDate(''); 
-            setCourseId(courses[0]?.id || '');
-            setTaskType('soru çözme'); 
-            setPlannedDuration(''); 
-            setQuestionCount(''); 
-            setBookTitle('');
-            setReadingType('ders');
-            setBookGenre('Hikaye');
-            setAssignmentType('local');
-            // Close modal after successful task creation
-            setShowModal(false);
-        }
-    };
-    
-    const formatSeconds = (seconds: number) => {
-        if (seconds < 60) return `${seconds} sn`;
-        return `${Math.round(seconds / 60)} dk`;
-    }
-
-    return (
-         <div className="bg-white p-6 rounded-xl shadow-md">
-             <Modal show={showModal} onClose={() => setShowModal(false)} title="Yeni Görev Ata">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Assignment Type Selection */}
-                    {assignTask && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <label className="block text-sm font-medium text-slate-700 mb-3">Görev Atama Türü</label>
-                            <div className="flex items-center space-x-4">
-                                <label className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        name="assignmentType"
-                                        value="local"
-                                        checked={assignmentType === 'local'}
-                                        onChange={(e) => setAssignmentType(e.target.value as 'local' | 'remote')}
-                                        className="mr-2"
-                                    />
-                                    <span className="text-sm text-slate-700">Yerel Görev</span>
-                                </label>
-                                <label className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        name="assignmentType"
-                                        value="remote"
-                                        checked={assignmentType === 'remote'}
-                                        onChange={(e) => setAssignmentType(e.target.value as 'local' | 'remote')}
-                                        className="mr-2"
-                                    />
-                                    <div className="flex items-center">
-                                        <span className="text-sm text-slate-700">Uzaktan Atama</span>
-                                        <Send className="w-4 h-4 ml-1 text-blue-500" />
-                                    </div>
-                                </label>
-                            </div>
-                            {assignmentType === 'remote' && (
-                                <p className="text-xs text-blue-600 mt-2">
-                                    Bu görev çocuğunuzun cihazına gerçek zamanlı olarak gönderilecek
-                                </p>
-                            )}
-                        </div>
-                    )}
-                    
-                    <label htmlFor="task-title" className="block text-sm font-medium text-slate-700 mb-1">Görev Başlığı</label>
-                    <input id="task-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Görev Başlığı" required className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                    <label htmlFor="task-due-date" className="block text-sm font-medium text-slate-700 mb-1">Son Teslim Tarihi</label>
-                    <input id="task-due-date" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                    {!(taskType === 'kitap okuma' && readingType === 'serbest') && (
-                        <div>
-                            <label htmlFor="task-course" className="block text-sm font-medium text-slate-700 mb-1">Ders Seç</label>
-                            <select id="task-course" title="Ders Seç" value={courseId} onChange={e => setCourseId(e.target.value)} required className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
-                                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                        </div>
-                    )}
-                     <label htmlFor="task-type" className="block text-sm font-medium text-slate-700 mb-1">Görev Türü</label>
-                     <div className="flex items-center">
-                        <select id="task-type" title="Görev Türü" value={taskType} onChange={e => setTaskType(e.target.value as any)} required className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
-                            <option value="soru çözme">Soru Çözme</option>
-                            <option value="ders çalışma">Ders Çalışma</option>
-                            <option value="kitap okuma">Kitap Okuma</option>
-                        </select>
-                        <div className="ml-2 group relative">
-                            <Info className="w-4 h-4 text-slate-400 cursor-help" />
-                            <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                Çocuğunuz için hangi tür görev oluşturmak istiyorsunuz?
-                            </div>
-                        </div>
-                    </div>
-                    {taskType === 'soru çözme' && (
-                         <div>
-                            <label htmlFor="task-question-count" className="block text-sm font-medium text-slate-700 mb-1">Soru Sayısı</label>
-                            <input id="task-question-count" type="number" value={questionCount || ''} onChange={e => setQuestionCount(e.target.value === '' ? '' : Number(e.target.value))} required min="1" placeholder="Soru Sayısı" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                        </div>
-                    )}
-                    {taskType === 'kitap okuma' && (
-                        <div className="space-y-3">
-                            <div>
-                                <label htmlFor="task-reading-type" className="block text-sm font-medium text-slate-700 mb-1">Okuma Türü</label>
-                                <select 
-                                    id="task-reading-type" 
-                                    value={readingType} 
-                                    onChange={e => setReadingType(e.target.value as 'ders' | 'serbest')}
-                                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                >
-                                    <option value="ders">Ders Okuması</option>
-                                    <option value="serbest">Serbest Okuma</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="task-book-genre" className="block text-sm font-medium text-slate-700 mb-1">Kitap Türü</label>
-                                <select 
-                                    id="task-book-genre" 
-                                    value={bookGenre} 
-                                    onChange={e => setBookGenre(e.target.value as any)}
-                                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                >
-                                    <option value="Hikaye">Hikaye</option>
-                                    <option value="Bilim">Bilim</option>
-                                    <option value="Tarih">Tarih</option>
-                                    <option value="Macera">Macera</option>
-                                    <option value="Şiir">Şiir</option>
-                                    <option value="Diğer">Diğer</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="task-book-title" className="block text-sm font-medium text-slate-700 mb-1">Kitap Adı</label>
-                                <input id="task-book-title" type="text" value={bookTitle} onChange={e => setBookTitle(e.target.value)} required placeholder="Kitap Adı" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"/>
-                            </div>
-                        </div>
-                    )}
-                    <div>
-                        <label htmlFor="task-duration" className="block text-sm font-medium text-slate-700 mb-1">Planlanan Süre (dk)</label>
-                        <input id="task-duration" type="number" value={plannedDuration} onChange={e => setPlannedDuration(e.target.value === '' ? '' : e.target.value.replace(/^0+/, ''))} required placeholder="Süre (dk)" className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500" min="1"/>
-                    </div>
-                    <button type="submit" className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition" aria-label={courses.length === 0 ? "Görev atamak için önce bir ders eklemelisiniz." : "Görevi Ata"} title={courses.length === 0 ? "Görev atamak için önce bir ders eklemelisiniz." : "Görevi Ata"} disabled={courses.length === 0}>Görevi Ata</button>
-                </form>
-            </Modal>
-             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold">Görev Yöneticisi</h3>
-                                <button 
-                                    aria-label={courses.length === 0 ? "Görev atamak için önce bir ders eklemelisiniz." : "Yeni Görev Ata"}
-                    onClick={() => setShowModal(true)} 
-                    disabled={courses.length === 0}
-                    className="flex items-center bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition disabled:bg-primary-300 disabled:cursor-not-allowed"
-                    title={courses.length === 0 ? "Görev atamak için önce bir ders eklemelisiniz." : "Yeni Görev Ata"}
-                >
-                    <PlusCircle className="w-5 h-5 mr-2" /> Yeni Görev
-                </button>
-            </div>
-            {/* Filter and Sort Controls */}
-            <div className="flex flex-wrap gap-2 mb-4 p-2 bg-slate-50 rounded-lg">
-                <label htmlFor="filter-course" className="sr-only">Ders Filtrele</label>
-                <select id="filter-course" title="Ders Filtrele" value={filterCourse} onChange={e => setFilterCourse(e.target.value)} className="flex-grow bg-white border border-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500">
-                    <option value="all">Tüm Dersler</option>
-                    {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                 <label htmlFor="filter-status" className="sr-only">Durum Filtrele</label>
-                 <select id="filter-status" title="Durum Filtrele" value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} className="flex-grow bg-white border border-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500">
-                    <option value="all">Tüm Durumlar</option>
-                    <option value="bekliyor">Bekleyenler</option>
-                    <option value="tamamlandı">Tamamlananlar</option>
-                </select>
-                <label htmlFor="filter-assignment" className="sr-only">Atama Türü Filtrele</label>
-                <select id="filter-assignment" title="Atama Türü" value={filterAssignment} onChange={e => setFilterAssignment(e.target.value as any)} className="flex-grow bg-white border border-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500">
-                    <option value="all">Tüm Görevler</option>
-                    <option value="local">Yerel Görevler</option>
-                    <option value="remote">Uzaktan Atanan</option>
-                </select>
-                <button onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')} className="flex items-center bg-white border border-slate-300 text-sm px-3 py-1.5 rounded-lg hover:bg-slate-100" aria-label="Sırala" title="Sırala">
-                    <ArrowUpDown className="w-4 h-4 mr-2"/>
-                    {sortOrder === 'newest' ? 'En Yeni' : 'En Eski'}
-                </button>
-            </div>
-
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-                 {filteredAndSortedTasks.length > 0 ? filteredAndSortedTasks.map(task => (
-                    <div key={task.id} className="p-4 bg-slate-50 rounded-lg">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="font-bold">{task.title}</p>
-                                <div className="flex items-center mt-1">
-                                    <p className="text-sm text-slate-500">{courses.find(c=>c.id === task.courseId)?.name}</p>
-                                    {task.isSelfAssigned && (
-                                        <span className="ml-2 text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Serbest Çalışma</span>
-                                    )}
-                                    {task.assignedTo && (
-                                        <span className="ml-2 text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full flex items-center">
-                                            <Send className="w-3 h-3 mr-1"/>
-                                            Uzaktan Atanan
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                                                            <span className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${task.status === 'tamamlandı' ? 'bg-green-100 text-green-700' : task.postponed ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                                 {task.status === 'tamamlandı' ? 'Tamamlandı' : task.postponed ? 'Daha Sonra Yapılacak' : 'Bekliyor'}
-                                                            </span>
-                                                            {!task.postponed && task.status !== 'tamamlandı' && (
-                                                                <button onClick={() => postponeTask(task.id)}
-                                                                    className="text-blue-500 hover:text-blue-700" title="Daha Sonra Yap" aria-label="Daha Sonra Yap">
-                                                                    <Clock className="w-5 h-5" />
-                                                                </button>
-                                                            )}
-                                                            <button onClick={() => deleteTask(task.id)} className="text-red-500 hover:text-red-700" title="Görevi Sil" aria-label="Görevi Sil">
-                                                                    <Trash2 className="w-5 h-5" />
-                                                            </button>
-                            </div>
-                        </div>
-                        <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-slate-600 flex justify-between items-center">
-                            {task.status === 'tamamlandı' ? (
-                                <div className="flex space-x-4 items-center">
-                                    <span>Süre: <span className="font-semibold">{formatSeconds(task.actualDuration || 0)}</span></span>
-                                    <span>Mola: <span className="font-semibold">{formatSeconds(task.breakTime || 0)}</span></span>
-                                    <span className="text-amber-600 font-bold">+{task.pointsAwarded || 0} BP</span>
-                                </div>
-                            ) : (
-                                <div className="flex space-x-4 items-center">
-                                    <span>Plan: <span className="font-semibold">{task.plannedDuration} dk</span></span>
-                                    {task.taskType === 'soru çözme' && <span>Soru: <span className="font-semibold">{task.questionCount}</span></span>}
-                                </div>
-                            )}
-                             <span>Tarih: <span className="font-semibold">{task.dueDate}</span></span>
-                        </div>
-                        {task.status === 'tamamlandı' && task.startTimestamp && task.completionTimestamp && (
-                            <div className="mt-1 text-xs text-slate-500 flex space-x-4">
-                                <span>Başlangıç: {new Date(task.startTimestamp).toLocaleTimeString()}</span>
-                                <span>Bitiş: {new Date(task.completionTimestamp).toLocaleTimeString()}</span>
-                            </div>
-                        )}
-                    </div>
-                )) : (
-                     <div className="text-center py-10">
-                         <p className="text-slate-500">Filtre kriterlerine uygun görev bulunmamaktadır.</p>
-                    </div>
-                )}
-            </div>
-         </div>
-    );
+const planSourceLabelMap: Record<string, string> = {
+  manual: 'Elle atandi',
+  'weekly-plan': 'Haftalik plan',
+  'ai-plan': 'Akilli plan',
+  'free-study': 'Serbest calisma',
 };
 
-
-
-const PerformanceAnalytics: React.FC<{ 
-    tasks: Task[], 
-    courses: Course[], 
-    ai: GoogleGenAI | null, 
-    timeFilter: TimeFilterValue,
-    onTimeFilterChange?: React.Dispatch<React.SetStateAction<TimeFilterValue>> 
-}> = ({ tasks, courses, ai, timeFilter, onTimeFilterChange }) => {
-    const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '');
-    
-    const [aiTopicAnalysis, setAiTopicAnalysis] = useState<any[] | null>(null);
-    const [isAnalyzingTopics, setIsAnalyzingTopics] = useState(false);
-    const [aiAnalysisError, setAiAnalysisError] = useState<string | null>(null);
-
-    const filteredTasks = useMemo(() => {
-        const now = new Date();
-        let interval: { start: Date, end: Date } | null = null;
-
-        switch (timeFilter.period) {
-            case 'week':
-                interval = { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
-                break;
-            case 'month':
-                interval = { start: startOfMonth(now), end: endOfMonth(now) };
-                break;
-            case 'year':
-                interval = { start: startOfYear(now), end: endOfYear(now) };
-                break;
-            case 'custom':
-                if (timeFilter.startDate && timeFilter.endDate) {
-                    interval = { start: new Date(timeFilter.startDate), end: new Date(timeFilter.endDate) };
-                }
-                break;
-            case 'all':
-            default:
-                // No interval, return all completed tasks
-                return tasks.filter(t => t.status === 'tamamlandı' && (t.completionDate || t.dueDate));
-        }
-
-        if (!interval) {
-            return tasks.filter(t => t.status === 'tamamlandı' && (t.completionDate || t.dueDate));
-        }
-
-        return tasks.filter(t => {
-            if (t.status !== 'tamamlandı') return false;
-            const analysisDateStr = t.completionDate || t.dueDate;
-            if (!analysisDateStr) return false;
-            const analysisDate = new Date(analysisDateStr);
-            return isWithinInterval(analysisDate, interval!);
-        });
-    }, [tasks, timeFilter]);
-    
-    const handleAiTopicAnalysis = async () => {
-        setIsAnalyzingTopics(true);
-        setAiTopicAnalysis(null);
-        setAiAnalysisError(null);
-        
-        const courseName = courses.find(c => c.id === selectedCourseId)?.name;
-        const relevantTasks = tasks.filter(t => t.courseId === selectedCourseId && t.status === 'tamamlandı' && t.successScore);
-
-        // This check is now mainly for the function logic, UI check is separate
-        if (relevantTasks.length < 3) {
-            setAiAnalysisError("Analiz için daha fazla veri gerekiyor. Çocuğunuzun en az 3 görev tamamlamasını bekleyin.");
-            setIsAnalyzingTopics(false);
-            return;
-        }
-
-        const simplifiedTasks = relevantTasks.map(t => ({ title: t.title, description: t.description, successScore: t.successScore }));
-
-        const prompt = `Bir ebeveyn için '${courseName}' dersindeki görevleri analiz ediyorsun. Aşağıdaki görev listesini incele. Her görevin başlığını ve açıklamasını kullanarak görevleri ortak alt konulara ayır (örn: 'Cebir', 'Geometri'). Her bir alt konu için ortalama 'successScore' değerini hesapla. Sonuçları JSON formatında bir dizi olarak döndür. Dizi, en yüksek puanlı konudan en düşük puanlıya doğru sıralanmalıdır. Görev listesi: ${JSON.stringify(simplifiedTasks)}`;
-        
-        try {
-            if (!ai) {
-                throw new Error('AI servis kullanılamıyor');
-            }
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: [{
-                    role: "user",
-                    parts: [{ text: prompt }]
-                }],
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                konu: { type: Type.STRING, description: 'Görevlerin gruplandırıldığı alt konunun adı.' },
-                                ortalamaPuan: { type: Type.NUMBER, description: 'Bu konudaki görevlerin ortalama başarı puanı (0-100).' },
-                                gorevSayisi: { type: Type.NUMBER, description: 'Bu konuya dahil edilen görev sayısı.'}
-                            },
-                             required: ['konu', 'ortalamaPuan', 'gorevSayisi']
-                        }
-                    },
-                },
-            });
-
-            let result;
-            try {
-                result = JSON.parse(response.text || '{}');
-            } catch (e) {
-                setAiAnalysisError("Analiz sonuçları işlenirken bir sorun oluştu. Lütfen tekrar deneyin.");
-                setIsAnalyzingTopics(false);
-                return;
-            }
-            // Validasyon: Dizi ve her elemanda konu:string, ortalamaPuan:number, gorevSayisi:number olmalı
-            if (!Array.isArray(result) || result.some(item =>
-                typeof item.konu !== 'string' ||
-                typeof item.ortalamaPuan !== 'number' ||
-                typeof item.gorevSayisi !== 'number' ||
-                item.konu.trim() === '' ||
-                item.ortalamaPuan < 0 || item.ortalamaPuan > 100 ||
-                item.gorevSayisi < 1
-            )) {
-                setAiAnalysisError("Analiz tamamlandı ancak sonuçlar beklenenden farklı. Lütfen tekrar deneyin.");
-                setIsAnalyzingTopics(false);
-                return;
-            }
-            setAiTopicAnalysis(result);
-        } catch (error) {
-            console.error("AI topic analysis failed:", error);
-            setAiAnalysisError("Analiz şu anda kullanılamıyor. Lütfen bir süre sonra tekrar deneyin.");
-        } finally {
-            setIsAnalyzingTopics(false);
-        }
-    };
-
-
-    const comparisonChartData = useMemo(() => {
-        const courseMetrics: { [key: string]: { success: number[], focus: number[], count: number } } = {};
-        
-        const tasksToAnalyze = timeFilter.period === 'all' ? tasks.filter(t => t.status === 'tamamlandı') : filteredTasks;
-
-        tasksToAnalyze.forEach(task => {
-            if (!courseMetrics[task.courseId]) {
-                courseMetrics[task.courseId] = { success: [], focus: [], count: 0 };
-            }
-            if (task.successScore) courseMetrics[task.courseId].success.push(task.successScore);
-            if (task.focusScore) courseMetrics[task.courseId].focus.push(task.focusScore);
-            courseMetrics[task.courseId].count++;
-        });
-
-        return courses.map(course => {
-            const metrics = courseMetrics[course.id];
-            if (!metrics || metrics.count === 0) {
-                return { name: course.name, "Başarı": 0, "Odaklanma": 0 };
-            }
-             // CRITICAL FIX: Prevent NaN by checking for array length before division
-            const avgSuccess = metrics.success.length > 0 ? metrics.success.reduce((a, b) => a + b, 0) / metrics.success.length : 0;
-            const avgFocus = metrics.focus.length > 0 ? metrics.focus.reduce((a, b) => a + b, 0) / metrics.focus.length : 0;
-
-
-            return {
-                name: course.name,
-                "Başarı": Math.round(avgSuccess),
-                "Odaklanma": Math.round(avgFocus),
-            };
-        });
-    }, [filteredTasks, courses, timeFilter.period, tasks]);
-
-    const tasksForSelectedCourse = useMemo(() => {
-         return filteredTasks.filter(t => t.courseId === selectedCourseId)
-            .map(t => ({
-                ...t,
-                date: t.completionDate || t.dueDate,
-                analysisDate: t.completionDate || t.dueDate
-            }))
-            .sort((a,b) => new Date(a.analysisDate || 0).getTime() - new Date(b.analysisDate || 0).getTime());
-    }, [filteredTasks, selectedCourseId]);
-
-    const relevantTaskCountForAI = useMemo(() => {
-        return tasks.filter(t => t.courseId === selectedCourseId && t.status === 'tamamlandı' && t.successScore).length;
-    }, [tasks, selectedCourseId]);
-
-
-    const getPeriodLabel = (filter: TimeFilterValue): string => {
-        switch (filter.period) {
-            case 'week': return 'Bu Hafta';
-            case 'month': return 'Bu Ay';
-            case 'year': return 'Bu Yıl';
-            case 'all': return 'Tüm Zamanlar';
-            case 'custom':
-                if (filter.startDate && filter.endDate) {
-                    return `${new Date(filter.startDate).toLocaleDateString()} - ${new Date(filter.endDate).toLocaleDateString()}`;
-                }
-                return 'Özel Aralık';
-            default: return 'Tüm Zamanlar';
-        }
-    };
-    
-    return (
-        <div className="space-y-6">
-            {/* Verimlilik Çizgi Grafiği */}
-            <div className="bg-white p-6 rounded-xl shadow-md">
-                                <h3 className="text-xl font-bold mb-4 flex items-center"><TrendingUp className="w-6 h-6 mr-2 text-blue-500" /> Günlük Verimlilik Grafiği <div className="ml-2" title="Her gün tamamlanan görevlerden elde edilen verimlilik trendi"><Info className="w-4 h-4 text-slate-400 cursor-help" /></div></h3>
-                                {/* Eksik puanlı görevler için uyarı */}
-                                {tasks.some(t => t.status === 'tamamlandı' && (!Number.isFinite(t.successScore) || !Number.isFinite(t.focusScore))) && (
-                                    <div className="mb-3 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-semibold flex items-center">
-                                        <span className="mr-2">⚠️</span>
-                                        Bazı tamamlanmış görevlerde başarı veya odak puanı eksik. Bu görevler grafikte gösterilmeyecektir.
-                                    </div>
-                                )}
-                {/* Günlük ortalama başarı ve odak puanı hesaplama */}
-                {tasks.filter(t => t.status === 'tamamlandı').length === 0 ? (
-                    <EmptyState 
-                        icon={<TrendingUp className="w-8 h-8 text-slate-400"/>}
-                        title="Verimlilik Grafiği İçin Veri Yok"
-                        message="Çocuğunuz görevleri tamamladıkça, günlük başarı ve odak puanları burada çizgi grafik olarak görünecek."
-                    />
-                ) : (
-                    <ResponsiveContainer width="100%" height={250}>
-                        <LineChart
-                            data={(() => {
-                                // 1. Sadece tamamlanmış ve tarih bilgisi olan görevleri al
-                                const completed = tasks.filter(t => t.status === 'tamamlandı' && (t.completionDate || t.dueDate));
-                                // 2. Tarihe göre gruplandır (analiz tarihi kullan)
-                                const grouped = completed.reduce((acc, t) => {
-                                    const analysisDate = t.completionDate || t.dueDate;
-                                    if (!analysisDate) return acc;
-                                    if (!acc[analysisDate]) acc[analysisDate] = [];
-                                    acc[analysisDate].push(t);
-                                    return acc;
-                                }, {} as Record<string, Task[]>);
-                                // 3. Her gün için ortalama başarı ve odak puanı hesapla
-                                return Object.entries(grouped)
-                                    .map(([date, tasksForDay]) => {
-                                        const dayTasks = tasksForDay as Task[];
-                                        const validSuccess = dayTasks.filter(t => typeof t.successScore === 'number');
-                                        const validFocus = dayTasks.filter(t => typeof t.focusScore === 'number');
-                                        
-                                        // Tarihi doğru formatta göster - browser-safe method
-                                        const dateObj = new Date(date);
-                                        const dayNames = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
-                                        const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-                                        const dayName = dayNames[dateObj.getDay()];
-                                        const dayMonth = `${dateObj.getDate()} ${monthNames[dateObj.getMonth()]}`;
-                                        
-                                        return {
-                                            date,
-                                            displayDate: `${dayName} ${dayMonth}`, // Pazartesi 15 Kas
-                                            analysisDate: date,
-                                            successScore: validSuccess.length > 0 ? Math.round(validSuccess.reduce((sum, t) => sum + (t.successScore || 0), 0) / validSuccess.length) : null,
-                                            focusScore: validFocus.length > 0 ? Math.round(validFocus.reduce((sum, t) => sum + (t.focusScore || 0), 0) / validFocus.length) : null,
-                                        };
-                                    })
-                                    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-                            })()}
-                            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="displayDate" fontSize={12} />
-                            <YAxis domain={[0, 100]} unit="%" />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="monotone" dataKey="successScore" name="Başarı Puanı" stroke="#3b82f6" strokeWidth={2} />
-                            <Line type="monotone" dataKey="focusScore" name="Odak Puanı" stroke="#f59e42" strokeWidth={2} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                )}
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-md">
-                <h3 className="text-xl font-bold mb-4">Ders Karşılaştırması ({getPeriodLabel(timeFilter)})</h3>
-                 {filteredTasks.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={400}>
-                        <BarChart data={comparisonChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis domain={[0, 100]} unit="p" />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="Başarı" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="Odaklanma" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                 ) : (
-                    <EmptyState 
-                        icon={<BarChartIcon className="w-8 h-8 text-slate-400"/>}
-                        title="Karşılaştırma İçin Veri Yok"
-                        message="Seçtiğiniz zaman aralığında tamamlanmış görev bulunmamaktadır. Farklı bir dönem seçmeyi veya yeni görevler tamamlamayı bekleyin."
-                    />
-                 )}
-             </div>
-            
-             <div className="bg-white p-6 rounded-xl shadow-md">
-                <h3 className="text-xl font-bold mb-4">Ders Detayı ({courses.find(c=>c.id === selectedCourseId)?.name})</h3>
-                <select 
-                    value={selectedCourseId} 
-                    onChange={e => {
-                        setSelectedCourseId(e.target.value)
-                        setAiTopicAnalysis(null);
-                        setAiAnalysisError(null);
-                    }} 
-                    className="w-full md:w-1/3 mb-4 bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 font-semibold"
-                    title="Ders seçimi"
-                >
-                    {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                {tasksForSelectedCourse.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                     <div >
-                        <h4 className="text-lg font-semibold mb-2 flex items-center"><Brain className="w-5 h-5 mr-2 text-blue-600"/> Başarı Puanı Gelişimi</h4>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={tasksForSelectedCourse} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" fontSize={12} />
-                                <YAxis domain={[0, 100]} unit="p" />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="successScore" name="Başarı" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 8 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                     <div>
-                        <h4 className="text-lg font-semibold mb-2 flex items-center"><Zap className="w-5 h-5 mr-2 text-purple-600"/> Odaklanma Puanı Gelişimi</h4>
-                        <ResponsiveContainer width="100%" height={300}>
-                           <LineChart data={tasksForSelectedCourse} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" fontSize={12} />
-                                <YAxis domain={[0, 100]} unit="p"/>
-                                <Tooltip />
-                                <Line type="monotone" dataKey="focusScore" name="Odaklanma" stroke="#8b5cf6" strokeWidth={2} activeDot={{ r: 8 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                    </div>
-                 ) : (
-                    <div className="py-10">
-                         <EmptyState 
-                            icon={<BookOpen className="w-8 h-8 text-slate-400"/>}
-                            title="Bu Derse Ait Veri Yok"
-                            message="Seçilen ders ve dönem için tamamlanmış görev bulunmamaktadır. Grafiklerin oluşması için görevlerin tamamlanması gerekmektedir."
-                        />
-                    </div>
-                )}
-                
-                <div className="border-t pt-6">
-                    <div className="flex items-center">
-                        <button
-                            onClick={handleAiTopicAnalysis} 
-                            disabled={isAnalyzingTopics || relevantTaskCountForAI < 3} 
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center disabled:bg-indigo-300 disabled:cursor-not-allowed"
-                            aria-label={relevantTaskCountForAI < 3 ? "Konu analizi için bu derse ait en az 3 tamamlanmış görev gereklidir." : "Konuları Analiz Et"}
-                            title={relevantTaskCountForAI < 3 ? "Konu analizi için bu derse ait en az 3 tamamlanmış görev gereklidir." : "Konuları Analiz Et"}
-                        >
-                            <Sparkles className="w-5 h-5 mr-2" />
-                            {isAnalyzingTopics ? 'Analiz Ediliyor...' : 'Yapay Zeka ile Konuları Analiz Et'}
-                        </button>
-                        <div className="ml-2 group relative">
-                            <Info className="w-4 h-4 text-slate-400 cursor-help" />
-                            <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                Yapay zeka çocuğunuzun hangi konularda güçlü/zayıf olduğunu analiz eder
-                            </div>
-                        </div>
-                    </div>
-                    {isAnalyzingTopics && <p className="text-sm text-slate-500 mt-2">Bu işlem birkaç saniye sürebilir...</p>}
-                    {aiAnalysisError && <p className="text-sm text-red-500 mt-2 font-semibold">{aiAnalysisError}</p>}
-                    
-                    {aiTopicAnalysis && (
-                        <div className="mt-4">
-                             <h4 className="text-lg font-semibold mb-2">Yapay Zeka Konu Analizi Sonuçları</h4>
-                             <ResponsiveContainer width="100%" height={aiTopicAnalysis.length * 50}>
-                                <BarChart data={aiTopicAnalysis} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                    <XAxis type="number" domain={[0, 100]} unit="%" />
-                                    <YAxis type="category" dataKey="konu" width={120} fontSize={12} />
-                                    <Tooltip cursor={{fill: 'rgba(59, 130, 246, 0.1)'}} content={({ active, payload }) => {
-                                          if (active && payload && payload.length) {
-                                            const data = payload[0].payload;
-                                            return (
-                                              <div className="bg-white p-2 border rounded-lg shadow-sm text-sm">
-                                                <p className="font-bold">{data.konu}</p>
-                                                <p>Ort. Puan: <span className="font-semibold">{Math.round(data.ortalamaPuan)}</span></p>
-                                                <p>Görev Sayısı: <span className="font-semibold">{data.gorevSayisi}</span></p>
-                                              </div>
-                                            );
-                                          }
-                                          return null;
-                                        }}/>
-                                    <Bar dataKey="ortalamaPuan" name="Ortalama Puan" fill="#10b981" barSize={20} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    )}
-                </div>
-             </div>
-
-            {/* Incomplete Task Analytics */}
-            <div className="bg-white p-6 rounded-xl shadow-md">
-                <h3 className="text-xl font-bold mb-4 flex items-center">
-                    <AlertTriangle className="w-6 h-6 mr-2 text-amber-500" />
-                    Eksik Görev Analizi
-                </h3>
-                
-                {(() => {
-                    const incompleteTasks = tasks.filter(t => t.status === 'bekliyor');
-                    const overdueTasks = incompleteTasks.filter(t => new Date(t.dueDate) < new Date());
-                    const startedButNotCompleted = incompleteTasks.filter(t => t.startTimestamp && t.pauseTime);
-                    
-                    if (incompleteTasks.length === 0) {
-                        return (
-                            <div className="text-center py-8">
-                                <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-3" />
-                                <p className="text-slate-600">Tüm görevler tamamlanmış! 🎉</p>
-                            </div>
-                        );
-                    }
-                    
-                    return (
-                        <div className="space-y-6">
-                            {/* Overview Stats */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-400">
-                                    <h4 className="font-semibold text-amber-800">Bekleyen Görevler</h4>
-                                    <p className="text-2xl font-bold text-amber-600">{incompleteTasks.length}</p>
-                                </div>
-                                <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-400">
-                                    <h4 className="font-semibold text-red-800">Geciken Görevler</h4>
-                                    <p className="text-2xl font-bold text-red-600">{overdueTasks.length}</p>
-                                </div>
-                                <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
-                                    <h4 className="font-semibold text-blue-800">Başlayıp Bırakan</h4>
-                                    <p className="text-2xl font-bold text-blue-600">{startedButNotCompleted.length}</p>
-                                </div>
-                            </div>
-                            
-                            {/* Detailed List */}
-                            {overdueTasks.length > 0 && (
-                                <div>
-                                    <h4 className="text-lg font-semibold mb-3 text-red-600">⚠️ Geciken Görevler</h4>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                                        {overdueTasks.map(task => {
-                                            const course = courses.find(c => c.id === task.courseId);
-                                            const daysOverdue = Math.ceil((new Date().getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24));
-                                            return (
-                                                <div key={task.id} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
-                                                    <div>
-                                                        <span className="font-medium text-red-900">{task.title}</span>
-                                                        <span className="text-sm text-red-600 block">{course?.name}</span>
-                                                    </div>
-                                                    <span className="text-xs bg-red-200 text-red-800 px-2 py-1 rounded-full font-medium">
-                                                        {daysOverdue} gün gecikme
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {startedButNotCompleted.length > 0 && (
-                                <div>
-                                    <h4 className="text-lg font-semibold mb-3 text-blue-600">⏸️ Başlayıp Bırakılan Görevler</h4>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                                        {startedButNotCompleted.map(task => {
-                                            const course = courses.find(c => c.id === task.courseId);
-                                            const pauseMinutes = Math.round((task.pauseTime || 0) / 60000);
-                                            return (
-                                                <div key={task.id} className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                                    <div>
-                                                        <span className="font-medium text-blue-900">{task.title}</span>
-                                                        <span className="text-sm text-blue-600 block">{course?.name}</span>
-                                                    </div>
-                                                    <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded-full font-medium">
-                                                        {pauseMinutes}dk bekleme
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })()}
-            </div>
-
-        </div>
-    );
+const examTypeLabelMap: Record<ExamType, string> = {
+  'school-written': 'Yazili',
+  'school-quiz': 'Kisa sinav',
+  'school-oral': 'Sozlu',
+  'mock-exam': 'Deneme',
+  'state-exam': 'Genel sinav',
+  'report-card': 'Karne',
 };
 
+const alignmentToneMap = {
+  uyumlu: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  'sapma-var': 'border-amber-200 bg-amber-50 text-amber-700',
+  'kritik-sapma': 'border-rose-200 bg-rose-50 text-rose-700',
+  'veri-yetersiz': 'border-slate-200 bg-slate-50 text-slate-600',
+} as const;
 
-interface ReportsViewProps {
-    generateReport: ParentDashboardProps['generateReport'];
-    courses: Course[];
-    tasks: Task[];
-    timeFilter: TimeFilterValue;
-    onTimeFilterChange?: React.Dispatch<React.SetStateAction<TimeFilterValue>>;
-}
+const alignmentLabelMap = {
+  uyumlu: 'Uyumlu',
+  'sapma-var': 'Sapma var',
+  'kritik-sapma': 'Kritik sapma',
+  'veri-yetersiz': 'Veri yetersiz',
+} as const;
 
-const ReportsView: React.FC<ReportsViewProps> = ({ generateReport, courses, tasks, timeFilter, onTimeFilterChange }) => {
-    const [report, setReport] = useState<ReportData | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-
-    const handleGenerateReport = async () => {
-        setIsLoading(true);
-        setReport(null);
-        
-        // Convert timeFilter.period to ReportData period format
-        const reportPeriod = timeFilter.period === 'week' ? 'Haftalık' :
-            timeFilter.period === 'month' ? 'Aylık' :
-            timeFilter.period === 'year' ? 'Yıllık' : 'Tüm Zamanlar';
-            
-        try {
-            const result = await generateReport(reportPeriod);
-            setReport(result);
-        } catch (error) {
-            console.error("Rapor oluşturulurken hata:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleDownload = () => {
-        if (!report) return;
-
-        const content = `
-${report.period} Performans Raporu (Yapay Zeka Analizi)
-=====================================================
-
-ÖZET
------------------------------------------------------
-${report.aiSummary}
-
-ÖNE ÇIKANLAR
------------------------------------------------------
-- En Çok Gelişim Gösteren Ders: ${report.highlights.mostImproved}
-- Odaklanılması Gereken Ders: ${report.highlights.needsFocus}
-
-YAPAY ZEKA ÖNERİSİ
------------------------------------------------------
-${report.aiSuggestion}
-        `;
-
-        const blob = new Blob([content.trim()], { type: 'text/plain;charset=utf-8' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.href = url;
-        link.download = `performans-raporu-${report.period.toLowerCase()}.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    };
-
-    const handlePrint = () => {
-        if (!report) return;
-
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(`
-                <html>
-                <head>
-                    <title>${report.period} Performans Raporu</title>
-                    <style>
-                        body { font-family: sans-serif; line-height: 1.6; color: #333; padding: 20px; }
-                        h1 { color: #1d4ed8; }
-                        h2 { border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-top: 30px; }
-                        .section { background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-                        <strong>En Çok Gelişim Gösteren:</strong> ${report.highlights.mostImproved}
-                    </div>
-                    <div class="highlight-focus">
-                        <strong>Odaklanılması Gereken:</strong> ${report.highlights.needsFocus}
-                    </div>
-
-                    <h2>Yapay Zeka Önerisi</h2>
-                    <div class="section">
-                         <p>${report.aiSuggestion}</p>
-                    </div>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-            printWindow.focus();
-            printWindow.print();
-            printWindow.close();
-        }
-    };
-    
-    return (
-        <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-md">
-                <h3 className="text-2xl font-bold mb-4">Yapay Zeka Raporları</h3>
-                <p className="text-slate-600 mb-6">Çocuğunuzun performansını analiz etmek için yapay zeka destekli raporlar oluşturun. Rapor, seçtiğiniz zaman aralığındaki tamamlanmış görev verilerini kullanır.</p>
-                
-                <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-slate-600 mb-2">Zaman Aralığı</h4>
-                    <TimeRangeFilter onFilterChange={onTimeFilterChange || (() => {})} />
-                </div>
-                
-                <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                    <button onClick={handleGenerateReport} disabled={isLoading} className="w-full sm:w-auto bg-primary-600 text-white px-6 py-2.5 rounded-lg hover:bg-primary-700 transition flex items-center justify-center disabled:bg-primary-300" aria-label="Rapor Oluştur" title="Rapor Oluştur">
-                        <Brain className="w-5 h-5 mr-2"/>
-                        {isLoading ? 'Rapor Oluşturuluyor...' : `Rapor Oluştur`}
-                    </button>
-                </div>
-            </div>
-
-            {isLoading && (
-                 <div className="bg-white p-6 rounded-xl shadow-md text-center">
-                    <div className="animate-pulse">
-                        <div className="h-4 bg-slate-200 rounded w-3/4 mx-auto mb-4"></div>
-                        <div className="h-4 bg-slate-200 rounded w-1/2 mx-auto"></div>
-                    </div>
-                 </div>
-            )}
-
-            {!isLoading && report === null && (
-                <div className="bg-white p-6 rounded-xl shadow-md text-center text-slate-600">
-                    <div className="mb-2">Rapor oluşturulamadı veya yeterli veri yok.</div>
-                    <div className="text-xs text-slate-400">Lütfen tamamlanmış görevleriniz olduğundan emin olun ve tekrar deneyin.</div>
-                </div>
-            )}
-
-            {report && (
-                <div className="bg-white p-6 rounded-xl shadow-md animate-fade-in-up">
-                    <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-2xl font-bold">{report.period} Performans Raporu (Yapay Zeka Analizi)</h3>
-                        <div className="flex space-x-2 flex-shrink-0">
-                            <button onClick={handlePrint} className="flex items-center space-x-2 text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition" aria-label="Yazdır" title="Yazdır">
-                                <Printer className="w-4 h-4" />
-                                <span>Yazdır</span>
-                            </button>
-                            <button onClick={handleDownload} className="flex items-center space-x-2 text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition" aria-label="İndir" title="İndir">
-                                <Download className="w-4 h-4" />
-                                <span>İndir (.txt)</span>
-                            </button>
-                        </div>
-                    </div>
-                    <p className="text-slate-600 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">{report.aiSummary}</p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
-                            <div className="flex items-center space-x-3">
-                                <TrendingUp className="w-6 h-6 text-green-600" />
-                                 <div>
-                                    <h4 className="font-bold text-green-800">En Çok Gelişim Gösteren</h4>
-                                    <p className="text-green-700">{report.highlights.mostImproved}</p>
-                                </div>
-                            </div>
-                        </div>
-                         <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg">
-                            <div className="flex items-center space-x-3">
-                                <TrendingDown className="w-6 h-6 text-yellow-600" />
-                                 <div>
-                                    <h4 className="font-bold text-yellow-800">Odaklanılması Gereken</h4>
-                                    <p className="text-yellow-700">{report.highlights.needsFocus}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 className="font-bold text-lg mb-2 flex items-center"><Zap className="w-5 h-5 mr-2 text-primary-600"/> Yapay Zeka Önerisi</h4>
-                        <p className="text-slate-700 p-4 bg-primary-50 border border-primary-200 rounded-lg">{report.aiSuggestion}</p>
-                    </div>
-                </div>
-            )}
-            {/* Kurs trend grafikleri: yalnızca rapor oluşturulmuşsa ve kurs/görev verisi varsa göster */}
-            {/* Kurs trend grafikleri: yalnızca rapor oluşturulmuşsa ve kurs/görev verisi varsa göster */}
-            {report && courses && tasks && courses.length > 0 && tasks.length > 0 && (
-                <div className="bg-white p-6 rounded-xl shadow-md animate-fade-in-up">
-                    <h3 className="text-xl font-bold mb-4 flex items-center">Ders Bazında Performans Trendleri <div className="ml-2" title="Her dersin zaman içindeki başarı oranları ve gelişim trendi"><Info className="w-4 h-4 text-slate-400 cursor-help" /></div></h3>
-                    <React.Suspense fallback={<div>Grafikler yükleniyor...</div>}>
-                        {/** Dinamik import ile yükle (isteğe bağlı), burada doğrudan import edilebilir */}
-                        {(() => {
-                            const LazyReportsCourseTrends = React.lazy(() => import('./ReportsCourseTrends'));
-                            return <LazyReportsCourseTrends tasks={tasks} courses={courses} timeFilter={timeFilter} />;
-                        })()}
-                    </React.Suspense>
-                </div>
-            )}
-        </div>
-    )
-}
-
-const CoursesDashboard: React.FC<ParentDashboardProps> = ({ courses, tasks, addCourse, deleteCourse }) => {
-    const defaultIcon = BookOpen;
-    const [selectedCourseId, setSelectedCourseId] = useState<string | null>(courses[0]?.id || null);
-    const [isManageModalOpen, setManageModalOpen] = useState(false);
-
-    const selectedCourse = useMemo(() => courses.find(c => c.id === selectedCourseId), [selectedCourseId, courses]);
-    
-    const courseTasks = useMemo(() => tasks.filter(t => t.courseId === selectedCourseId), [selectedCourseId, tasks]);
-    const completedTasks = useMemo(() => courseTasks.filter(t => t.status === 'tamamlandı'), [courseTasks]);
-    const pendingTasks = useMemo(() => courseTasks.filter(t => t.status === 'bekliyor'), [courseTasks]);
-
-    const courseStats = useMemo(() => {
-        if (!selectedCourse) return null;
-        
-        const totalCorrect = completedTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
-        const totalIncorrect = completedTasks.reduce((sum, task) => sum + (task.incorrectCount || 0), 0);
-        const totalTimeSeconds = completedTasks.reduce((sum, task) => sum + (task.actualDuration || 0), 0);
-        const successRate = totalCorrect + totalIncorrect > 0 ? Math.round((totalCorrect / (totalCorrect + totalIncorrect)) * 100) : 0;
-        
-        return {
-            successRate: `${successRate}%`,
-            timeSpent: `${Math.round(totalTimeSeconds / 60)} dk`,
-            completedCount: completedTasks.length.toString(),
-            pendingCount: pendingTasks.length.toString()
-        };
-    }, [selectedCourse, completedTasks, pendingTasks]);
-
-    const weeklyPerformanceData = useMemo(() => {
-        const getWeek = (date: Date) => {
-            const start = new Date(date.getFullYear(), 0, 1);
-            const diff = (date.getTime() - start.getTime() + ((start.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000));
-            const oneDay = 1000 * 60 * 60 * 24;
-            return Math.floor(diff / oneDay / 7) + 1;
-        };
-
-        const weeklyData: { [key: string]: { correct: number, incorrect: number } } = {};
-
-        completedTasks.forEach(task => {
-            const analysisDate = task.completionDate || task.dueDate;
-            if (analysisDate) {
-                const week = `Hafta ${getWeek(new Date(analysisDate))}`;
-                if (!weeklyData[week]) {
-                    weeklyData[week] = { correct: 0, incorrect: 0 };
-                }
-                weeklyData[week].correct += task.correctCount || 0;
-                weeklyData[week].incorrect += task.incorrectCount || 0;
-            }
-        });
-
-        return Object.entries(weeklyData).map(([week, data]) => ({
-            week,
-            accuracy: (data.correct + data.incorrect > 0) ? Math.round((data.correct / (data.correct + data.incorrect)) * 100) : 0,
-        })).sort((a,b) => parseInt(a.week.split(' ')[1]) - parseInt(b.week.split(' ')[1]));
-    }, [completedTasks]);
-
-    const CourseTaskItem: React.FC<{task: Task}> = ({ task }) => (
-        <div className="p-3 bg-slate-50 rounded-lg">
-            <p className="font-bold">{task.title}</p>
-            <div className="text-xs text-slate-500 mt-1 flex justify-between">
-                <span>Son Teslim: {task.dueDate}</span>
-                 {task.status === 'tamamlandı' && (
-                    <div className="flex space-x-2 font-semibold">
-                        <span className="text-green-600">D: {task.correctCount || 0}</span>
-                        <span className="text-red-600">Y: {task.incorrectCount || 0}</span>
-                        <span className="text-slate-600">{Math.round((task.actualDuration || 0) / 60)} dk</span>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-
-    return (
-        <div className="flex space-x-8">
-            <Modal show={isManageModalOpen} onClose={() => setManageModalOpen(false)} title="Dersleri Yönet">
-                <CoursesManager courses={courses} addCourse={addCourse} deleteCourse={deleteCourse} />
-            </Modal>
-            <aside className="w-1/4 space-y-2">
-                <h3 className="text-lg font-bold px-4 mb-2">Dersler</h3>
-                <div className="overflow-y-auto max-h-[calc(100vh-220px)] pr-2">
-                    {courses.length === 0 ? (
-                        <div className="text-slate-500 text-center p-4">Henüz ders eklenmedi.</div>
-                    ) : (
-                        courses.map(course => {
-                            const pendingCount = tasks.filter(t => t.courseId === course.id && t.status === 'bekliyor').length;
-                            const Icon = course.icon || defaultIcon;
-                            return (
-                                <button aria-label={course.name} title={course.name}
-                                    key={course.id}
-                                    onClick={() => setSelectedCourseId(course.id)}
-                                    className={`flex items-center justify-between w-full text-left px-4 py-3 rounded-lg transition-colors mb-2 ${selectedCourseId === course.id ? 'bg-primary-600 text-white font-semibold shadow-lg' : 'text-slate-600 hover:bg-primary-100 hover:text-primary-700'}`}
-                                >
-                                    <span className="flex items-center">
-                                        {Icon && <Icon className="w-5 h-5" />}
-                                        <span className="ml-3">{course.name}</span>
-                                    </span>
-                                    {pendingCount > 0 && <span className={`flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full ${selectedCourseId === course.id ? 'bg-white text-primary-600' : 'bg-primary-500 text-white'}`}>{pendingCount}</span>}
-                                </button>
-                            )
-                        })
-                    )}
-                </div>
-                <button aria-label="Dersleri Yönet" title="Dersleri Yönet"
-                    onClick={() => setManageModalOpen(true)}
-                    className="flex items-center w-full text-left px-4 py-3 mt-4 rounded-lg transition-colors text-slate-600 bg-slate-100 hover:bg-slate-200"
-                >
-                    <ListFilter className="w-5 h-5"/>
-                    <span className="ml-3 font-semibold">Dersleri Yönet</span>
-                </button>
-            </aside>
-            <main className="w-3/4">
-                {courses.length === 0 ? (
-                    <div className="flex items-center justify-center h-full bg-white rounded-xl shadow-md">
-                        <p className="text-slate-500">Ders ekleyin ve analizleri burada görün.</p>
-                    </div>
-                ) : !selectedCourse ? (
-                    <div className="flex items-center justify-center h-full bg-white rounded-xl shadow-md">
-                        <p className="text-slate-500">Analizini görmek için bir ders seçin.</p>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        <h2 className="text-3xl font-bold">{selectedCourse.name} Analizi</h2>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                            <StatCard title="Genel Başarı" value={courseStats?.successRate || 'N/A'} icon={<TrendingUp className="w-6 h-6 text-primary-600"/>} />
-                            <StatCard title="Toplam Süre" value={courseStats?.timeSpent || 'N/A'} icon={<Clock className="w-6 h-6 text-primary-600"/>} />
-                            <StatCard title="Biten Görevler" value={courseStats?.completedCount || 'N/A'} icon={<CheckCircle className="w-6 h-6 text-primary-600"/>} />
-                            <StatCard title="Bekleyen Görevler" value={courseStats?.pendingCount || 'N/A'} icon={<ClipboardList className="w-6 h-6 text-primary-600"/>} />
-                        </div>
-
-                        <div className="bg-white p-6 rounded-xl shadow-md">
-                            <h3 className="text-xl font-bold mb-4 flex items-center">Haftalık Performans Gelişimi (%) <div className="ml-2" title="Seçilen dersin haftalık performans yüzdesi değişimi"><Info className="w-4 h-4 text-slate-400 cursor-help" /></div></h3>
-                            {weeklyPerformanceData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height={250}>
-                                    <LineChart data={weeklyPerformanceData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="week" fontSize={12} />
-                                        <YAxis domain={[0, 100]} unit="%" />
-                                        <Tooltip />
-                                        <Legend />
-                                        <Line type="monotone" dataKey="accuracy" name="Başarı" stroke="#3b82f6" strokeWidth={2} />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                 <EmptyState 
-                                    icon={<BarChartIcon className="w-8 h-8 text-slate-400"/>}
-                                    title="Performans Gelişimi İçin Veri Yok"
-                                    message="Bu derste tamamlanmış görevler biriktikçe, haftalık başarı gelişimini gösteren grafik burada yer alacak."
-                                />
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-white p-6 rounded-xl shadow-md">
-                                <h3 className="text-xl font-bold mb-4">Bekleyen Görevler ({pendingTasks.length})</h3>
-                                <div className="space-y-3 max-h-60 overflow-y-auto">
-                                    {pendingTasks.length > 0 ? pendingTasks.map(t => <CourseTaskItem key={t.id} task={t}/>) : <p className="text-slate-500">Bekleyen görev yok.</p>}
-                                </div>
-                            </div>
-                             <div className="bg-white p-6 rounded-xl shadow-md">
-                                <h3 className="text-xl font-bold mb-4">Tamamlanan Görevler ({completedTasks.length})</h3>
-                                <div className="space-y-3 max-h-60 overflow-y-auto">
-                                    {completedTasks.length > 0 ? completedTasks.map(t => <CourseTaskItem key={t.id} task={t}/>) : <p className="text-slate-500">Tamamlanmış görev yok.</p>}
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                )}
-            </main>
-        </div>
-    );
-};
-
-const RewardsManager: React.FC<{rewards: Reward[], addReward: (reward: Omit<Reward, 'id'>) => void, deleteReward: (rewardId: string) => void}> = ({ rewards, addReward, deleteReward }) => {
-    const [name, setName] = useState('');
-    const [cost, setCost] = useState<number | ''>('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (name.trim() && cost !== '' && cost > 0) {
-            // Firebase için icon'ı string olarak gönder
-            addReward({ name, cost: Number(cost), icon: 'Gift' });
-            setName('');
-            setCost('');
-        }
-    };
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-2xl font-bold mb-4">Ödülleri Yönet</h3>
-             <form onSubmit={handleSubmit} className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 mb-6 p-4 border border-slate-200 rounded-lg">
-                <input 
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ödül Adı (örn: Sinema Bileti)"
-                    required
-                    className="flex-grow border bg-white border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <input 
-                    type="number"
-                    value={cost}
-                    onChange={(e) => setCost(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Puan Maliyeti"
-                    required
-                    min="1"
-                    className="w-full md:w-40 border bg-white border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition flex items-center justify-center" aria-label="Ödül Ekle" title="Ödül Ekle">
-                    <PlusCircle className="w-5 h-5 mr-2" /> Ekle
-                </button>
-            </form>
-            <div className="space-y-3">
-                {rewards.map(reward => {
-                    const IconComponent = typeof reward.icon === 'string' 
-                        ? getIconComponent(reward.icon) 
-                        : reward.icon;
-                    
-                    return (
-                        <div key={reward.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-lg">
-                            <div className="flex items-center space-x-3">
-                                <IconComponent className="w-6 h-6 text-amber-500"/>
-                                <span className="font-semibold">{reward.name}</span>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                                <span className="font-bold text-amber-600">{reward.cost} BP</span>
-                                <button onClick={() => deleteReward(reward.id)} className="text-red-500 hover:text-red-700" aria-label="Ödülü Sil" title="Ödülü Sil">
-                                    <Trash2 className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    )
-};
-
-const OverallSuccessChart: React.FC<{ tasks: Task[], courses: Course[] }> = ({ tasks, courses }) => {
-    const completedTasks = tasks.filter(t => t.status === 'tamamlandı' && t.successScore !== undefined);
-
-    const data = useMemo(() => {
-        const courseSuccess: { [key: string]: { totalScore: number, count: number } } = {};
-
-        completedTasks.forEach(task => {
-            if (!courseSuccess[task.courseId]) {
-                courseSuccess[task.courseId] = { totalScore: 0, count: 0 };
-            }
-            courseSuccess[task.courseId].totalScore += task.successScore!;
-            courseSuccess[task.courseId].count++;
-        });
-
-        return courses.map(course => {
-            const stats = courseSuccess[course.id];
-            const avgSuccess = (stats && stats.count > 0) ? Math.round(stats.totalScore / stats.count) : 0;
-            return { name: course.name, "Başarı Oranı": avgSuccess };
-        }).sort((a, b) => b["Başarı Oranı"] - a["Başarı Oranı"]);
-    }, [completedTasks, courses]);
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-xl font-bold mb-4">Derslere Göre Genel Başarı (%)</h3>
-            {completedTasks.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                        <XAxis type="number" domain={[0, 100]} unit="%" />
-                        <YAxis type="category" dataKey="name" width={90} fontSize={12} />
-                        <Tooltip cursor={{fill: 'rgba(59, 130, 246, 0.1)'}} />
-                        <Bar dataKey="Başarı Oranı" fill="#3b82f6" barSize={20} />
-                    </BarChart>
-                </ResponsiveContainer>
-             ) : (
-                <EmptyState 
-                    icon={<BarChartIcon className="w-8 h-8 text-slate-400"/>}
-                    title="Genel Başarı İçin Veri Yok"
-                    message="Henüz hiç görev tamamlanmadığı için ders başarı oranları hesaplanamadı."
-                />
-            )}
-        </div>
-    );
-};
-
-const PointsEarnedChart: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
-    const completedTasks = tasks.filter(t => t.status === 'tamamlandı' && t.pointsAwarded);
-    const data = useMemo(() => {
-        const today = new Date();
-        const aMonthAgo = getDaysAgo(30);
-        
-        // Chronologically sorted date array with proper typing
-        const dateArray: Array<{ date: string; fullDate: Date; points: number }> = [];
-        for (let i = 29; i >= 0; i--) {
-            const date = getDaysAgo(i);
-            dateArray.push({
-                date: getShortDisplayDate(date),
-                fullDate: date,
-                points: 0
-            });
-        }
-        
-        // Fill in actual points using timezone-safe date comparison
-        completedTasks.forEach(task => {
-            const analysisDate = task.completionDate || task.dueDate;
-            if (analysisDate) {
-                const taskDate = parseDate(analysisDate);
-                if (taskDate > aMonthAgo) {
-                    const dateEntry = dateArray.find(d => 
-                        isSameDay(d.fullDate, taskDate)
-                    );
-                    if (dateEntry) {
-                        dateEntry.points += (task.pointsAwarded || 0);
-                    }
-                }
-            }
-        });
-
-        return dateArray.map(({ date, points }) => ({ date, "Kazanılan Puan": points }));
-
-    }, [completedTasks]);
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-xl font-bold mb-4">Kazanılan Puanlar (Son 30 Gün)</h3>
-             {completedTasks.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
-                    <AreaChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                        <defs>
-                            <linearGradient id="colorPoints" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" fontSize={12} />
-                        <YAxis />
-                        <Tooltip />
-                        <Area type="monotone" dataKey="Kazanılan Puan" stroke="#f59e0b" fillOpacity={1} fill="url(#colorPoints)" />
-                    </AreaChart>
-                </ResponsiveContainer>
-             ) : (
-                 <EmptyState 
-                    icon={<Trophy className="w-8 h-8 text-slate-400"/>}
-                    title="Kazanılan Puanlar İçin Veri Yok"
-                    message="Puan kazanım grafiğini görmek için görevlerin tamamlanması gerekmektedir."
-                />
-             )}
-        </div>
-    );
-};
-
-const DailyBriefing: React.FC<{ai: GoogleGenAI, tasks: Task[]}> = ({ ai, tasks }) => {
-    const [briefing, setBriefing] = useState<DailyBriefingData | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const generateBriefing = async () => {
-            const today = new Date().toISOString().split('T')[0];
-            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-            const todaysTasks = tasks.filter(t => t.dueDate === today && t.status === 'bekliyor');
-            const yesterdaysCompleted = tasks.filter(t => (t.completionDate || t.dueDate) === yesterday && t.status === 'tamamlandı');
-            
-            const prompt = `Bir ebeveyn için proaktif ve cesaretlendirici bir günlük özet hazırla.
-            Bugünün bekleyen görevleri: ${todaysTasks.length} adet.
-            Dün tamamlanan görevler: ${yesterdaysCompleted.length} adet.
-            Dünkü görevlerin ortalama başarı puanı: ${yesterdaysCompleted.length > 0 ? Math.round(yesterdaysCompleted.reduce((acc, t) => acc + (t.successScore || 70), 0) / yesterdaysCompleted.length) : 'yok'}.
-            
-            Bu bilgilere dayanarak 'summary' ve 'suggestion' içeren bir JSON nesnesi oluştur.
-            - summary: Bugünün durumunu pozitif bir dille özetle.
-            - suggestion: Ebeveyne çocuğunu nasıl destekleyebileceğine dair kısa, eyleme geçirilebilir bir tavsiye ver.`;
-
-            try {
-                const response = await ai.models.generateContent({
-                    model: "gemini-2.5-flash",
-                    contents: [{
-                        role: "user",
-                        parts: [{ text: prompt }]
-                    }],
-                    config: {
-                        responseMimeType: "application/json",
-                        responseSchema: {
-                            type: Type.OBJECT,
-                            properties: {
-                                summary: { type: Type.STRING },
-                                suggestion: { type: Type.STRING },
-                            },
-                            required: ['summary', 'suggestion'],
-                        },
-                    },
-                });
-                setBriefing(JSON.parse(response.text || '{}'));
-            } catch (error) {
-                console.error("Daily briefing generation failed:", error);
-                setBriefing({
-                    summary: "Günlük özet alınamadı.",
-                    suggestion: "Lütfen daha sonra tekrar deneyin."
-                });
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        generateBriefing();
-    }, [tasks, ai]);
-
-    if (isLoading) {
-        return (
-            <div className="bg-white p-6 rounded-xl shadow-md animate-pulse">
-                <div className="h-4 bg-slate-200 rounded w-3/4 mb-4"></div>
-                <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-            </div>
-        )
-    }
-
-    return (
-        <div className="bg-white p-6 rounded-xl shadow-md border-l-4 border-primary-500">
-            <h3 className="text-xl font-bold mb-3 flex items-center"><Sparkles className="w-6 h-6 mr-2 text-primary-500"/> Günün Özeti</h3>
-            <p className="text-slate-700 mb-4">{briefing?.summary}</p>
-            <p className="text-sm text-slate-500 font-semibold p-3 bg-slate-50 rounded-lg">{briefing?.suggestion}</p>
-        </div>
-    );
-};
-
-
-const ParentDashboard: React.FC<ParentDashboardProps> = (props) => {
-    // Remote task management hook
-    const {
-        assignTask,
-        notifications,
-        unreadCount,
-        loading: remoteLoading,
-        error: remoteError,
-        markAsRead,
-        isParent
-    } = useRemoteTaskManagement();
-
-    function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
-        const [value, setValue] = useState<T>(() => {
-            try {
-                const stickyValue = window.localStorage.getItem(key);
-                return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
-            } catch (error) {
-                return defaultValue;
-            }
-        });
-        useEffect(() => {
-            try {
-                window.localStorage.setItem(key, JSON.stringify(value));
-            } catch {}
-        }, [key, value]);
-        return [value, setValue];
-    }
-
-    const [activeView, setActiveView] = useStickyState<ParentView>('dashboard', 'parentActiveView');
-    const [timeFilter, setTimeFilter] = useState<TimeFilterValue>({ period: 'week' });
-    const [drawerOpen, setDrawerOpen] = useState(false);
-    // Deneme Sınavı ekleme modalı için state
-
-
-    type ParentView = 'dashboard' | 'courses' | 'tasks' | 'analytics' | 'reports' | 'rewards' | 'reading' | 'datamanagement';
-
-    const NavLink: React.FC<{ view: ParentView; icon: React.ReactNode; label: string; onClick?: () => void }> = ({ view, icon, label, onClick }) => (
-        <button
-            onClick={() => { setActiveView(view); if (onClick) onClick(); }}
-            className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                activeView === view ? 'bg-primary-600 text-white font-semibold shadow-lg' : 'text-slate-600 hover:bg-primary-100 hover:text-primary-700'
-            }`}
-            title={label}
-            aria-label={label}
-        >
-            {icon}
-            <span className="ml-3">{label}</span>
-        </button>
-    );
-
-  const renderContent = () => {
-            switch(activeView) {
-                    case 'dashboard':
-                            const totalPoints = props.tasks
-                                .filter(t => t.status === 'tamamlandı')
-                                .reduce((sum, t) => sum + (t.pointsAwarded || 0), 0);
-                            return (
-                                    <div className="space-y-8">
-                                            <DailyBriefing ai={props.ai} tasks={props.tasks} />
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                                <StatCard title="Aktif Ders Sayısı" value={props.courses.length.toString()} icon={<BookOpen className="w-6 h-6 text-primary-600"/>} />
-                                                <StatCard title="Bekleyen Görevler" value={props.tasks.filter(t=> t.status === 'bekliyor').length.toString()} icon={<ClipboardList className="w-6 h-6 text-primary-600"/>} />
-                                                <StatCard title="Tamamlanan Görevler (Haftalık)" value={props.tasks.filter(t=> {
-                                                    const analysisDate = t.completionDate || t.dueDate;
-                                                    return t.status === 'tamamlandı' && analysisDate && new Date(analysisDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-                                                }).length.toString()} icon={<CheckCircle className="w-6 h-6 text-primary-600"/>} />
-                                                <StatCard title="Toplam Başarı Puanı" value={totalPoints.toString()} icon={<Trophy className="w-6 h-6 text-amber-500"/>} />
-                                        </div>
-                                            {/* Görev Türü Analizi Kart+Grafik */}
-                                            <TaskTypeAnalysis tasks={props.tasks} loading={props.loading} error={props.error} />
-                                            <BestPeriodAnalysis tasks={props.tasks} loading={props.loading} error={props.error} />
-                                            <CompletionSpeedAnalysis tasks={props.tasks} loading={props.loading} error={props.error} />
-                                            <CourseTimeDistribution tasks={props.tasks} courses={props.courses} loading={props.loading} error={props.error} />
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                             <TaskManager {...props} />
-                                             <div className="space-y-8">
-                                                <OverallSuccessChart tasks={props.tasks} courses={props.courses}/>
-                                                <PointsEarnedChart tasks={props.tasks} />
-                                             </div>
-                                        </div>
-                                    </div>
-                            );
-          case 'courses': return <CoursesDashboard {...props} />;
-          case 'tasks': return <TaskManager {...props} assignTask={isParent ? assignTask : undefined} />;
-          case 'analytics': return <PerformanceAnalytics tasks={props.tasks} courses={props.courses} ai={props.ai} timeFilter={timeFilter} onTimeFilterChange={setTimeFilter}/>;
-          case 'reading': return <ReadingAnalytics tasks={props.tasks} />;
-          case 'reports': return <ReportsView 
-            generateReport={props.generateReport} 
-            courses={props.courses} 
-            tasks={props.tasks}
-            timeFilter={timeFilter}
-            onTimeFilterChange={setTimeFilter}
-          />;
-          case 'rewards': return <RewardsManager rewards={props.rewards} addReward={props.addReward} deleteReward={props.deleteReward} />;
-                    
-          case 'datamanagement': return <DataManagementPanel onDeleteAllData={props.onDeleteAllData} onExportData={props.onExportData || (async () => {})} onImportData={props.onImportData} />;
-          default: return null;
-      }
+const buildLocalId = (prefix: string) => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}_${crypto.randomUUID()}`;
   }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+};
 
-    return (
-        <div className="flex">
-            {/* Header - notification center ve hamburger menü */}
-            <div className="md:hidden fixed top-4 left-4 right-4 z-50 flex justify-between items-center">
-                {/* Hamburger menü - sadece mobilde görünür */}
-                <button
-                    className="bg-primary-600 text-white p-2 rounded-lg shadow-lg"
-                    onClick={() => setDrawerOpen(true)}
-                    aria-label="Menüyü Aç"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-7 h-7">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-                
-                {/* Remote notification center - mobilde */}
-                {isParent && (
-                    <RemoteNotificationCenter 
-                        notifications={notifications}
-                        unreadCount={notifications.filter(n => !n.read).length}
-                        onMarkAsRead={(id) => {/* Handle mark as read */}}
-                    />
-                )}
-            </div>
+const formatTaskGoal = (value?: string) => value ? (taskGoalLabelMap[value] || value) : '';
+const formatPlanSource = (value?: string, label?: string) => label || (value ? (planSourceLabelMap[value] || value) : 'Elle atandi');
 
-            {/* Desktop header - masaüstünde notification center */}
-            <div className="hidden md:flex fixed top-4 right-4 z-50">
-                {isParent && (
-                    <RemoteNotificationCenter 
-                        notifications={notifications}
-                        unreadCount={notifications.filter(n => !n.read).length}
-                        onMarkAsRead={(id) => {/* Handle mark as read */}}
-                    />
-                )}
-            </div>
+const getTaskDateKey = (value?: string) => {
+  if (typeof value !== 'string' || !value) return '';
+  return value.split('T')[0];
+};
 
-            {/* Drawer - mobilde açılır menü */}
-            {drawerOpen && (
-                <div className="fixed inset-0 z-40 bg-black bg-opacity-40 flex">
-                    <div className="w-64 bg-white p-4 space-y-2 h-full shadow-xl animate-slide-in-left relative">
-                        <button
-                            className="absolute top-3 right-3 text-slate-500 hover:text-primary-600 text-3xl font-light"
-                            onClick={() => setDrawerOpen(false)}
-                            aria-label="Menüyü Kapat"
-                        >
-                            &times;
-                        </button>
-                        {/* Kullanıcı bilgisi örnek */}
-                        <div className="mb-4 flex items-center space-x-3">
-                            <Settings className="w-7 h-7 text-primary-600" />
-                            <span className="font-bold text-lg text-primary-700">Ebeveyn Paneli</span>
-                        </div>
-                        <NavLink view="dashboard" icon={<Home className="w-5 h-5"/>} label="Genel Bakış" onClick={() => setDrawerOpen(false)} />
-                        <NavLink view="courses" icon={<BookOpen className="w-5 h-5"/>} label="Dersler" onClick={() => setDrawerOpen(false)} />
-                        <NavLink view="tasks" icon={<ClipboardList className="w-5 h-5"/>} label="Görevler" onClick={() => setDrawerOpen(false)} />
-                        <NavLink view="analytics" icon={<BarChartIcon className="w-5 h-5"/>} label="Performans Analizi" onClick={() => setDrawerOpen(false)} />
-                        <NavLink view="reading" icon={<BookMarked className="w-5 h-5"/>} label="Kitap Okuma Analizi" onClick={() => setDrawerOpen(false)} />
+const getParentTaskPriority = (task: Task, today: string) => {
+  const dueDate = getTaskDateKey(task.dueDate);
+  if (task.status === 'tamamland\u0131') return 5;
+  if (dueDate < today) return 0;
+  if (dueDate === today && !task.isSelfAssigned) return 1;
+  if (dueDate === today) return 2;
+  if (!task.isSelfAssigned) return 3;
+  return 4;
+};
 
-                        <NavLink view="reports" icon={<FileText className="w-5 h-5"/>} label="Raporlar" onClick={() => setDrawerOpen(false)} />
-                        <NavLink view="rewards" icon={<Gift className="w-5 h-5"/>} label="Ödüller" onClick={() => setDrawerOpen(false)} />
-                        <NavLink view="datamanagement" icon={<Settings className="w-5 h-5"/>} label="Veri Yönetimi" onClick={() => setDrawerOpen(false)} />
-                    </div>
-                    {/* Drawer dışına tıklayınca kapansın */}
-                    <div className="flex-1" onClick={() => setDrawerOpen(false)} />
-                </div>
-            )}
+const normalizeForLookup = (value: string) =>
+  value
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-            {/* Masaüstü menü - md ve üstü ekranlarda görünür */}
-            <aside className="w-64 bg-white p-4 space-y-2 sticky top-[81px] h-[calc(100vh-81px)] shadow-sm hidden md:block">
-                <div className="mb-4 flex items-center space-x-3">
-                    <Settings className="w-7 h-7 text-primary-600" />
-                    <span className="font-bold text-lg text-primary-700">Ebeveyn Paneli</span>
-                </div>
-                <NavLink view="dashboard" icon={<Home className="w-5 h-5"/>} label="Genel Bakış" />
-                <NavLink view="courses" icon={<BookOpen className="w-5 h-5"/>} label="Dersler" />
-                <NavLink view="tasks" icon={<ClipboardList className="w-5 h-5"/>} label="Görevler" />
-                <NavLink view="analytics" icon={<BarChartIcon className="w-5 h-5"/>} label="Performans Analizi" />
-                <NavLink view="reading" icon={<BookMarked className="w-5 h-5"/>} label="Kitap Okuma Analizi" />
+type TaskTypeKey = 'question' | 'study' | 'revision';
 
-                <NavLink view="reports" icon={<FileText className="w-5 h-5"/>} label="Raporlar" />
-                <NavLink view="rewards" icon={<Gift className="w-5 h-5"/>} label="Ödüller" />
-                <NavLink view="datamanagement" icon={<Settings className="w-5 h-5"/>} label="Veri Yönetimi" />
-            </aside>
-            <div className="flex-1 p-8 bg-slate-50">
-                {renderContent()}
-            </div>
-        </div>
+const resolveTaskTypeKey = (value: string): TaskTypeKey => {
+  if (value === 'question') return 'question';
+  if (value === 'revision') return 'revision';
+  return 'study';
+};
+const taskTypeKeyToTaskType = (value: TaskTypeKey): 'soru çözme' | 'ders çalışma' => (value === 'question' ? 'soru çözme' : 'ders çalışma');
+
+const getScoreTone = (score: number) => {
+  if (score >= 90) return 'bg-emerald-50 border-emerald-200 text-emerald-700';
+  if (score >= 75) return 'bg-sky-50 border-sky-200 text-sky-700';
+  if (score >= 60) return 'bg-amber-50 border-amber-200 text-amber-700';
+  return 'bg-rose-50 border-rose-200 text-rose-700';
+};
+
+const ASSIGNMENT_METRIC_OPTIONS = [
+  { key: 'accuracy', label: 'Dogruluk', hint: 'Dogru cevap oranini takip eder.' },
+  { key: 'focus', label: 'Odak', hint: 'Dikkat dagilmasini ve molayi takip eder.' },
+  { key: 'duration', label: 'Sureye uyum', hint: 'Planlanan sureye uyumu takip eder.' },
+  { key: 'revision', label: 'Ders tekrari', hint: 'Tekrar gorevlerinin devamini takip eder.' },
+  { key: 'completion', label: 'Tamamlama', hint: 'Gorevleri zamaninda bitirme durumunu takip eder.' },
+] as const;
+
+type AssignmentMetricKey = (typeof ASSIGNMENT_METRIC_OPTIONS)[number]['key'];
+
+const ASSIGNMENT_METRICS_BY_TASK_TYPE: Record<TaskTypeKey, AssignmentMetricKey[]> = {
+  question: ['accuracy', 'focus', 'duration', 'completion'],
+  study: ['focus', 'duration', 'revision', 'completion'],
+  revision: ['revision', 'focus', 'duration', 'completion'],
+};
+
+const assignmentMetricLabelMap: Record<AssignmentMetricKey, string> = ASSIGNMENT_METRIC_OPTIONS.reduce((acc, option) => {
+  acc[option.key] = option.label;
+  return acc;
+}, {} as Record<AssignmentMetricKey, string>);
+
+const legacyMetricMap: Array<{ field: 'targetAccuracy' | 'targetFocus' | 'minimumDuration'; key: AssignmentMetricKey }> = [
+  { field: 'targetAccuracy', key: 'accuracy' },
+  { field: 'targetFocus', key: 'focus' },
+  { field: 'minimumDuration', key: 'duration' },
+];
+
+const ParentDashboard: React.FC<ParentDashboardProps> = ({
+  courses,
+  tasks,
+  rewards,
+  successPoints,
+  studyPlans = [],
+  curriculum,
+  addCourse,
+  deleteCourse,
+  addTask,
+  deleteTask,
+  addReward,
+  deleteReward,
+  generateReport,
+  onExportData,
+  onDeleteAllData,
+  onImportData,
+  examRecords = [],
+  compositeExamResults = [],
+  onChangeExamRecords,
+  onChangeCompositeExamResults,
+  loading,
+  error,
+  viewMode = 'all',
+}) => {
+  const [dueDate, setDueDate] = useState('');
+  const [courseId, setCourseId] = useState(courses[0]?.id || '');
+  const [taskTypeKey, setTaskTypeKey] = useState<TaskTypeKey>('study');
+  const [plannedDuration, setPlannedDuration] = useState('30');
+  const [questionCount, setQuestionCount] = useState('');
+  const [selectedMetrics, setSelectedMetrics] = useState<AssignmentMetricKey[]>([]);
+  const [selectedUnitName, setSelectedUnitName] = useState('');
+  const [selectedTopicName, setSelectedTopicName] = useState('');
+  const [rewardName, setRewardName] = useState('');
+  const [rewardCost, setRewardCost] = useState('100');
+  const [reportPeriod, setReportPeriod] = useState<'Haftal\u0131k' | 'Ayl\u0131k' | 'Y\u0131ll\u0131k' | 'T\u00fcm Zamanlar'>('Haftal\u0131k');
+  const [report, setReport] = useState<ReportData | null>(null);
+  const [taskListFilter, setTaskListFilter] = useState<'all' | 'waiting' | 'completed' | 'overdue'>('waiting');
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [isAddingReward, setIsAddingReward] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeletingAllData, setIsDeletingAllData] = useState(false);
+  const [showAllRewards, setShowAllRewards] = useState(false);
+  const [examCourseId, setExamCourseId] = useState(courses[0]?.id || '');
+  const [examType, setExamType] = useState<ExamType>('school-written');
+  const [examTitle, setExamTitle] = useState('');
+  const [examDate, setExamDate] = useState(getTodayString());
+  const [examScore, setExamScore] = useState('');
+  const [examWeight, setExamWeight] = useState('1');
+  const [examScopeType, setExamScopeType] = useState<'topic' | 'unit' | 'course' | 'multi-course'>('course');
+  const [examTermKey, setExamTermKey] = useState('2025-2026-2');
+  const [examNotes, setExamNotes] = useState('');
+  const [compositeTitle, setCompositeTitle] = useState('');
+  const [compositeDate, setCompositeDate] = useState(getTodayString());
+  const [compositeType, setCompositeType] = useState<'state-exam' | 'mock-exam'>('state-exam');
+  const [compositeTotalScore, setCompositeTotalScore] = useState('');
+  const [compositeNotes, setCompositeNotes] = useState('');
+  const [compositeCourseScores, setCompositeCourseScores] = useState('');
+  const [examEntryMode, setExamEntryMode] = useState<'course' | 'composite'>('course');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const showActionMessage = (type: 'success' | 'error', text: string) => {
+    setActionMessage({ type, text });
+    window.setTimeout(() => {
+      setActionMessage((prev) => (prev?.text === text ? null : prev));
+    }, 2200);
+  };
+
+  const courseNameMap = useMemo(() => new Map(courses.map((course) => [course.id, course.name])), [courses]);
+  const selectedCourseName = courseId || '';
+  const assignmentSubjectOptions = useMemo(() => {
+    return Object.keys(curriculum || {}).map((subject) => ({ value: subject, label: subject }));
+  }, [curriculum]);
+  const activeUnits = useMemo<CurriculumUnit[]>(() => {
+    if (!curriculum || !selectedCourseName) return [];
+
+    const directUnits = curriculum[selectedCourseName] as CurriculumUnit[] | undefined;
+    if (Array.isArray(directUnits) && directUnits.length > 0) {
+      return directUnits;
+    }
+
+    const normalizedCourseName = normalizeForLookup(selectedCourseName);
+    const matchedSubject = Object.keys(curriculum).find((subject) => normalizeForLookup(subject) === normalizedCourseName);
+    if (!matchedSubject) return Array.isArray(directUnits) ? directUnits : [];
+    return curriculum[matchedSubject] as CurriculumUnit[];
+  }, [curriculum, selectedCourseName]);
+  const activeTopics = useMemo(() => {
+    if (!selectedUnitName) return [];
+    return activeUnits.find((unit) => unit.name === selectedUnitName)?.topics || [];
+  }, [activeUnits, selectedUnitName]);
+  const availableMetricOptions = useMemo(
+    () => ASSIGNMENT_METRIC_OPTIONS.filter((metric) => (ASSIGNMENT_METRICS_BY_TASK_TYPE[taskTypeKey] || []).includes(metric.key)),
+    [taskTypeKey],
+  );
+
+  const today = getTodayString();
+  const pendingCount = tasks.filter((task) => task.status === 'bekliyor').length;
+  const completedCount = tasks.filter((task) => task.status === 'tamamland\u0131').length;
+  const availablePoints = successPoints;
+  const numericRewardCost = Number(rewardCost);
+  const rewardButtonTone = !Number.isFinite(numericRewardCost) || numericRewardCost <= 0
+    ? 'bg-slate-500'
+    : numericRewardCost < 150
+      ? 'bg-emerald-600 hover:bg-emerald-700'
+      : numericRewardCost < 350
+        ? 'bg-amber-500 hover:bg-amber-600'
+        : 'bg-rose-600 hover:bg-rose-700';
+  const analysis = useMemo(
+    () => deriveAnalysisSnapshot(tasks, courses, studyPlans, examRecords, compositeExamResults),
+    [tasks, courses, studyPlans, examRecords, compositeExamResults],
+  );
+  const weakTopics = analysis.topics.filter((topic) => topic.needsRevision).slice(0, 5);
+  const improvingTopics = [...analysis.topics].filter((topic) => topic.trend === 'up').sort((a, b) => b.masteryScore - a.masteryScore).slice(0, 5);
+  const topCourses = analysis.courses.slice(0, 4);
+  const schoolPerformance = analysis.school.coursePerformance.slice(0, 6);
+  const latestStateExam = analysis.school.latestStateExam;
+  const recentExamRecords = analysis.school.examRecords.slice(0, 5);
+  const activeExamCourseCards = useMemo(() => {
+    return courses.map((course) => {
+      const performance = analysis.school.coursePerformance.find((item) => item.courseId === course.id);
+      const courseExamRecords = analysis.school.examRecords.filter((item) => item.courseId === course.id);
+      return {
+        id: course.id,
+        name: course.name,
+        recordCount: courseExamRecords.length,
+        latestScore: courseExamRecords[0]?.score ?? null,
+        predictedScore: performance?.predictedSchoolScore ?? null,
+        alignmentStatus: performance?.alignmentStatus ?? 'veri-yetersiz',
+      };
+    });
+  }, [courses, analysis.school.coursePerformance, analysis.school.examRecords]);
+  const completedTasksForMetrics = useMemo(() => tasks.filter((task) => task.status === 'tamamlandı'), [tasks]);
+  const solvedQuestionCount = useMemo(() => completedTasksForMetrics
+    .filter((task) => task.taskType === 'soru çözme')
+    .reduce((sum, task) => {
+      const hasRecordedCounts = typeof task.correctCount === 'number' || typeof task.incorrectCount === 'number';
+      const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
+      if (hasRecordedCounts) return sum + answered;
+      return sum + (task.questionCount || 0);
+    }, 0), [completedTasksForMetrics]);
+  const studiedMinutes = useMemo(() => Math.round(completedTasksForMetrics
+    .filter((task) => task.taskType !== 'kitap okuma')
+    .reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0)), [completedTasksForMetrics]);
+  const readPages = useMemo(() => completedTasksForMetrics
+    .filter((task) => task.taskType === 'kitap okuma')
+    .reduce((sum, task) => sum + (task.pagesRead || 0), 0), [completedTasksForMetrics]);
+  const showAnalysis = viewMode === 'all' || viewMode === 'analysis';
+  const showTasks = viewMode === 'all' || viewMode === 'tasks';
+  const showRewards = viewMode === 'all';
+  const showDataOps = viewMode === 'all';
+  const containerClassName = viewMode === 'all' ? 'space-y-6 px-4 pb-8' : 'space-y-6 pb-8';
+  const analysisHeadline = weakTopics[0]
+    ? `${weakTopics[0].courseName} / ${weakTopics[0].topicName} su an en riskli alan.`
+    : 'Yeterli analiz verisi olustukca en riskli alan burada gosterilecek.';
+  const analysisSupportNote = improvingTopics[0]
+    ? `${improvingTopics[0].courseName} / ${improvingTopics[0].topicName} toparlaniyor.`
+    : 'Yukari trend yakalandiginda toparlanan konu burada gosterilecek.';
+  const visibleTasks = useMemo(() => {
+    const filtered = tasks.filter((task) => {
+      if (taskListFilter === 'waiting') return task.status === 'bekliyor';
+      if (taskListFilter === 'completed') return task.status === 'tamamland\u0131';
+      if (taskListFilter === 'overdue') return task.status === 'bekliyor' && getTaskDateKey(task.dueDate) < today;
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const priorityDiff = getParentTaskPriority(a, today) - getParentTaskPriority(b, today);
+      if (priorityDiff !== 0) return priorityDiff;
+      const dateDiff = getTaskDateKey(a.dueDate).localeCompare(getTaskDateKey(b.dueDate));
+      if (dateDiff !== 0) return dateDiff;
+      return a.title.localeCompare(b.title);
+    });
+  }, [tasks, taskListFilter, today]);
+
+
+  useEffect(() => {
+    if (!assignmentSubjectOptions.length) {
+      setCourseId('');
+      return;
+    }
+
+    const hasSelectedSubjectName = assignmentSubjectOptions.some((option) => option.value === courseId);
+    if (!hasSelectedSubjectName) {
+      const firstOption = assignmentSubjectOptions[0]?.value || '';
+      setCourseId(firstOption);
+      setSelectedUnitName('');
+      setSelectedTopicName('');
+    }
+  }, [assignmentSubjectOptions, courseId]);
+
+  useEffect(() => {
+    if (taskTypeKey !== 'question') {
+      setQuestionCount('');
+    }
+  }, [taskTypeKey]);
+
+  useEffect(() => {
+    if (!courses.length) {
+      setExamCourseId('');
+      return;
+    }
+
+    if (!courses.some((course) => course.id === examCourseId)) {
+      setExamCourseId(courses[0]?.id || '');
+    }
+  }, [courses, examCourseId]);
+
+  useEffect(() => {
+    const allowedMetrics = ASSIGNMENT_METRICS_BY_TASK_TYPE[taskTypeKey] || [];
+    setSelectedMetrics((prev) => prev.filter((metric) => allowedMetrics.includes(metric)));
+  }, [taskTypeKey]);
+
+  const resetTaskForm = () => {
+    setDueDate('');
+    setTaskTypeKey('study');
+    setPlannedDuration('30');
+    setQuestionCount('');
+    setSelectedMetrics([]);
+    setSelectedUnitName('');
+    setSelectedTopicName('');
+  };
+
+  const toggleMetric = (metricKey: AssignmentMetricKey) => {
+    setSelectedMetrics((prev) => (
+      prev.includes(metricKey)
+        ? []
+        : [metricKey]
+    ));
+  };
+
+  const handleAddTask = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isAddingTask) return;
+
+    if (!dueDate || !plannedDuration || !courseId || !selectedUnitName || !selectedTopicName) {
+      showActionMessage('error', 'Gorev atamak icin ders, unite, konu, tarih ve sure secimi zorunludur.');
+      return;
+    }
+    const resolvedCourseId = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(selectedCourseName))?.id;
+    if (!resolvedCourseId) {
+      showActionMessage('error', 'Secili ders icin kayitli ders kimligi bulunamadi. Once Mufredat ekranindan dersi kaydedin.');
+      return;
+    }
+
+    const generatedTitle = `${selectedCourseName} / ${selectedUnitName} / ${selectedTopicName}`;
+    const resolvedTaskType = taskTypeKeyToTaskType(taskTypeKey);
+    const derivedTaskGoalType = taskTypeKey === 'question' ? 'test-cozme' : taskTypeKey === 'revision' ? 'konu-tekrari' : 'ders calisma';
+
+    const payload: Omit<Task, 'id' | 'status'> = {
+      title: generatedTitle,
+      dueDate,
+      courseId: resolvedCourseId,
+      taskType: resolvedTaskType,
+      plannedDuration: Number(plannedDuration),
+      ...(taskTypeKey === 'question' && Number(questionCount) > 0 ? { questionCount: Number(questionCount) } : {}),
+      ...(selectedMetrics.length > 0 ? { selectedMetrics, metricTargetScore: 100 as const } : {}),
+      ...((selectedUnitName || selectedTopicName)
+        ? {
+            curriculumUnitName: selectedUnitName || undefined,
+            curriculumTopicName: selectedTopicName || undefined,
+            taskGoalType: derivedTaskGoalType,
+            planSource: 'manual' as const,
+          }
+        : {}),
+    };
+    setIsAddingTask(true);
+    try {
+      await addTask(payload);
+      resetTaskForm();
+      showActionMessage('success', 'Gorev basariyla eklendi.');
+    } finally {
+      setIsAddingTask(false);
+    }
+  };
+
+  const handleAddReward = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isAddingReward) return;
+
+    const nextRewardName = rewardName.trim();
+    const nextRewardCost = Number(rewardCost);
+    if (!nextRewardName || !rewardCost) {
+      showActionMessage('error', 'Odul adi ve puan alani zorunludur.');
+      return;
+    }
+
+    if (!Number.isFinite(nextRewardCost) || nextRewardCost <= 0) {
+      showActionMessage('error', 'Odul puani sifirdan buyuk bir sayi olmali.');
+      return;
+    }
+
+    const hasDuplicateReward = rewards.some(
+      (reward) => normalizeForLookup(reward.name) === normalizeForLookup(nextRewardName) && reward.cost === nextRewardCost,
     );
+    if (hasDuplicateReward) {
+      showActionMessage('error', 'Ayni ad ve puandaki odul zaten tanimli.');
+      return;
+    }
+
+    setIsAddingReward(true);
+    try {
+      addReward({ name: nextRewardName, cost: nextRewardCost, icon: 'Gift' });
+      setRewardName('');
+      setRewardCost('100');
+      showActionMessage('success', `'${nextRewardName}' odulu eklendi.`);
+    } finally {
+      window.setTimeout(() => setIsAddingReward(false), 250);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (isGeneratingReport) return;
+    setIsGeneratingReport(true);
+    try {
+      const next = await generateReport(reportPeriod);
+      setReport(next);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleImportFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (isImporting) return;
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      await onImportData(file);
+    } finally {
+      event.target.value = '';
+      setIsImporting(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    if (isExporting || !onExportData) return;
+    setIsExporting(true);
+    try {
+      await onExportData();
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteAllData = async () => {
+    if (isDeletingAllData) return;
+
+    const approved = window.confirm('Tum veriler kalici olarak silinecek. Devam etmek istiyor musunuz?');
+    if (!approved) return;
+
+    const confirmationText = window.prompt('Son onay icin SIL yazin:');
+    if ((confirmationText || '').trim().toUpperCase() !== 'SIL') {
+      showActionMessage('error', 'Silme islemi iptal edildi.');
+      return;
+    }
+
+    setIsDeletingAllData(true);
+    try {
+      await onDeleteAllData();
+    } finally {
+      setIsDeletingAllData(false);
+    }
+  };
+
+  const handleAddExamRecord = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!onChangeExamRecords) {
+      showActionMessage('error', 'Sinav kaydi bu ekranda guncellenemiyor.');
+      return;
+    }
+
+    const selectedCourse = courses.find((course) => course.id === examCourseId);
+    const parsedScore = Number(examScore);
+    const parsedWeight = Number(examWeight);
+    if (!selectedCourse || !examTitle.trim() || !examDate || !Number.isFinite(parsedScore)) {
+      showActionMessage('error', 'Ders, sinav basligi, tarih ve puan zorunludur.');
+      return;
+    }
+
+    onChangeExamRecords((prev) => [
+      {
+        id: buildLocalId('exam'),
+        courseId: selectedCourse.id,
+        courseName: selectedCourse.name,
+        examType,
+        title: examTitle.trim(),
+        date: examDate,
+        termKey: examTermKey.trim() || 'genel',
+        scopeType: examScopeType,
+        score: Math.max(0, Math.min(100, Math.round(parsedScore))),
+        weight: Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : 1,
+        notes: examNotes.trim() || undefined,
+        source: 'manual',
+      },
+      ...prev,
+    ]);
+
+    setExamTitle('');
+    setExamScore('');
+    setExamWeight('1');
+    setExamNotes('');
+    showActionMessage('success', 'Okul sinavi kaydi eklendi.');
+  };
+
+  const handleAddCompositeExam = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!onChangeCompositeExamResults) {
+      showActionMessage('error', 'Genel sinav kaydi bu ekranda guncellenemiyor.');
+      return;
+    }
+
+    const courseRows = compositeCourseScores
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split(/[:=-]/).map((item) => item.trim()).filter(Boolean);
+        if (parts.length < 2) return null;
+        const courseName = parts.slice(0, -1).join(' ');
+        const score = Number(parts[parts.length - 1]);
+        const matchedCourse = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(courseName));
+        if (!matchedCourse || !Number.isFinite(score)) return null;
+        return {
+          courseId: matchedCourse.id,
+          courseName: matchedCourse.name,
+          score: Math.max(0, Math.min(100, Math.round(score))),
+        };
+      });
+
+    if (!compositeTitle.trim() || !compositeDate || !courseRows.length || courseRows.some((row) => row === null)) {
+      showActionMessage('error', 'Genel sinav icin baslik, tarih ve her satirda Ders: Puan formati zorunludur.');
+      return;
+    }
+
+    onChangeCompositeExamResults((prev) => [
+      {
+        id: buildLocalId('composite-exam'),
+        title: compositeTitle.trim(),
+        examType: compositeType,
+        date: compositeDate,
+        courses: courseRows.filter((row): row is NonNullable<typeof row> => row !== null),
+        totalScore: Number.isFinite(Number(compositeTotalScore)) ? Number(compositeTotalScore) : undefined,
+        notes: compositeNotes.trim() || undefined,
+      },
+      ...prev,
+    ]);
+
+    setCompositeTitle('');
+    setCompositeTotalScore('');
+    setCompositeNotes('');
+    setCompositeCourseScores('');
+    showActionMessage('success', 'Genel sinav ozeti eklendi.');
+  };
+
+  const handleDeleteExamRecord = (recordId: string) => {
+    if (!onChangeExamRecords) return;
+    onChangeExamRecords((prev) => prev.filter((item) => item.id !== recordId));
+  };
+
+  const handleDeleteCompositeExam = (examId: string) => {
+    if (!onChangeCompositeExamResults) return;
+    onChangeCompositeExamResults((prev) => prev.filter((item) => item.id !== examId));
+  };
+
+  return (
+    <div className={containerClassName}>
+      {actionMessage && (
+        <div className={`rounded-xl border px-4 py-3 text-sm font-semibold ${actionMessage.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
+          {actionMessage.text}
+        </div>
+      )}
+
+      {showRewards && <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Ebeveyn kontrol merkezi</div>
+            <h3 className="mt-1 text-base font-black text-slate-900">Odul Tanimla</h3>
+          </div>
+          <form onSubmit={handleAddReward} className="grid w-full grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_100px_auto] lg:max-w-2xl">
+            <input value={rewardName} onChange={(e) => setRewardName(e.target.value)} placeholder="Odul adi" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <input value={rewardCost} onChange={(e) => setRewardCost(e.target.value)} placeholder="Puan" type="number" min="1" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <button type="submit" disabled={isAddingReward} className={`rounded-lg px-3 py-2 text-sm font-bold text-white transition ${isAddingReward ? 'cursor-not-allowed bg-slate-300' : rewardButtonTone}`}>
+              <span className="block">{isAddingReward ? 'Ekleniyor...' : 'Odulu Ata'}</span>
+              <span className="mt-0.5 block text-[11px] font-semibold text-white/90">Mevcut: {availablePoints} BP</span>
+            </button>
+          </form>
+        </div>
+        {rewards.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(showAllRewards ? rewards : rewards.slice(0, 8)).map((reward) => (
+              <div key={reward.id} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700">
+                <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                <span className="font-semibold">{reward.name}</span>
+                <span>{reward.cost} BP</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${reward.cost <= availablePoints ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {reward.cost <= availablePoints ? 'Ulasilabilir' : 'Birikiyor'}
+                </span>
+                <button onClick={() => deleteReward(reward.id)} className="text-rose-600" type="button" aria-label={`${reward.name} odulunu sil`}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            {rewards.length > 8 && (
+              <button type="button" onClick={() => setShowAllRewards((prev) => !prev)} className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                {showAllRewards ? 'Daha az goster' : `Tumunu goster (${rewards.length})`}
+              </button>
+            )}
+          </div>
+        )}
+      </section>}
+
+      {showAnalysis && <section className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.06),_transparent_36%),linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-6 shadow-sm">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Analiz merkezi</div>
+            <h3 className="mt-2 text-2xl font-black text-slate-900">Performans resmi</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Ham grafik yerine karar cikaracak ozet: hangi konu riskte, hangi ders toparlaniyor, cocuk ne kadar is cikariyor.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:w-[440px]">
+            <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-500">Risk sinyali</div>
+              <div className="mt-2 text-sm font-bold leading-6 text-rose-900">{analysisHeadline}</div>
+            </div>
+            <div className="rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">Toparlanma</div>
+              <div className="mt-2 text-sm font-bold leading-6 text-emerald-900">{analysisSupportNote}</div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <div className={`${statCard} ${getScoreTone(analysis.overall.generalScore)}`}>
+          <div className="text-xs font-semibold uppercase tracking-wide">Genel Skor</div>
+          <div className="mt-2 text-3xl font-bold">{analysis.overall.generalScore}</div>
+          <div className="mt-1 text-sm opacity-80">Normalize metriklerden uretilen tek karar puani</div>
+        </div>
+        <div className={`${statCard} ${getScoreTone(analysis.overall.averageEfficiency)}`}>
+          <div className="text-xs font-semibold uppercase tracking-wide">Ortalama Verim</div>
+          <div className="mt-2 text-3xl font-bold">{analysis.overall.averageEfficiency}</div>
+          <div className="mt-1 text-sm opacity-80">Plan/kaynak fark etmeksizin oturum verimi</div>
+        </div>
+        <div className={`${statCard} ${getScoreTone(analysis.overall.averageFocus)}`}>
+          <div className="text-xs font-semibold uppercase tracking-wide">Ortalama Odak</div>
+          <div className="mt-2 text-3xl font-bold">{analysis.overall.averageFocus}</div>
+          <div className="mt-1 text-sm opacity-80">Mola ve pause dengesine gore</div>
+        </div>
+        <div className={`${statCard} ${getScoreTone(analysis.overall.averageAccuracy || 0)}`}>
+          <div className="text-xs font-semibold uppercase tracking-wide">Ortalama Dogruluk</div>
+          <div className="mt-2 text-3xl font-bold">{analysis.overall.averageAccuracy ?? '-'}</div>
+          <div className="mt-1 text-sm opacity-80">Soru cozme gorevlerinden hesaplanir</div>
+        </div>
+        <div className={`rounded-2xl border p-5 shadow-sm ${getScoreTone(100 - analysis.overall.averageRisk)}`}>
+          <div className="text-xs font-semibold uppercase tracking-wide">Ortalama Risk</div>
+          <div className="mt-2 text-3xl font-bold">{analysis.overall.averageRisk}</div>
+          <div className="mt-1 text-sm opacity-80">Model: {analysis.overall.riskModel.toUpperCase()}</div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tekrar Gereken Konu</div>
+          <div className="mt-2 text-3xl font-bold text-slate-800">{weakTopics.length}</div>
+          <div className="mt-1 text-sm text-slate-500">Mastery skoru dusuk veya trend asagi</div>
+        </div>
+        </div>
+      </section>}
+
+      {showAnalysis && <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+        <div className={card}>
+          <div className="mb-4 flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-slate-700" />
+            <h3 className="text-xl font-bold">Okul ve Ev Performansi</h3>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Kayitli okul sinavi</div>
+              <div className="mt-2 text-3xl font-black text-slate-900">{examRecords.length}</div>
+              <div className="mt-1 text-sm text-slate-600">Yazili, quiz, sozlu ve ders bazli notlar</div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Genel / deneme</div>
+              <div className="mt-2 text-3xl font-black text-slate-900">{compositeExamResults.length}</div>
+              <div className="mt-1 text-sm text-slate-600">Okul geneli veya deneme sinavi ozeti</div>
+            </div>
+            <div className={`rounded-2xl border p-4 ${latestStateExam ? 'border-sky-200 bg-sky-50' : 'border-slate-200 bg-slate-50'}`}>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Son genel sinav</div>
+              <div className="mt-2 text-lg font-black text-slate-900">{latestStateExam?.title || 'Henuz kayit yok'}</div>
+              <div className="mt-1 text-sm text-slate-600">{latestStateExam ? `${latestStateExam.date}${typeof latestStateExam.totalScore === 'number' ? ` · Toplam ${latestStateExam.totalScore}` : ''}` : 'Deneme veya genel sinav girildiginde burada ozetlenir.'}</div>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {schoolPerformance.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">Okul notu girdikce ev calismasi ile okul sonucu burada karsilastirilacak.</div>}
+            {schoolPerformance.map((item) => (
+              <div key={item.courseId} className="rounded-2xl border border-slate-200 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div className="text-base font-bold text-slate-900">{item.courseName}</div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full bg-slate-100 px-2 py-1">Ev skoru: {item.studyScore}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-1">Okul skoru: {item.schoolScore ?? '-'}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-1">Beklenen: {item.predictedSchoolScore ?? '-'}</span>
+                      <span className={`rounded-full border px-2 py-1 ${alignmentToneMap[item.alignmentStatus]}`}>{alignmentLabelMap[item.alignmentStatus]}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Sapma</div>
+                    <div className={`mt-1 inline-flex rounded-full px-3 py-1 text-sm font-bold ${item.alignmentGap === null ? 'bg-slate-100 text-slate-600' : item.alignmentGap >= 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      {item.alignmentGap === null ? 'Yok' : item.alignmentGap > 0 ? `+${item.alignmentGap}` : item.alignmentGap}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 text-sm text-slate-600">
+                  {item.schoolScore === null
+                    ? 'Bu ders icin okul notu girilmedi; tahmin sadece uygulama performansindan uretiliyor.'
+                    : item.alignmentStatus === 'kritik-sapma'
+                      ? 'Ev icindeki calisma ile okul sonucu arasinda belirgin bir fark var. Konu kapsami veya sinav stresi kontrol edilmeli.'
+                      : item.alignmentStatus === 'sapma-var'
+                        ? 'Kismi bir uyumsuzluk var. Tekrar duzeni ve soru tipi dengesi kontrol edilmeli.'
+                        : 'Ev performansi ile okul sonucu benzer davranis gosteriyor.'}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {latestStateExam && <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Guclu dersler</div>
+              <div className="mt-3 space-y-2">
+                {latestStateExam.strongestCourses.map((course) => (
+                  <div key={`${latestStateExam.title}_${course.courseName}_strong`} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
+                    <span>{course.courseName}</span>
+                    <span className="font-bold text-emerald-700">{course.score}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">Riskli dersler</div>
+              <div className="mt-3 space-y-2">
+                {latestStateExam.riskCourses.map((course) => (
+                  <div key={`${latestStateExam.title}_${course.courseName}_risk`} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm text-slate-700">
+                    <span>{course.courseName}</span>
+                    <span className="font-bold text-rose-700">{course.score}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>}
+        </div>
+
+        <div className="space-y-6">
+          <div className={card}>
+            <div className="mb-4 flex items-center gap-2">
+              <PlusCircle className="h-5 w-5 text-slate-700" />
+              <h3 className="text-xl font-bold">Sinav Merkezi</h3>
+            </div>
+            <div className="mb-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setExamEntryMode('course')}
+                className={`rounded-full px-4 py-2 text-sm font-bold ${examEntryMode === 'course' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              >
+                Ders bazli sinav
+              </button>
+              <button
+                type="button"
+                onClick={() => setExamEntryMode('composite')}
+                className={`rounded-full px-4 py-2 text-sm font-bold ${examEntryMode === 'composite' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              >
+                Genel sinav / deneme
+              </button>
+            </div>
+            <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Aktif ders merkezi</div>
+              <div className="mt-1 text-sm text-slate-600">Tek merkezde kayitli aktif dersler burada otomatik cikar. Yeni ders eklendiginde bu alan elle guncelleme istemeden yenilenir.</div>
+              {activeExamCourseCards.length === 0 && <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-4 text-sm text-slate-500">Henuz aktif ders yok. Once merkezi ders listesinden ders eklenmeli.</div>}
+              {activeExamCourseCards.length > 0 && <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {activeExamCourseCards.map((course) => {
+                  const isSelected = examCourseId === course.id;
+                  return (
+                    <button
+                      key={course.id}
+                      type="button"
+                      onClick={() => setExamCourseId(course.id)}
+                      className={`rounded-2xl border p-4 text-left transition ${isSelected ? 'border-slate-900 bg-slate-900 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50'}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-black">{course.name}</div>
+                          <div className={`mt-1 text-xs ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>Kayitli okul sinavi: {course.recordCount}</div>
+                        </div>
+                        <span className={`rounded-full border px-2 py-1 text-[11px] font-bold ${isSelected ? 'border-white/20 bg-white/10 text-white' : alignmentToneMap[course.alignmentStatus]}`}>
+                          {alignmentLabelMap[course.alignmentStatus]}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                        <span className={`rounded-full px-2 py-1 ${isSelected ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700'}`}>Son okul: {course.latestScore ?? '-'}</span>
+                        <span className={`rounded-full px-2 py-1 ${isSelected ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700'}`}>Beklenen: {course.predictedScore ?? '-'}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>}
+            </div>
+            {examEntryMode === 'course' ? (
+              <form onSubmit={handleAddExamRecord} className="grid gap-3">
+                <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Secili aktif ders</div>
+                  <div className="mt-1 font-bold text-slate-900">{courses.find((course) => course.id === examCourseId)?.name || 'Ders secilmedi'}</div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <select value={examType} onChange={(event) => setExamType(event.target.value as ExamType)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    {Object.entries(examTypeLabelMap).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                  <input value={examDate} onChange={(event) => setExamDate(event.target.value)} type="date" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                </div>
+                <input value={examTitle} onChange={(event) => setExamTitle(event.target.value)} placeholder="Orn. Matematik 2. yazili" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <input value={examScore} onChange={(event) => setExamScore(event.target.value)} type="number" min="0" max="100" placeholder="Puan" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                  <input value={examWeight} onChange={(event) => setExamWeight(event.target.value)} type="number" min="1" placeholder="Agirlik" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                  <select value={examScopeType} onChange={(event) => setExamScopeType(event.target.value as 'topic' | 'unit' | 'course' | 'multi-course')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <option value="topic">Konu</option>
+                    <option value="unit">Unite</option>
+                    <option value="course">Ders</option>
+                    <option value="multi-course">Coklu ders</option>
+                  </select>
+                </div>
+                <input value={examTermKey} onChange={(event) => setExamTermKey(event.target.value)} placeholder="Donem anahtari" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <textarea value={examNotes} onChange={(event) => setExamNotes(event.target.value)} rows={2} placeholder="Kisa not" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <button type="submit" disabled={!examCourseId} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Sinav Kaydi Ekle</button>
+              </form>
+            ) : (
+              <form onSubmit={handleAddCompositeExam} className="grid gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input value={compositeTitle} onChange={(event) => setCompositeTitle(event.target.value)} placeholder="Orn. Nisan Turkiye Geneli" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                  <input value={compositeDate} onChange={(event) => setCompositeDate(event.target.value)} type="date" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <select value={compositeType} onChange={(event) => setCompositeType(event.target.value as 'state-exam' | 'mock-exam')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <option value="state-exam">Genel sinav</option>
+                    <option value="mock-exam">Deneme</option>
+                  </select>
+                  <input value={compositeTotalScore} onChange={(event) => setCompositeTotalScore(event.target.value)} type="number" min="0" placeholder="Toplam puan (opsiyonel)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                </div>
+                <textarea
+                  value={compositeCourseScores}
+                  onChange={(event) => setCompositeCourseScores(event.target.value)}
+                  rows={5}
+                  placeholder={"Her satir: Ders: Puan\nMatematik: 78\nFen Bilimleri: 72"}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+                <textarea value={compositeNotes} onChange={(event) => setCompositeNotes(event.target.value)} rows={2} placeholder="Kisa not" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                <button type="submit" className="rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white hover:bg-sky-600">Genel Sinav Ozeti Ekle</button>
+              </form>
+            )}
+          </div>
+
+          <div className={card}>
+            <div className="mb-4 flex items-center gap-2">
+              <Download className="h-5 w-5 text-slate-700" />
+              <h3 className="text-xl font-bold">Son Kayitlar</h3>
+            </div>
+            <div className="space-y-3">
+              {recentExamRecords.map((record) => (
+                <div key={record.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-slate-800">{record.courseName} · {record.title}</div>
+                      <div className="mt-1 text-slate-500">{examTypeLabelMap[record.examType]} · {record.date} · Puan {record.score}</div>
+                    </div>
+                    <button type="button" onClick={() => handleDeleteExamRecord(record.id)} className="text-rose-600">Sil</button>
+                  </div>
+                </div>
+              ))}
+              {recentExamRecords.length === 0 && <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Henuz ders bazli sinav kaydi yok.</div>}
+            </div>
+            <div className="mt-4 space-y-3">
+              {compositeExamResults.slice(0, 3).map((record) => (
+                <div key={record.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-slate-800">{record.title}</div>
+                      <div className="mt-1 text-slate-500">{record.examType === 'state-exam' ? 'Genel sinav' : 'Deneme'} · {record.date} · {record.courses.length} ders</div>
+                    </div>
+                    <button type="button" onClick={() => handleDeleteCompositeExam(record.id)} className="text-rose-600">Sil</button>
+                  </div>
+                </div>
+              ))}
+              {compositeExamResults.length === 0 && <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Henuz genel sinav veya deneme ozeti yok.</div>}
+            </div>
+          </div>
+        </div>
+      </section>}
+
+      {showAnalysis && <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <div className={card}>
+          <div className="mb-4 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-rose-500" />
+            <h3 className="text-xl font-bold">Zayif ve Riskli Konular</h3>
+          </div>
+          <div className="space-y-3">
+            {weakTopics.length === 0 && <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Su anda tekrar bayragi olan konu yok.</div>}
+            {weakTopics.map((topic) => (
+              <div key={topic.key} className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="font-semibold text-slate-800">{topic.courseName} / {topic.unitName}</div>
+                    <div className="text-sm text-slate-600">{topic.topicName}</div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full bg-white px-2 py-1">Mastery: {topic.masteryScore}</span>
+                      <span className="rounded-full bg-white px-2 py-1">Odak: {topic.averageFocus}</span>
+                      <span className="rounded-full bg-white px-2 py-1">Verim: {topic.averageEfficiency}</span>
+                      {typeof topic.averageAccuracy === 'number' && <span className="rounded-full bg-white px-2 py-1">Dogruluk: {topic.averageAccuracy}</span>}
+                    </div>
+                  </div>
+                  <div className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">{topic.trend === 'down' ? 'Asagi Trend' : 'Tekrar Gerekli'}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className={card}>
+            <div className="mb-4 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
+              <h3 className="text-xl font-bold">Gelisen Konular</h3>
+            </div>
+            <div className="space-y-3">
+              {improvingTopics.length === 0 && <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Yukari trend gosteren konu henuz yok.</div>}
+              {improvingTopics.map((topic) => (
+                <div key={topic.key} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="font-semibold text-slate-800">{topic.topicName}</div>
+                  <div className="text-sm text-slate-600">{topic.courseName} / {topic.unitName}</div>
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="text-emerald-700 font-semibold">Hakimiyet {topic.masteryScore}</span>
+                    <span className="rounded-full bg-white px-2 py-1 text-xs text-emerald-700">Yukari Trend</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className={card}>
+            <div className="mb-4 flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-sky-600" />
+              <h3 className="text-xl font-bold">Kisa yorum</h3>
+            </div>
+            <div className="space-y-3 text-sm leading-6 text-slate-600">
+              <div className="rounded-xl bg-slate-50 p-4">Toplam tamamlanan gorev <strong>{completedCount}</strong>, cozulen soru <strong>{solvedQuestionCount}</strong>. Analiz sadece yapilan ise gore hesaplanir.</div>
+              <div className="rounded-xl bg-slate-50 p-4">Ortalama odak <strong>{analysis.overall.averageFocus}</strong>, verim <strong>{analysis.overall.averageEfficiency}</strong>. {analysis.overall.averageEfficiency < 60 ? 'Sure ve mola kullanimi toparlanmali.' : 'Oturum kalitesi su an kabul edilebilir seviyede.'}</div>
+            </div>
+          </div>
+        </div>
+      </section>}
+
+      {showAnalysis && <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className={card}>
+          <div className="mb-4 flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary-600" />
+            <h3 className="text-xl font-bold">Calisma Ozeti</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-slate-50 p-4"><div className="text-xs uppercase tracking-wide text-slate-500">Tamamlanan Gorev</div><div className="mt-2 text-2xl font-bold">{completedCount}</div></div>
+            <div className="rounded-xl bg-slate-50 p-4"><div className="text-xs uppercase tracking-wide text-slate-500">Bekleyen Gorev</div><div className="mt-2 text-2xl font-bold">{pendingCount}</div></div>
+            <div className="rounded-xl bg-slate-50 p-4"><div className="text-xs uppercase tracking-wide text-slate-500">Cozulen Soru</div><div className="mt-2 text-2xl font-bold text-sky-600">{solvedQuestionCount}</div></div>
+            <div className="rounded-xl bg-slate-50 p-4"><div className="text-xs uppercase tracking-wide text-slate-500">Calisilan Sure</div><div className="mt-2 text-2xl font-bold text-emerald-600">{studiedMinutes} dk</div></div>
+            <div className="rounded-xl bg-slate-50 p-4"><div className="text-xs uppercase tracking-wide text-slate-500">Okunan Sayfa</div><div className="mt-2 text-2xl font-bold">{readPages}</div></div>
+            <div className={`rounded-xl p-4 ${getScoreTone(analysis.overall.generalScore)}`}><div className="text-xs uppercase tracking-wide">Genel Skor</div><div className="mt-2 text-2xl font-bold">{analysis.overall.generalScore}</div></div>
+          </div>
+        </div>
+
+        <div className={card}>
+          <div className="mb-4 flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-primary-600" />
+            <h3 className="text-xl font-bold">Ders Bazli Hakimiyet</h3>
+          </div>
+          <div className="space-y-3">
+            {topCourses.length === 0 && <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Henuz ders bazli metric olusmadi.</div>}
+            {topCourses.map((course) => (
+              <div key={course.courseId} className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="font-semibold text-slate-800">{course.courseName}</div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full bg-slate-100 px-2 py-1">Hakimiyet: {course.averageMastery}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-1">Odak: {course.averageFocus}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-1">Verim: {course.averageEfficiency}</span>
+                      {typeof course.averageAccuracy === 'number' && <span className="rounded-full bg-slate-100 px-2 py-1">Dogruluk: {course.averageAccuracy}</span>}
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-rose-700">Zayif Konu: {course.weakTopicCount}</span>
+                    </div>
+                  </div>
+                  <div className={`rounded-full px-3 py-1 text-xs font-semibold ${getScoreTone(course.averageMastery)}`}>{course.averageMastery}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>}
+
+      {(loading || error) && (
+        <div className="rounded-xl bg-white p-4 text-sm text-slate-600 shadow-md">
+          {loading ? 'Veriler yukleniyor...' : error}
+        </div>
+      )}
+
+      {showTasks && <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Gorev atama</div>
+            <h3 className="mt-1 text-2xl font-black text-slate-900">Cocuga gorev gonder</h3>
+            <p className="mt-1 text-sm text-slate-500">Ders, unite, konu, sure ve hedef belirleyip gorevi dogrudan ata.</p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Secili ders: <strong>{selectedCourseName || 'Ders secilmedi'}</strong>
+          </div>
+        </div>
+
+        <form onSubmit={handleAddTask} className="space-y-5">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <section className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">1</span>
+                <div>
+                  <h4 className="font-bold text-slate-900">Ders ve mufredat</h4>
+                  <p className="text-xs text-slate-500">Unite/konu baglantisi.</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Ders</label>
+                <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setSelectedUnitName(''); setSelectedTopicName(''); }} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                  {assignmentSubjectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Unite</label>
+                <select value={selectedUnitName} onChange={(e) => { setSelectedUnitName(e.target.value); setSelectedTopicName(''); }} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                  <option value="">Unite sec</option>
+                  {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
+                </select>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Konu</label>
+                <select value={selectedTopicName} onChange={(e) => setSelectedTopicName(e.target.value)} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" disabled={!selectedUnitName}>
+                  <option value="">Konu sec</option>
+                  {activeTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}
+                </select>
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-600 text-sm font-black text-white">2</span>
+                <div>
+                  <h4 className="font-bold text-slate-900">Gorev detaylari</h4>
+                  <p className="text-xs text-slate-500">Baslik, tarih, sure.</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Gorev basligi</label>
+                <input value={`${selectedCourseName || 'Ders'}${selectedUnitName ? ` / ${selectedUnitName}` : ''}${selectedTopicName ? ` / ${selectedTopicName}` : ''}`} readOnly className="w-full rounded-2xl border border-slate-300 bg-slate-100 px-3 py-3 text-sm" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Tarih</label>
+                    <input value={dueDate} onChange={(e) => setDueDate(e.target.value)} type="date" className="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-3 text-sm" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Sure</label>
+                    <input value={plannedDuration} onChange={(e) => setPlannedDuration(e.target.value)} type="number" min="1" placeholder="dk" className="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-3 text-sm" required />
+                  </div>
+                </div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Gorev turu</label>
+                <select value={taskTypeKey} onChange={(e) => setTaskTypeKey(resolveTaskTypeKey(e.target.value))} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                  <option value="study">Ders Calismasi</option>
+                  <option value="revision">Ders Tekrari</option>
+                  <option value="question">Soru Cozme</option>
+                </select>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Soru sayisi (istege bagli)</label>
+                <input
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(e.target.value)}
+                  type="number"
+                  min="1"
+                  placeholder={taskTypeKey === 'question' ? 'Orn: 20' : 'Sadece Soru Cozme icin aktif'}
+                  disabled={taskTypeKey !== 'question'}
+                  className="w-full rounded-2xl border border-slate-300 px-3 py-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                />
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-slate-200 bg-slate-900 p-4 text-white">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-black text-slate-900">3</span>
+                <div>
+                  <h4 className="font-bold">Olcum ve hedef</h4>
+                  <p className="text-xs text-slate-300">Analiz bu bilgilerden beslenir.</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <div className="block text-xs font-bold uppercase tracking-wide text-slate-300">Metrik secimi (tek secim)</div>
+                  <div className="space-y-2">
+                    {availableMetricOptions.map((metric) => {
+                      const checked = selectedMetrics.includes(metric.key);
+                      return (
+                        <label key={metric.key} className={`block rounded-xl border px-3 py-2 transition ${checked ? 'border-emerald-400 bg-emerald-500/10 text-emerald-100' : 'border-slate-700 bg-slate-800/60 text-slate-200'}`}>
+                          <span className="flex items-start gap-2">
+                            <input
+                              type="radio"
+                              name="assignmentMetric"
+                              checked={checked}
+                              onChange={() => toggleMetric(metric.key)}
+                              className="mt-0.5 h-4 w-4 rounded border-slate-500 bg-slate-900 text-emerald-500"
+                            />
+                            <span>
+                              <span className="block text-sm font-semibold leading-5">{metric.label}</span>
+                              <span className="block text-[11px] leading-4 text-slate-300">{metric.hint}</span>
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-white/10 px-3 py-2 text-xs leading-5 text-slate-300">Ayni gorevde yalnizca bir metrik secilir. Hedef otomatik %100 kabul edilir.</div>
+              </div>
+            </section>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="text-sm text-slate-600">
+              <strong>Ozet:</strong> {selectedCourseName || 'Ders'} {selectedUnitName ? `/ ${selectedUnitName}` : ''} {selectedTopicName ? `/ ${selectedTopicName}` : ''} icin gorev atanacak{taskTypeKey === 'question' && Number(questionCount) > 0 ? ` (${questionCount} soru)` : ''}.
+            </div>
+            <button type="submit" disabled={!selectedCourseName || !selectedUnitName || !selectedTopicName || isAddingTask} className="rounded-2xl bg-primary-600 px-6 py-3 text-sm font-black text-white shadow-sm hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-slate-300">{isAddingTask ? 'Kaydediliyor...' : 'Gorevi Ata'}</button>
+          </div>
+        </form>
+      </div>}
+
+      {showTasks && <div className={card}>        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-xl font-bold">Gorevler</h3>
+            <div className="text-sm text-slate-500">Bekleyen {pendingCount} / Tamamlanan {completedCount}</div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setTaskListFilter('waiting')} className={`rounded-full px-3 py-2 text-xs font-bold ${taskListFilter === 'waiting' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>Bekleyen</button>
+            <button onClick={() => setTaskListFilter('overdue')} className={`rounded-full px-3 py-2 text-xs font-bold ${taskListFilter === 'overdue' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700'}`}>Geciken</button>
+            <button onClick={() => setTaskListFilter('completed')} className={`rounded-full px-3 py-2 text-xs font-bold ${taskListFilter === 'completed' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700'}`}>Tamamlanan</button>
+            <button onClick={() => setTaskListFilter('all')} className={`rounded-full px-3 py-2 text-xs font-bold ${taskListFilter === 'all' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Tumu</button>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {visibleTasks.length === 0 && <div className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">Bu filtreye uygun gorev yok.</div>}
+          {visibleTasks.map((task) => {
+            const isOverdue = task.status === 'bekliyor' && getTaskDateKey(task.dueDate) < today;
+            const normalizedSelectedMetrics = Array.isArray(task.selectedMetrics)
+              ? task.selectedMetrics.filter((metric): metric is AssignmentMetricKey => metric in assignmentMetricLabelMap)
+              : [];
+            const legacySelectedMetrics = legacyMetricMap
+              .filter(({ field }) => typeof task[field] === 'number' && Number(task[field]) > 0)
+              .map(({ key }) => key);
+            const taskMetrics = Array.from(new Set([...normalizedSelectedMetrics, ...legacySelectedMetrics]));
+            const taskMetricTargetScore = task.metricTargetScore || (taskMetrics.length > 0 ? 100 : undefined);
+            return (
+              <div key={task.id} className={`rounded-xl border p-4 ${isOverdue ? 'border-rose-200 bg-rose-50/40' : 'border-slate-200 bg-white'}`}>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                      <span>{courseNameMap.get(task.courseId) || task.courseId}</span>
+                      <span>/</span>
+                      <span>{task.plannedDuration} dk</span>
+                      {typeof task.questionCount === 'number' && task.questionCount > 0 && (
+                        <>
+                          <span>/</span>
+                          <span>{task.questionCount} soru</span>
+                        </>
+                      )}
+                      <span>/</span>
+                      <span>{task.dueDate}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">{formatPlanSource(task.planSource, task.planLabel)}</span>
+                      {task.isSelfAssigned && <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">Serbest</span>}
+                      {isOverdue && <span className="rounded-full bg-rose-100 px-2 py-1 text-rose-700">Gecikti</span>}
+                    </div>
+                    <div className="mt-2 font-semibold text-slate-900">{task.title}</div>
+                    {(task.curriculumUnitName || task.curriculumTopicName || task.taskGoalType || (typeof task.questionCount === 'number' && task.questionCount > 0) || taskMetrics.length > 0 || typeof taskMetricTargetScore === 'number') && (
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                        {task.curriculumUnitName && <span className="rounded-full bg-slate-100 px-2 py-1">Unite: {task.curriculumUnitName}</span>}
+                        {task.curriculumTopicName && <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">Konu: {task.curriculumTopicName}</span>}
+                        {task.taskGoalType && <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700">Hedef: {formatTaskGoal(task.taskGoalType)}</span>}
+                        {typeof task.questionCount === 'number' && task.questionCount > 0 && <span className="rounded-full bg-sky-100 px-2 py-1 text-sky-700">Soru: {task.questionCount}</span>}
+                        {taskMetrics.map((metricKey) => <span key={`${task.id}-metric-${metricKey}`} className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">Metrik: {assignmentMetricLabelMap[metricKey]}</span>)}
+                        {typeof taskMetricTargetScore === 'number' && <span className="rounded-full bg-violet-100 px-2 py-1 text-violet-700">Hedef: %{taskMetricTargetScore}</span>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${task.status === 'tamamland\u0131' ? 'bg-green-100 text-green-700' : isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {task.status === 'tamamland\u0131' ? 'Tamamlandi' : isOverdue ? 'Gecikti' : 'Bekliyor'}
+                    </span>
+                    <button onClick={() => deleteTask(task.id)} className="text-red-600"><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>}
+
+      {showDataOps && (
+        <div className={card}>
+          <div className="mb-4 flex items-center gap-2">
+            <Settings className="h-5 w-5 text-primary-600" />
+            <h3 className="text-xl font-bold">Veri Islemleri</h3>
+          </div>
+          <p className="mb-4 text-sm text-slate-500">Ice/disa aktarma ve tum veri sifirlama islemleri tek noktada tutulur.</p>
+          <div className="flex flex-wrap gap-2">
+            <input ref={fileInputRef} type="file" accept="application/json" onChange={handleImportFileChange} className="hidden" />
+            <button onClick={handleImportClick} disabled={isImporting} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-white ${isImporting ? 'cursor-not-allowed bg-slate-300' : 'bg-sky-600'}`}><Upload className="h-4 w-4" />{isImporting ? 'Iceri aliniyor...' : 'Ice Aktar'}</button>
+            <button onClick={handleExportData} disabled={isExporting || !onExportData} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-white ${isExporting || !onExportData ? 'cursor-not-allowed bg-slate-300' : 'bg-emerald-600'}`}><Download className="h-4 w-4" />{isExporting ? 'Disa aktariliyor...' : 'Disa Aktar'}</button>
+            <button onClick={handleDeleteAllData} disabled={isDeletingAllData} className={`rounded-lg px-4 py-2 text-white ${isDeletingAllData ? 'cursor-not-allowed bg-slate-300' : 'bg-red-600'}`}>{isDeletingAllData ? 'Siliniyor...' : 'Tum Veriyi Sil'}</button>
+          </div>
+        </div>
+      )}
+
+      {showAnalysis && <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className={card}>
+          <div className="mb-4 flex items-center gap-2"><FileText className="h-5 w-5 text-primary-600" /><h3 className="text-xl font-bold">Rapor</h3></div>
+          <div className="flex gap-2">
+            <select value={reportPeriod} onChange={(e) => setReportPeriod(e.target.value as 'Haftal\u0131k' | 'Ayl\u0131k' | 'Y\u0131ll\u0131k' | 'T\u00fcm Zamanlar')} className="rounded-lg border border-slate-300 px-3 py-2">
+              <option value="Haftal\u0131k">Haftalik</option>
+              <option value="Ayl\u0131k">Aylik</option>
+              <option value="Y\u0131ll\u0131k">Yillik</option>
+              <option value="T\u00fcm Zamanlar">Tum Zamanlar</option>
+            </select>
+            <button onClick={handleGenerateReport} disabled={isGeneratingReport} className={`rounded-lg px-4 py-2 text-white ${isGeneratingReport ? 'cursor-not-allowed bg-slate-400' : 'bg-slate-800'}`}>{isGeneratingReport ? 'Uretiliyor...' : 'Rapor Uret'}</button>
+          </div>
+          {report && (
+            <div className="mt-4 space-y-2 rounded-lg bg-slate-50 p-4 text-sm">
+              <div><strong>Ozet:</strong> {report.aiSummary}</div>
+              <div><strong>Guclu Alan:</strong> {report.highlights.mostImproved}</div>
+              <div><strong>Odak Alani:</strong> {report.highlights.needsFocus}</div>
+              <div><strong>Oneri:</strong> {report.aiSuggestion}</div>
+            </div>
+          )}
+        </div>
+
+      </div>}
+
+      {showAnalysis && (
+        <AnalysisGraphCenter
+          tasks={tasks}
+          courses={courses}
+          curriculum={curriculum}
+          analysis={analysis}
+          loading={loading}
+          error={error}
+        />
+      )}
+    </div>
+  );
 };
 
 export default ParentDashboard;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Task } from '../../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Loader } from '../icons';
-import { useOptimizedDataAggregation } from '../../utils/performanceOptimizer';
+import EmptyState from '../shared/EmptyState';
 
 interface Props {
   tasks: Task[];
@@ -10,124 +10,138 @@ interface Props {
   error?: string | null;
 }
 
-// Loading Spinner Component
+type Period = 'Gunluk' | 'Haftalik' | 'Aylik';
+
 const LoadingSpinner: React.FC = () => (
-  <div className="flex items-center justify-center h-48">
-    <Loader className="w-8 h-8 animate-spin text-primary-600" />
-    <span className="ml-2 text-slate-600">Veriler yükleniyor...</span>
+  <div className="flex h-48 items-center justify-center">
+    <Loader className="h-8 w-8 animate-spin text-primary-600" />
+    <span className="ml-2 text-slate-600">Veriler yukleniyor...</span>
   </div>
 );
 
-// Error State Component
 const ErrorState: React.FC<{ error: string }> = ({ error }) => (
-  <div className="flex flex-col items-center justify-center h-48 text-center">
-    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
-      <span className="text-red-500 text-xl">⚠️</span>
+  <div className="flex h-48 flex-col items-center justify-center text-center">
+    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+      <span className="text-xl text-red-500">!</span>
     </div>
-    <p className="text-slate-600 mb-2">Veriler yüklenirken bir sorun oluştu</p>
+    <p className="mb-2 text-slate-600">Veriler yuklenirken bir sorun olustu.</p>
     <p className="text-sm text-slate-500">{error}</p>
   </div>
 );
 
-type Period = 'Günlük' | 'Haftalık' | 'Aylık';
-
-function getPeriodKey(date: string, period: Period) {
-  const d = new Date(date);
-  if (period === 'Günlük') return d.toISOString().slice(0, 10);
-  if (period === 'Haftalık') {
-    const jan1 = new Date(d.getFullYear(), 0, 1);
-    const days = Math.floor((d.getTime() - jan1.getTime()) / (24*60*60*1000));
-    return `${d.getFullYear()}-H${Math.ceil((days + jan1.getDay() + 1) / 7)}`;
-  }
-  return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}`;
-}
-
-const taskTypeLabels = {
-  'soru çözme': 'Soru Çözme',
-  'ders çalışma': 'Ders Çalışma',
-  'kitap okuma': 'Kitap Okuma',
+const taskTypeLabels: Record<Task['taskType'], string> = {
+  'soru \u00e7\u00f6zme': 'Soru cozme',
+  'ders \u00e7al\u0131\u015fma': 'Ders calismasi',
+  'kitap okuma': 'Kitap okuma',
 };
 
-const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = null }) => {
-  const [period, setPeriod] = useState<Period>('Haftalık');
+function getPeriodKey(date: string, period: Period) {
+  const current = new Date(date);
+  if (period === 'Gunluk') return current.toISOString().slice(0, 10);
+  if (period === 'Haftalik') {
+    const firstDay = new Date(current.getFullYear(), 0, 1);
+    const days = Math.floor((current.getTime() - firstDay.getTime()) / 86400000);
+    return `${current.getFullYear()}-H${Math.ceil((days + firstDay.getDay() + 1) / 7)}`;
+  }
+  return `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+}
 
-  // Periyot ve görev türüne göre analiz
+const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = null }) => {
+  const [period, setPeriod] = useState<Period>('Haftalik');
+
   const data = useMemo(() => {
-    const filtered = tasks.filter(t => t.status === 'tamamlandı' && t.completionDate && t.successScore != null && t.actualDuration != null);
-    const grouped: Record<string, Record<string, { totalScore: number, totalDuration: number, count: number }>> = {};
-    filtered.forEach(t => {
-      const pKey = getPeriodKey(t.completionDate!, period);
-      if (!grouped[pKey]) grouped[pKey] = {};
-      if (!grouped[pKey][t.taskType]) grouped[pKey][t.taskType] = { totalScore: 0, totalDuration: 0, count: 0 };
-      grouped[pKey][t.taskType].totalScore += t.successScore!;
-      grouped[pKey][t.taskType].totalDuration += t.actualDuration!;
-      grouped[pKey][t.taskType].count++;
+    const completed = tasks.filter((task) => task.status === 'tamamland\u0131' && task.completionDate && typeof task.successScore === 'number' && typeof task.actualDuration === 'number');
+    const grouped: Record<string, Record<Task['taskType'], { totalScore: number; totalDuration: number; count: number }>> = {} as Record<string, Record<Task['taskType'], { totalScore: number; totalDuration: number; count: number }>>;
+
+    completed.forEach((task) => {
+      const periodKey = getPeriodKey(task.completionDate!, period);
+      grouped[periodKey] ??= {} as Record<Task['taskType'], { totalScore: number; totalDuration: number; count: number }>;
+      grouped[periodKey][task.taskType] ??= { totalScore: 0, totalDuration: 0, count: 0 };
+      grouped[periodKey][task.taskType].totalScore += task.successScore || 0;
+      grouped[periodKey][task.taskType].totalDuration += task.actualDuration || 0;
+      grouped[periodKey][task.taskType].count += 1;
     });
-    // Son periyodu al (en güncel)
-    const lastPeriod = Object.keys(grouped).sort().pop();
-    const result = [];
-    if (lastPeriod) {
-      for (const type of Object.keys(taskTypeLabels)) {
-        const entry = grouped[lastPeriod][type];
-        result.push({
-          taskType: taskTypeLabels[type as keyof typeof taskTypeLabels],
-          avgScore: entry ? Math.round(entry.totalScore / entry.count) : 0,
-          avgDuration: entry ? Math.round(entry.totalDuration / entry.count / 60) : 0, // dakika
-        });
-      }
-    }
-    return result;
+
+    const latestPeriod = Object.keys(grouped).sort().pop();
+    if (!latestPeriod) return [];
+
+    return (Object.keys(taskTypeLabels) as Task['taskType'][]).map((taskType) => {
+      const entry = grouped[latestPeriod][taskType];
+      return {
+        taskType: taskTypeLabels[taskType],
+        avgScore: entry ? Math.round(entry.totalScore / entry.count) : 0,
+        avgDuration: entry ? Math.round(entry.totalDuration / entry.count / 60) : 0,
+        count: entry?.count || 0,
+      };
+    });
   }, [tasks, period]);
 
-  // Handle loading state
+  const bestType = [...data].sort((a, b) => b.avgScore - a.avgScore)[0];
+  const totalCompleted = data.reduce((sum, item) => sum + item.count, 0);
+
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-xl shadow-md mb-6">
-        <h4 className="font-bold text-lg mb-4">Görev Türü Analizi</h4>
+      <div className="mb-6 rounded-2xl border bg-white p-6 shadow-sm">
+        <h4 className="mb-4 text-lg font-bold">Gorev turu analizi</h4>
         <LoadingSpinner />
       </div>
     );
   }
 
-  // Handle error state
   if (error) {
     return (
-      <div className="bg-white p-6 rounded-xl shadow-md mb-6">
-        <h4 className="font-bold text-lg mb-4">Görev Türü Analizi</h4>
+      <div className="mb-6 rounded-2xl border bg-white p-6 shadow-sm">
+        <h4 className="mb-4 text-lg font-bold">Gorev turu analizi</h4>
         <ErrorState error={error} />
       </div>
     );
   }
 
+  if (data.every((item) => item.count === 0)) {
+    return <EmptyState icon={<div className="text-xl text-slate-400">i</div>} title="Gorev turu analizi icin veri yok" message="Tamamlanan gorevler geldikce hangi gorev tipinde daha verimli calisildigi burada gorunecek." />;
+  }
+
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md mb-6">
-      <div className="flex justify-between items-center mb-4">
-        <h4 className="font-bold text-lg">Görev Türü Analizi</h4>
+    <div className="mb-6 rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h4 className="text-lg font-bold text-slate-900">Gorev turu analizi</h4>
+          <p className="text-sm text-slate-500">Son secili periyotta gorev tiplerinin skor ve sure karsilastirmasi.</p>
+        </div>
         <div className="flex gap-2">
-          {(['Günlük','Haftalık','Aylık'] as Period[]).map(p => (
-            <button key={p} onClick={() => setPeriod(p)} className={`px-3 py-1 rounded ${period===p?'bg-primary-600 text-white':'bg-slate-100 text-slate-700'}`}>{p}</button>
+          {(['Gunluk', 'Haftalik', 'Aylik'] as Period[]).map((value) => (
+            <button key={value} onClick={() => setPeriod(value)} className={`rounded-full px-3 py-2 text-xs font-bold ${period === value ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              {value}
+            </button>
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {data.map(d => (
-          <div key={d.taskType} className="bg-primary-50 p-4 rounded-lg text-center">
-            <div className="text-sm text-slate-500 font-semibold mb-1">{d.taskType}</div>
-            <div className="text-2xl font-bold text-primary-700">{d.avgScore} <span className="text-base font-normal">puan</span></div>
-            <div className="text-slate-600 text-sm">Ortalama Süre: {d.avgDuration} dk</div>
-          </div>
-        ))}
+
+      <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="rounded-2xl bg-slate-50 p-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-slate-400">En guclu tip</div>
+          <div className="mt-2 text-lg font-bold text-slate-900">{bestType?.taskType || '-'}</div>
+        </div>
+        <div className="rounded-2xl bg-slate-50 p-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Toplam tamamlanan</div>
+          <div className="mt-2 text-lg font-bold text-slate-900">{totalCompleted}</div>
+        </div>
+        <div className="rounded-2xl bg-slate-50 p-4">
+          <div className="text-xs font-bold uppercase tracking-wide text-slate-400">En yuksek skor</div>
+          <div className="mt-2 text-lg font-bold text-slate-900">{bestType?.avgScore || 0}</div>
+        </div>
       </div>
+
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="taskType" fontSize={12} />
-          <YAxis yAxisId="left" orientation="left" label={{ value: 'Başarı', angle: -90, position: 'insideLeft' }} />
-          <YAxis yAxisId="right" orientation="right" label={{ value: 'Süre (dk)', angle: 90, position: 'insideRight' }} />
+          <YAxis yAxisId="left" label={{ value: 'Skor', angle: -90, position: 'insideLeft' }} />
+          <YAxis yAxisId="right" orientation="right" label={{ value: 'Sure (dk)', angle: 90, position: 'insideRight' }} />
           <Tooltip />
           <Legend />
-          <Bar yAxisId="left" dataKey="avgScore" name="Başarı Puanı" fill="#3b82f6" />
-          <Bar yAxisId="right" dataKey="avgDuration" name="Ortalama Süre (dk)" fill="#f59e42" />
+          <Bar yAxisId="left" dataKey="avgScore" name="Ortalama skor" fill="#2563eb" radius={[8, 8, 0, 0]} />
+          <Bar yAxisId="right" dataKey="avgDuration" name="Ortalama sure" fill="#f59e0b" radius={[8, 8, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

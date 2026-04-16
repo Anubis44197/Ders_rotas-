@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { Calendar } from 'lucide-react';
 
 type TimePeriod = 'all' | 'day' | 'week' | 'month' | 'year' | 'custom';
@@ -49,7 +49,7 @@ const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({ onFilterChange }) => 
     <div className="w-full">
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={() => handleFilterClick('day')} className={buttonClass('day')}>
-          Bugün
+          Bugun
         </button>
         <button onClick={() => handleFilterClick('week')} className={buttonClass('week')}>
           Bu Hafta
@@ -58,25 +58,25 @@ const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({ onFilterChange }) => 
           Bu Ay
         </button>
         <button onClick={() => handleFilterClick('year')} className={buttonClass('year')}>
-          Bu Yıl
+          Bu Yil
         </button>
         <button onClick={() => handleFilterClick('all')} className={buttonClass('all')}>
-            Tüm Zamanlar
+          Tum Zamanlar
         </button>
         <button onClick={() => handleFilterClick('custom')} className={buttonClass('custom')}>
           <Calendar className="w-4 h-4 mr-1.5 inline-block" />
-          Özel
+          Ozel
         </button>
       </div>
       {showCustom && (
         <div className="mt-4 p-4 bg-white rounded-lg border animate-fadeIn">
           <div className="flex flex-wrap items-center gap-4">
             <div>
-              <label htmlFor="startDate" className="text-sm font-medium text-slate-600 block mb-1">Başlangıç</label>
+              <label htmlFor="startDate" className="text-sm font-medium text-slate-600 block mb-1">Baslangic</label>
               <input type="date" id="startDate" ref={startDateRef} className="border-slate-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500" />
             </div>
             <div>
-              <label htmlFor="endDate" className="text-sm font-medium text-slate-600 block mb-1">Bitiş</label>
+              <label htmlFor="endDate" className="text-sm font-medium text-slate-600 block mb-1">Bitis</label>
               <input type="date" id="endDate" ref={endDateRef} className="border-slate-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500" />
             </div>
             <div className="self-end">

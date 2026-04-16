@@ -1,0 +1,92 @@
+:root {
+  --dr-bg: #f4f7fb;
+  --dr-surface: rgba(255, 255, 255, 0.92);
+  --dr-surface-strong: #ffffff;
+  --dr-text: #102033;
+  --dr-muted: #5f6f82;
+  --dr-primary: #1d4ed8;
+  --dr-primary-soft: #dbeafe;
+  --dr-success: #0f9f6e;
+  --dr-warning: #d97706;
+  --dr-danger: #dc2626;
+  --dr-radius: 24px;
+  --dr-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.10), transparent 32%),
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.09), transparent 28%),
+    linear-gradient(180deg, #f8fbff 0%, var(--dr-bg) 100%);
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--dr-text);
+  background: transparent;
+  font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.dr-shell {
+  padding-bottom: 48px;
+}
+
+.dr-panel {
+  background: var(--dr-surface);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: var(--dr-shadow);
+  backdrop-filter: blur(14px);
+}
+
+.dr-title {
+  letter-spacing: -0.03em;
+}
+
+.dr-chip {
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dr-stat-value {
+  letter-spacing: -0.04em;
+}
+
+.dr-gradient-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.dr-gradient-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -40px -60px auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+@media (max-width: 768px) {
+  .dr-shell {
+    padding-bottom: 32px;
+  }
+}

@@ -1,0 +1,85 @@
+diff --git a/components/child/ChildDashboard.tsx b/components/child/ChildDashboard.tsx
+--- a/components/child/ChildDashboard.tsx
++++ b/components/child/ChildDashboard.tsx
+@@
+   const selectedCourseName = courseNameMap.get(freeCourseId) || '';
+   const activeUnits = useMemo<CurriculumUnit[]>(() => {
+     if (!selectedCourseName) return [];
+-    if (curriculum[selectedCourseName]) return curriculum[selectedCourseName];
++    const directUnits = curriculum[selectedCourseName];
++    if (Array.isArray(directUnits) && directUnits.length > 0) return directUnits;
+     const normalizedCourseName = normalizeForLookup(selectedCourseName);
+     const matchedSubject = Object.keys(curriculum).find((subject) => normalizeForLookup(subject) === normalizedCourseName);
+-    if (!matchedSubject) return [];
++    if (!matchedSubject) return Array.isArray(directUnits) ? directUnits : [];
+     return curriculum[matchedSubject];
+   }, [curriculum, selectedCourseName]);
+
+diff --git a/components/parent/ParentDashboard.tsx b/components/parent/ParentDashboard.tsx
+--- a/components/parent/ParentDashboard.tsx
++++ b/components/parent/ParentDashboard.tsx
+@@
+   const selectedCourseName = courseNameMap.get(courseId) || '';
+   const activeUnits = useMemo<CurriculumUnit[]>(() => {
+     if (!curriculum || !selectedCourseName) return [];
+ 
+-    if (curriculum[selectedCourseName]) {
+-      return curriculum[selectedCourseName] as CurriculumUnit[];
+-    }
++    const directUnits = curriculum[selectedCourseName] as CurriculumUnit[] | undefined;
++    if (Array.isArray(directUnits) && directUnits.length > 0) {
++      return directUnits;
++    }
+ 
+     const normalizedCourseName = normalizeForLookup(selectedCourseName);
+     const matchedSubject = Object.keys(curriculum).find((subject) => normalizeForLookup(subject) === normalizedCourseName);
+-    if (!matchedSubject) return [];
++    if (!matchedSubject) return Array.isArray(directUnits) ? directUnits : [];
+     return curriculum[matchedSubject] as CurriculumUnit[];
+   }, [curriculum, selectedCourseName]);
+
+diff --git a/docs/eksik-hata-takip-2026-04-12.md b/docs/eksik-hata-takip-2026-04-12.md
+--- a/docs/eksik-hata-takip-2026-04-12.md
++++ b/docs/eksik-hata-takip-2026-04-12.md
+@@
+ ### O-002
+ - Baslik: Import toleransinin farkli eski yedek varyasyonlariyla dogrulanmasi
+ - Modul: App Import
+-- Durum: Kismen dogrulandi
++- Durum: Kapandi
+@@
+-	- `qa-import-legacy-missing-performance.json` ile import basarili (beklenen tolerans calisti).
+-	- `qa-import-invalid-missing-rewards-with-course.json` ile import reddedildi, veri uygulanmadi (gerekli alan kontrolu korundu).
+-	- Ek varyasyonlarla (bozuk tipler, kismi nested alanlar) bir tur daha test gerekli.
++	- `qa-import-legacy-missing-performance.json` ile import basarili: `Veriler basariyla ice aktarildi.`
++	- `qa-import-invalid-missing-rewards.json` ile import reddedildi: `Gecersiz yedek dosyasi: gerekli alanlar eksik veya hatali.`
++	- `qa-import-malformed.json` (kasti bozuk JSON) ile import reddedildi: `Yedek dosyasi okunamadi veya JSON formati gecersiz.`
++	- Sonuc: toleransli kabul + gecersiz formatlari belirgin mesajla reddetme birlikte dogrulandi.
+@@
+ ### O-003
+ - Baslik: Mufredat normalize eslesmesinin Turkce karakter varyasyonlarinda dogrulanmasi
+ - Modul: ChildDashboard / ParentDashboard
+-- Durum: Duzeltildi (Canli yeniden test bekliyor)
++- Durum: Kapandi
+@@
+-	- Canli senaryo: `qa-import-normalize-curriculum.json` ile `courses[0].name = fizik`, `curriculum` anahtari = `FİZİK`, `units[0].name = Unite 1` import edildi.
+-	- Cocuk paneli > Serbest calisma ekraninda ders `fizik` secili olmasina ragmen unite seciminde sadece `Unite sec` gorundu.
+-	- Beklenen `Unite 1` secenegi listelenmedi (normalize lookup hedefi saglanmadi).
+-	- Kod duzeltmesi uygulandi: normalize fonksiyonlarina `NFKD` + birlesik karakter temizligi eklendi.
+-	- Terminal dogrulamasi: `FİZİK` ve `fizik` normalize sonucu esitlendi (`true`).
++	- Koku neden: import sonrasi kurs adina gore bos bir anahtar (`fizik: []`) olustugunda, dolu eslesen anahtar (`FİZİK`) yerine bu bos dizi tercih ediliyordu.
++	- Kod duzeltmesi: `ChildDashboard` ve `ParentDashboard` aktif unite seciminde bos dogrudan eslesme yerine normalize edilmis dolu eslesme onceliklendirildi.
++	- Canli yeniden test: `qa-import-normalize-curriculum.json` iceri alindi, cocuk paneli > serbest calisma ekraninda ders `fizik` seciliyken unite listesinde `Unite 1`, unite seciminden sonra konu listesinde `Konu A` gorundu.
++	- Sonuc: Turkce karakter varyasyonlu mufredat eslesmesi canli ortamda dogrulandi.
+
+diff --git a/docs/qa-import-malformed.json b/docs/qa-import-malformed.json
+new file mode 100644
+--- /dev/null
++++ b/docs/qa-import-malformed.json
+@@
++{
++  "tasks": [
++    { "id": "t1", "title": "Bozuk JSON" }
++  ],
++  "courses": ["Matematik"],
++

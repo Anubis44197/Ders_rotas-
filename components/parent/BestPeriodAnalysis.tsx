@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { Task } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Clock, Loader } from '../icons';
@@ -10,125 +10,127 @@ interface BestPeriodAnalysisProps {
   error?: string | null;
 }
 
-// Loading Spinner Component
+const WEEKDAYS = ['Pazar', 'Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi'];
+const HOURS = Array.from({ length: 24 }, (_, index) => `${String(index).padStart(2, '0')}:00`);
+
 const LoadingSpinner: React.FC = () => (
-  <div className="flex items-center justify-center h-48">
-    <Loader className="w-8 h-8 animate-spin text-primary-600" />
-    <span className="ml-2 text-slate-600">Veriler yükleniyor...</span>
+  <div className="flex h-48 items-center justify-center">
+    <Loader className="h-8 w-8 animate-spin text-primary-600" />
+    <span className="ml-2 text-slate-600">Veriler yukleniyor...</span>
   </div>
 );
 
-// Error State Component
 const ErrorState: React.FC<{ error: string }> = ({ error }) => (
-  <div className="flex flex-col items-center justify-center h-48 text-center">
-    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
-      <span className="text-red-500 text-xl">⚠️</span>
+  <div className="flex h-48 flex-col items-center justify-center text-center">
+    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+      <span className="text-xl text-red-500">!</span>
     </div>
-    <p className="text-slate-600 mb-2">Veriler yüklenirken bir sorun oluştu</p>
+    <p className="mb-2 text-slate-600">Veriler yuklenirken bir sorun olustu.</p>
     <p className="text-sm text-slate-500">{error}</p>
   </div>
 );
 
-const WEEKDAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-const HOURS = Array.from({ length: 24 }, (_, i) => `${i}:00`);
-
 const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading = false, error = null }) => {
-  // Sadece tamamlanmış ve başarı puanı olan görevler
-  const completed = useMemo(() => tasks.filter(t => t.status === 'tamamlandı' && typeof t.successScore === 'number' && t.completionTimestamp), [tasks]);
+  const completed = useMemo(
+    () => tasks.filter((task) => task.status === 'tamamland\u0131' && typeof task.successScore === 'number' && (task.completionTimestamp || task.completionDate)),
+    [tasks],
+  );
 
-  // Haftanın günü bazında ortalama başarı puanı
   const weekdayData = useMemo(() => {
-    const dayStats: { [key: number]: { total: number, count: number } } = {};
-    completed.forEach(t => {
-      const d = new Date(t.completionTimestamp!);
-      const day = d.getDay();
-      if (!dayStats[day]) dayStats[day] = { total: 0, count: 0 };
-      dayStats[day].total += t.successScore!;
-      dayStats[day].count++;
+    const stats = Array.from({ length: 7 }, () => ({ total: 0, count: 0 }));
+    completed.forEach((task) => {
+      const date = new Date(task.completionTimestamp || task.completionDate!);
+      const day = date.getDay();
+      stats[day].total += task.successScore || 0;
+      stats[day].count += 1;
     });
-    return WEEKDAYS.map((name, i) => ({
-      day: name,
-      'Başarı': dayStats[i]?.count ? Math.round(dayStats[i].total / dayStats[i].count) : 0,
-      'Görev': dayStats[i]?.count || 0
+
+    return WEEKDAYS.map((day, index) => ({
+      day,
+      score: stats[index].count ? Math.round(stats[index].total / stats[index].count) : 0,
+      count: stats[index].count,
     }));
   }, [completed]);
 
-  // Saat dilimi bazında ortalama başarı puanı
   const hourData = useMemo(() => {
-    const hourStats: { [key: number]: { total: number, count: number } } = {};
-    completed.forEach(t => {
-      const d = new Date(t.completionTimestamp!);
-      const hour = d.getHours();
-      if (!hourStats[hour]) hourStats[hour] = { total: 0, count: 0 };
-      hourStats[hour].total += t.successScore!;
-      hourStats[hour].count++;
+    const stats = Array.from({ length: 24 }, () => ({ total: 0, count: 0 }));
+    completed.forEach((task) => {
+      const date = new Date(task.completionTimestamp || task.completionDate!);
+      const hour = date.getHours();
+      stats[hour].total += task.successScore || 0;
+      stats[hour].count += 1;
     });
-    return HOURS.map((h, i) => ({
-      hour: h,
-      'Başarı': hourStats[i]?.count ? Math.round(hourStats[i].total / hourStats[i].count) : 0,
-      'Görev': hourStats[i]?.count || 0
+
+    return HOURS.map((hour, index) => ({
+      hour,
+      score: stats[index].count ? Math.round(stats[index].total / stats[index].count) : 0,
+      count: stats[index].count,
     }));
   }, [completed]);
 
-  // Handle loading state
+  const bestDay = [...weekdayData].sort((a, b) => b.score - a.score)[0];
+  const bestHour = [...hourData].sort((a, b) => b.score - a.score)[0];
+
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-xl shadow-md">
-        <h3 className="text-xl font-bold mb-4 flex items-center">
-          <Clock className="w-6 h-6 mr-2 text-primary-600" />
-          En Verimli Gün ve Saatler
-        </h3>
+      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h3 className="mb-4 flex items-center text-xl font-bold"><Clock className="mr-2 h-6 w-6 text-primary-600" />En verimli zaman</h3>
         <LoadingSpinner />
       </div>
     );
   }
 
-  // Handle error state
   if (error) {
     return (
-      <div className="bg-white p-6 rounded-xl shadow-md">
-        <h3 className="text-xl font-bold mb-4 flex items-center">
-          <Clock className="w-6 h-6 mr-2 text-primary-600" />
-          En Verimli Gün ve Saatler
-        </h3>
+      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h3 className="mb-4 flex items-center text-xl font-bold"><Clock className="mr-2 h-6 w-6 text-primary-600" />En verimli zaman</h3>
         <ErrorState error={error} />
       </div>
     );
   }
 
-  if (completed.length === 0) {
-    return <EmptyState icon={<Clock className="w-8 h-8 text-slate-400" />} title="Verimli Zaman Analizi İçin Veri Yok" message="Çocuğunuz görevleri tamamladıkça, en verimli gün ve saatler burada görünecek." />;
+  if (!completed.length) {
+    return <EmptyState icon={<Clock className="h-8 w-8 text-slate-400" />} title="Verimli zaman analizi icin veri yok" message="Tamamlanan gorevler geldikce hangi gun ve saatlerde daha verimli olundugu burada gorunecek." />;
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md">
-      <h3 className="text-xl font-bold mb-4 flex items-center"><Clock className="w-6 h-6 mr-2 text-primary-600" />En Verimli Gün ve Saatler</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h4 className="font-semibold mb-2">Haftanın Günleri</h4>
+          <h3 className="flex items-center text-xl font-bold"><Clock className="mr-2 h-6 w-6 text-primary-600" />En verimli zaman</h3>
+          <p className="text-sm text-slate-500">Tamamlanan gorevlerde skor ortalamasi hangi gun ve saatlerde yukseliyor.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">En guclu gun: <strong>{bestDay?.day || '-'}</strong></div>
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">En guclu saat: <strong>{bestHour?.hour || '-'}</strong></div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+        <div>
+          <h4 className="mb-2 font-semibold text-slate-800">Gun bazli skor</h4>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={weekdayData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <BarChart data={weekdayData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" fontSize={12} />
-              <YAxis domain={[0, 100]} unit="%" />
+              <YAxis domain={[0, 100]} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="Başarı" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Görev" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="score" name="Skor" fill="#2563eb" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="count" name="Gorev" fill="#f59e0b" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div>
-          <h4 className="font-semibold mb-2">Saat Dilimleri</h4>
+          <h4 className="mb-2 font-semibold text-slate-800">Saat bazli skor</h4>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={hourData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <BarChart data={hourData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="hour" fontSize={12} interval={2} />
-              <YAxis domain={[0, 100]} unit="%" />
+              <YAxis domain={[0, 100]} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="Başarı" fill="#10b981" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Görev" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="score" name="Skor" fill="#10b981" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="count" name="Gorev" fill="#f59e0b" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

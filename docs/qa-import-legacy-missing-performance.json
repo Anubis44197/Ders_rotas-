@@ -1,0 +1,16 @@
+{
+  "courses": [],
+  "tasks": [],
+  "rewards": [],
+  "badges": [
+    {
+      "id": "b1",
+      "name": "Ilk Adim",
+      "description": "Ilk gorevini tamamladin!"
+    }
+  ],
+  "successPoints": 0,
+  "curriculum": {},
+  "weeklySchedule": {},
+  "studyPlans": []
+}

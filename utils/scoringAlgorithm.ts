@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Balanced Scoring Algorithm for Task Completion
  * 
  * Design Goals:
@@ -107,7 +107,7 @@ function getDifficultyMultiplier(task: Task): number {
     let multiplier = 1.0;
     
     // Question count difficulty
-    if (task.taskType === 'soru çözme' && task.questionCount) {
+    if (task.taskType === 'soru \u00e7\u00f6zme' && task.questionCount) {
         if (task.questionCount >= 50) multiplier += 0.3;      // +30% for 50+ questions
         else if (task.questionCount >= 30) multiplier += 0.2; // +20% for 30+ questions
         else if (task.questionCount >= 20) multiplier += 0.1; // +10% for 20+ questions
@@ -135,11 +135,11 @@ function getTaskTypeBonus(task: Task, completionData: TaskCompletionData): numbe
             }
             return 0;
             
-        case 'soru çözme':
+        case 'soru \u00e7\u00f6zme':
             // Small bonus for problem solving
             return 2;
             
-        case 'ders çalışma':
+        case 'ders \u00e7al\u0131\u015fma':
             // Small bonus for study sessions
             return 1;
             
@@ -183,3 +183,4 @@ export function getExpectedPointsRange(task: Task): { min: number; max: number; 
     
     return { min, max, average };
 }
+

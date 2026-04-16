@@ -29,3 +29,12 @@ dist-ssr
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Test artifacts
+.playwright-mcp/
+after-fix-home.png
+before-planning.png
+current-page.png
+o003-after-fix.png
+planning-after-fix.png
+planning-side-nav.png
