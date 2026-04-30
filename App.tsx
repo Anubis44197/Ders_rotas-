@@ -35,7 +35,7 @@ import {
   ReplanTriggerRecord,
   PlanBlockType,
 } from './types';
-import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, Clock, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown, PlusCircle, Search } from './components/icons';
+import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, Clock, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown, PlusCircle, Search, Lightbulb } from './components/icons';
 import { ALL_ICONS } from './constants';
 import { calculateTaskPoints } from './utils/scoringAlgorithm';
 import { getLocalDateString } from './utils/dateUtils';
@@ -2411,6 +2411,14 @@ const App: React.FC = () => {
     addToast('Arayuz ayarlari varsayilana donduruldu.', 'success');
   };
 
+  const handleThemeToggle = () => {
+    setThemeMode((current) => current === 'dark' ? 'light' : 'dark');
+    setNotificationsOpen(false);
+    setSettingsOpen(false);
+    setQuickActionsOpen(false);
+    setSearchOpen(false);
+  };
+
   const handleOpenScheduleSettings = () => {
     setSettingsOpen(false);
     setParentWorkspaceView('planning');
@@ -2965,6 +2973,17 @@ const App: React.FC = () => {
                 Cocuk
               </button>
             </div>
+            <button
+              type="button"
+              onClick={handleThemeToggle}
+              aria-label={themeMode === 'dark' ? 'Acik temaya gec' : 'Koyu temaya gec'}
+              aria-pressed={themeMode === 'dark'}
+              title={themeMode === 'dark' ? 'Tema: Koyu' : 'Tema: Acik'}
+              className="ios-button flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-slate-600 transition hover:text-slate-900"
+            >
+              <Lightbulb className="h-5 w-5" />
+              <span className="hidden text-xs font-bold md:inline">{themeMode === 'dark' ? 'Koyu' : 'Acik'}</span>
+            </button>
             <div className="dr-toolbar-group" aria-label="Yardimci komutlar">
             {(userType === UserType.Child || (userType === UserType.Parent && !isParentLocked)) && <div ref={topbarSearchRef} className="relative">
               <div className={`ios-button flex h-11 items-center gap-2 rounded-full px-3 transition-all ${searchOpen ? 'w-[22rem]' : 'w-11 justify-center'}`}>
