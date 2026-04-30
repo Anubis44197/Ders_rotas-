@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.firebase/
 
 # Editor directories and files
 .vscode/*
@@ -38,3 +39,7 @@ current-page.png
 o003-after-fix.png
 planning-after-fix.png
 planning-side-nav.png
+
+# Generated patch artifacts
+*.diff
+*.patch
