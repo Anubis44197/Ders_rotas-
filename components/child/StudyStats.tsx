@@ -3,13 +3,14 @@ import { Task, Course } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { TrendingUp, Clock, Target, Zap, Calendar, BookOpen } from '../icons';
 import { getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries } from '../shared/chartDesign';
 
 interface StudyStatsProps {
   tasks: Task[];
   courses: Course[];
 }
 
-const card = 'rounded-[26px] border border-slate-200 bg-white p-5 shadow-sm';
+const card = 'ios-card rounded-[28px] p-5';
 
 const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
   const completedTasks = useMemo(() => tasks.filter((task) => task.status === 'tamamlandı'), [tasks]);
@@ -93,11 +94,11 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
       .filter((item) => item.value > 0);
   }, [completedTasks, courses]);
 
-  const colors = ['#2563EB', '#0F766E', '#F59E0B', '#DC2626', '#7C3AED', '#EC4899'];
+  const colors = chartSeries;
 
   if (!stats) {
     return (
-      <div className="rounded-[26px] border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <div className="ios-card rounded-[28px] p-8 text-center">
         <BookOpen className="mx-auto mb-4 h-12 w-12 text-slate-300" />
         <h3 className="mb-2 text-lg font-bold text-slate-700">Henuz istatistik yok</h3>
         <p className="text-sm text-slate-500">Tamamlanan gorevler geldikce burada net grafikler olusacak.</p>
@@ -108,10 +109,10 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div className="rounded-[24px] bg-[linear-gradient(135deg,#dbeafe_0%,#eff6ff_100%)] p-4 text-slate-900 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Toplam calisma</p><p className="mt-2 text-2xl font-black">{stats.totalStudyTime} dk</p></div><Clock className="h-7 w-7 text-blue-600" /></div></div>
-        <div className="rounded-[24px] bg-[linear-gradient(135deg,#dcfce7_0%,#f0fdf4_100%)] p-4 text-slate-900 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Calisma serisi</p><p className="mt-2 text-2xl font-black">{stats.streakDays} gun</p></div><Zap className="h-7 w-7 text-emerald-600" /></div></div>
-        <div className="rounded-[24px] bg-[linear-gradient(135deg,#ede9fe_0%,#f5f3ff_100%)] p-4 text-slate-900 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Ortalama puan</p><p className="mt-2 text-2xl font-black">{stats.averageSuccessScore}</p></div><Target className="h-7 w-7 text-violet-600" /></div></div>
-        <div className="rounded-[24px] bg-[linear-gradient(135deg,#ffedd5_0%,#fff7ed_100%)] p-4 text-slate-900 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Tamamlanan</p><p className="mt-2 text-2xl font-black">{stats.totalTasksCompleted}</p></div><TrendingUp className="h-7 w-7 text-orange-600" /></div></div>
+        <div className="ios-widget ios-blue rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Toplam calisma</p><p className="mt-2 text-2xl font-black">{stats.totalStudyTime} dk</p></div><Clock className="h-7 w-7 text-blue-600" /></div></div>
+        <div className="ios-widget ios-mint rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Calisma serisi</p><p className="mt-2 text-2xl font-black">{stats.streakDays} gun</p></div><Zap className="h-7 w-7 text-emerald-600" /></div></div>
+        <div className="ios-widget ios-lilac rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Ortalama puan</p><p className="mt-2 text-2xl font-black">{stats.averageSuccessScore}</p></div><Target className="h-7 w-7 text-violet-600" /></div></div>
+        <div className="ios-widget ios-peach rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Tamamlanan</p><p className="mt-2 text-2xl font-black">{stats.totalTasksCompleted}</p></div><TrendingUp className="h-7 w-7 text-orange-600" /></div></div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.25fr)_320px]">
@@ -119,10 +120,15 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
           <div className="mb-4 flex items-center gap-2 text-slate-900"><Calendar className="h-5 w-5 text-primary-600" /><h3 className="text-lg font-black">Son 7 gun</h3></div>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={weeklyTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="day" tickLine={false} axisLine={false} />
-              <YAxis tickLine={false} axisLine={false} />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="day" {...chartAxisProps} />
+              <YAxis {...chartAxisProps} />
               <Tooltip
+                content={<ChartTooltip valueFormatter={(value, name) => {
+                  if (name === 'Gorev') return `${value} adet`;
+                  if (name === 'Calisma') return `${value} dk`;
+                  return `${value} puan`;
+                }} />}
                 labelFormatter={(label, payload) => {
                   const data = payload?.[0]?.payload;
                   return data ? `${label} - ${data.date}` : label;
@@ -137,9 +143,9 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
                   return [`${value} ${unit}`.trim(), label];
                 }}
               />
-              <Line type="monotone" dataKey="tasks" stroke="#2563EB" strokeWidth={2.5} dot={{ r: 3 }} name="tasks" />
-              <Line type="monotone" dataKey="studyTime" stroke="#0F766E" strokeWidth={2.5} dot={{ r: 3 }} name="studyTime" />
-              <Line type="monotone" dataKey="avgScore" stroke="#F59E0B" strokeWidth={2.5} dot={{ r: 3 }} name="avgScore" />
+              <Line type="monotone" dataKey="tasks" stroke={chartPalette.blue} strokeWidth={4} dot={{ r: 4, fill: chartPalette.blue, strokeWidth: 0 }} name="Gorev" activeDot={{ r: 7 }} />
+              <Line type="monotone" dataKey="studyTime" stroke={chartPalette.mint} strokeWidth={4} dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} name="Calisma" activeDot={{ r: 7 }} />
+              <Line type="monotone" dataKey="avgScore" stroke={chartPalette.lilac} strokeWidth={4} dot={{ r: 4, fill: chartPalette.lilac, strokeWidth: 0 }} name="Puan" activeDot={{ r: 7 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -148,10 +154,10 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
           <div className={card}>
             <h3 className="mb-4 text-base font-black text-slate-900">Calisma ritmi</h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3"><span className="text-sm text-slate-600">En verimli saat</span><span className="font-bold text-primary-600">{stats.bestPerformanceHour}</span></div>
-              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3"><span className="text-sm text-slate-600">Favori ders</span><span className="font-bold text-emerald-600">{stats.favoriteSubject}</span></div>
-              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3"><span className="text-sm text-slate-600">Ortalama seans</span><span className="font-bold text-slate-900">{stats.averageSessionLength} dk</span></div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-3">
+              <div className="ios-widget flex items-center justify-between rounded-[18px] px-4 py-3"><span className="text-sm text-slate-600">En verimli saat</span><span className="font-bold text-blue-600">{stats.bestPerformanceHour}</span></div>
+              <div className="ios-widget flex items-center justify-between rounded-[18px] px-4 py-3"><span className="text-sm text-slate-600">Favori ders</span><span className="font-bold text-emerald-600">{stats.favoriteSubject}</span></div>
+              <div className="ios-widget flex items-center justify-between rounded-[18px] px-4 py-3"><span className="text-sm text-slate-600">Ortalama seans</span><span className="font-bold text-slate-900">{stats.averageSessionLength} dk</span></div>
+              <div className="ios-widget rounded-[18px] px-4 py-3">
                 <div className="mb-2 flex items-center justify-between"><span className="text-sm font-semibold text-slate-700">Haftalik hedef</span><span className="text-sm font-bold text-emerald-600">{stats.weeklyGoalProgress.toFixed(0)}%</span></div>
                 <div className="progress-bar"><div className="progress-bar-inner bg-gradient-to-r from-emerald-500 to-blue-500" style={{ width: `${stats.weeklyGoalProgress}%` }} /></div>
               </div>
@@ -165,12 +171,12 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
                 <Pie data={courseDistribution} cx="50%" cy="50%" outerRadius={70} dataKey="value" innerRadius={38}>
                   {courseDistribution.map((_, index) => <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />)}
                 </Pie>
-                <Tooltip formatter={(value, name) => [`${value} gorev`, name]} />
+            <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} gorev`} />} />
               </PieChart>
             </ResponsiveContainer>
             <div className="mt-3 space-y-2">
               {courseDistribution.map((item, index) => (
-                <div key={item.name} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm">
+                <div key={item.name} className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2 text-sm">
                   <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} /><span className="text-slate-700">{item.name}</span></div>
                   <span className="font-semibold text-slate-900">{item.value}</span>
                 </div>
@@ -184,11 +190,11 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
         <div className="mb-4 flex items-center gap-2 text-slate-900"><BookOpen className="h-5 w-5 text-blue-600" /><h3 className="text-lg font-black">Gunluk gorev dagilimi</h3></div>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={weeklyTrendData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="day" tickLine={false} axisLine={false} />
-            <YAxis tickLine={false} axisLine={false} />
-            <Tooltip formatter={(value, name) => [name === 'studyTime' ? `${value} dk` : `${value}`, name === 'studyTime' ? 'Calisma' : 'Gorev']} />
-            <Bar dataKey="tasks" radius={[8, 8, 0, 0]} fill="#2563EB" />
+            <CartesianGrid {...chartGridProps} />
+            <XAxis dataKey="day" {...chartAxisProps} />
+            <YAxis {...chartAxisProps} />
+            <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} gorev`} />} />
+            <Bar dataKey="tasks" name="Gorev" radius={[12, 12, 0, 0]} fill={chartPalette.blue} />
           </BarChart>
         </ResponsiveContainer>
       </div>

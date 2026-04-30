@@ -3,55 +3,40 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/app-icon.svg" />
+    <link rel="alternate icon" type="image/svg+xml" href="/app-icon-dark.svg" media="(prefers-color-scheme: dark)" />
+    <link rel="apple-touch-icon" href="/app-icon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#6fa8ff" />
+    <meta name="apple-mobile-web-app-title" content="DersRotasi" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DersRotasi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        content: [
-          "./index.html",
-          "./index.tsx", 
-          "./App.tsx",
-          "./components/**/*.tsx",
-          "./src/**/*.tsx"
-        ],
-        theme: {
-          extend: {
-            colors: {
-              'primary': {
-                '50': '#eff6ff',
-                '100': '#dbeafe',
-                '200': '#bfdbfe',
-                '300': '#93c5fd',
-                '400': '#60a5fa',
-                '500': '#3b82f6',
-                '600': '#2563eb',
-                '700': '#1d4ed8',
-                '800': '#1e40af',
-                '900': '#1e3a8a',
-                '950': '#172554',
-              },
-            }
-          }
-        }
-      }
-    </script>
-  <script type="importmap">
-{
-  "imports": {
-    "recharts": "https://aistudiocdn.com/recharts@^3.2.1",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.21.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
-  <body class="bg-slate-50">
-    <div id="root"></div>
+  </head>
+  <body>
+    <div id="root">
+      <div class="dr-launch-screen" role="status" aria-label="Ders Rotasi aciliyor">
+        <div class="dr-launch-card">
+          <div class="dr-launch-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none">
+              <rect x="10" y="12" width="44" height="40" rx="14" fill="#dceaff" />
+              <path d="M22 24h20M22 32h16M22 40h12" stroke="#6fa8ff" stroke-width="4" stroke-linecap="round" />
+              <path d="M44 16l5 5-7 7-5-5 7-7Z" fill="#6fd6b5" />
+            </svg>
+          </div>
+          <div>
+            <div class="dr-launch-title">DersRotasi</div>
+            <div class="dr-launch-subtitle">Ogrenci takibi hazirlaniyor</div>
+          </div>
+        </div>
+        <div class="dr-launch-skeleton">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

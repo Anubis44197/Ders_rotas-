@@ -3,6 +3,7 @@ import { Task } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Brush } from 'recharts';
 import { Zap, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
+import { ChartTooltip, chartAxisProps, chartBrushProps, chartGridProps, chartLegendProps, chartPalette } from '../shared/chartDesign';
 
 interface CompletionSpeedAnalysisProps {
   tasks: Task[];
@@ -54,7 +55,7 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
 
   if (loading) {
     return (
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="ios-card rounded-[28px] p-6">
         <h3 className="mb-4 flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hizi</h3>
         <LoadingSpinner />
       </div>
@@ -63,7 +64,7 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
 
   if (error) {
     return (
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="ios-card rounded-[28px] p-6">
         <h3 className="mb-4 flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hizi</h3>
         <ErrorState error={error} />
       </div>
@@ -75,29 +76,29 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
   }
 
   return (
-    <div className="rounded-2xl border bg-white p-6 shadow-sm">
+    <div className="ios-card rounded-[28px] p-6">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h3 className="flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hizi</h3>
           <p className="text-sm text-slate-500">Son 20 tamamlanan gorevde planlanan sure ile gercek sure farki.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Ort. plan: <strong>{averagePlanned} dk</strong></div>
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Ort. gercek: <strong>{averageActual} dk</strong></div>
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Verim: <strong>{averageEfficiency}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Ort. plan: <strong>{averagePlanned} dk</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Ort. gercek: <strong>{averageActual} dk</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Verim: <strong>{averageEfficiency}</strong></div>
         </div>
       </div>
 
       <ResponsiveContainer width="100%" height={350}>
         <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: data.length > 8 ? 75 : 5 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="title" fontSize={12} interval={0} angle={-20} textAnchor="end" height={60} />
-          <YAxis label={{ value: 'dk', angle: -90, position: 'insideLeft', offset: 10 }} />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey="planned" name="Planlanan sure" fill="#2563eb" radius={[8, 8, 0, 0]} />
-          <Bar dataKey="actual" name="Gercek sure" fill="#f59e0b" radius={[8, 8, 0, 0]} />
-          {data.length > 8 && <Brush dataKey="title" height={28} stroke="#94a3b8" fill="#f8fafc" />}
+          <CartesianGrid {...chartGridProps} />
+          <XAxis dataKey="title" interval={0} angle={-20} textAnchor="end" height={60} {...chartAxisProps} />
+          <YAxis label={{ value: 'dk', angle: -90, position: 'insideLeft', offset: 10 }} {...chartAxisProps} />
+          <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} dk`} />} />
+          <Legend {...chartLegendProps} />
+          <Bar dataKey="planned" name="Planlanan sure" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
+          <Bar dataKey="actual" name="Gercek sure" fill={chartPalette.peach} radius={[10, 10, 0, 0]} />
+          {data.length > 8 && <Brush dataKey="title" {...chartBrushProps} />}
         </BarChart>
       </ResponsiveContainer>
     </div>

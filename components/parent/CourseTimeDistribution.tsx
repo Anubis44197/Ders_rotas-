@@ -3,6 +3,7 @@ import { Task, Course } from '../../types';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { BookOpen, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
+import { ChartTooltip, chartLegendProps, chartSeries } from '../shared/chartDesign';
 
 interface CourseTimeDistributionProps {
   tasks: Task[];
@@ -11,7 +12,7 @@ interface CourseTimeDistributionProps {
   error?: string | null;
 }
 
-const COLORS = ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#f43f5e', '#84cc16'];
+const COLORS = chartSeries;
 
 const LoadingSpinner: React.FC = () => (
   <div className="flex h-64 items-center justify-center">
@@ -54,7 +55,7 @@ const CourseTimeDistribution: React.FC<CourseTimeDistributionProps> = ({ tasks, 
 
   if (loading) {
     return (
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="ios-card rounded-[28px] p-6">
         <h3 className="mb-4 flex items-center text-xl font-bold"><BookOpen className="mr-2 h-6 w-6 text-primary-600" />Ders bazli sure dagilimi</h3>
         <LoadingSpinner />
       </div>
@@ -63,7 +64,7 @@ const CourseTimeDistribution: React.FC<CourseTimeDistributionProps> = ({ tasks, 
 
   if (error) {
     return (
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="ios-card rounded-[28px] p-6">
         <h3 className="mb-4 flex items-center text-xl font-bold"><BookOpen className="mr-2 h-6 w-6 text-primary-600" />Ders bazli sure dagilimi</h3>
         <ErrorState error={error} />
       </div>
@@ -75,26 +76,26 @@ const CourseTimeDistribution: React.FC<CourseTimeDistributionProps> = ({ tasks, 
   }
 
   return (
-    <div className="rounded-2xl border bg-white p-6 shadow-sm">
+    <div className="ios-card rounded-[28px] p-6">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h3 className="flex items-center text-xl font-bold"><BookOpen className="mr-2 h-6 w-6 text-primary-600" />Ders bazli sure dagilimi</h3>
           <p className="text-sm text-slate-500">Tamamlanan gorevlerde gercek calisma suresi hangi derslere dagiliyor.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Toplam sure: <strong>{totalMinutes} dk</strong></div>
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">En yuksek ders: <strong>{topCourse?.name || '-'}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Toplam sure: <strong>{totalMinutes} dk</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">En yuksek ders: <strong>{topCourse?.name || '-'}</strong></div>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={320}>
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={110} label={({ name, percent }: any) => `${name}: ${(((percent || 0) * 100)).toFixed(0)}%`}>
+          <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={62} outerRadius={110}>
             {data.map((entry, index) => (
               <Cell key={`course-${entry.name}-${index}`} fill={entry.color} />
             ))}
           </Pie>
-          <Tooltip formatter={(value: number) => `${value} dk`} />
-          <Legend />
+          <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} dk`} />} />
+          <Legend {...chartLegendProps} />
         </PieChart>
       </ResponsiveContainer>
     </div>

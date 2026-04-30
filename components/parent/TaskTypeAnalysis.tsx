@@ -1,8 +1,9 @@
 ﻿import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Task } from '../../types';
-import { Loader } from '../icons';
+import { Info, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartLegendProps, chartPalette } from '../shared/chartDesign';
 
 interface Props {
   tasks: Task[];
@@ -81,7 +82,7 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
 
   if (loading) {
     return (
-      <div className="mb-6 rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="ios-card mb-6 rounded-[28px] p-6">
         <h4 className="mb-4 text-lg font-bold">Gorev turu analizi</h4>
         <LoadingSpinner />
       </div>
@@ -90,7 +91,7 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
 
   if (error) {
     return (
-      <div className="mb-6 rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="ios-card mb-6 rounded-[28px] p-6">
         <h4 className="mb-4 text-lg font-bold">Gorev turu analizi</h4>
         <ErrorState error={error} />
       </div>
@@ -98,11 +99,11 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
   }
 
   if (data.every((item) => item.count === 0)) {
-    return <EmptyState icon={<div className="text-xl text-slate-400">i</div>} title="Gorev turu analizi icin veri yok" message="Tamamlanan gorevler geldikce hangi gorev tipinde daha verimli calisildigi burada gorunecek." />;
+    return <EmptyState icon={<Info className="h-6 w-6" />} title="Gorev turu analizi icin veri yok" message="Tamamlanan gorevler geldikce hangi gorev tipinde daha verimli calisildigi burada gorunecek." />;
   }
 
   return (
-    <div className="mb-6 rounded-2xl border bg-white p-6 shadow-sm">
+    <div className="ios-card mb-6 rounded-[28px] p-6">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h4 className="text-lg font-bold text-slate-900">Gorev turu analizi</h4>
@@ -110,7 +111,7 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
         </div>
         <div className="flex gap-2">
           {(['Gunluk', 'Haftalik', 'Aylik'] as Period[]).map((value) => (
-            <button key={value} onClick={() => setPeriod(value)} className={`rounded-full px-3 py-2 text-xs font-bold ${period === value ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
+            <button key={value} onClick={() => setPeriod(value)} className={`ios-button rounded-full px-3 py-2 text-xs font-bold ${period === value ? 'ios-button-active' : 'text-slate-600'}`}>
               {value}
             </button>
           ))}
@@ -118,15 +119,15 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
       </div>
 
       <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-        <div className="rounded-2xl bg-slate-50 p-4">
+        <div className="ios-widget rounded-2xl p-4">
           <div className="text-xs font-bold uppercase tracking-wide text-slate-400">En guclu tip</div>
           <div className="mt-2 text-lg font-bold text-slate-900">{bestType?.taskType || '-'}</div>
         </div>
-        <div className="rounded-2xl bg-slate-50 p-4">
+        <div className="ios-widget rounded-2xl p-4">
           <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Toplam tamamlanan</div>
           <div className="mt-2 text-lg font-bold text-slate-900">{totalCompleted}</div>
         </div>
-        <div className="rounded-2xl bg-slate-50 p-4">
+        <div className="ios-widget rounded-2xl p-4">
           <div className="text-xs font-bold uppercase tracking-wide text-slate-400">En yuksek skor</div>
           <div className="mt-2 text-lg font-bold text-slate-900">{bestType?.avgScore || 0}</div>
         </div>
@@ -134,14 +135,14 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
 
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="taskType" fontSize={12} />
-          <YAxis yAxisId="left" label={{ value: 'Skor', angle: -90, position: 'insideLeft' }} />
-          <YAxis yAxisId="right" orientation="right" label={{ value: 'Sure (dk)', angle: 90, position: 'insideRight' }} />
-          <Tooltip />
-          <Legend />
-          <Bar yAxisId="left" dataKey="avgScore" name="Ortalama skor" fill="#2563eb" radius={[8, 8, 0, 0]} />
-          <Bar yAxisId="right" dataKey="avgDuration" name="Ortalama sure" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+          <CartesianGrid {...chartGridProps} />
+          <XAxis dataKey="taskType" {...chartAxisProps} />
+          <YAxis yAxisId="left" label={{ value: 'Skor', angle: -90, position: 'insideLeft' }} {...chartAxisProps} />
+          <YAxis yAxisId="right" orientation="right" label={{ value: 'Sure (dk)', angle: 90, position: 'insideRight' }} {...chartAxisProps} />
+          <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name.includes('sure') ? `${value} dk` : `${value} puan`} />} />
+          <Legend {...chartLegendProps} />
+          <Bar yAxisId="left" dataKey="avgScore" name="Ortalama skor" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
+          <Bar yAxisId="right" dataKey="avgDuration" name="Ortalama sure" fill={chartPalette.mint} radius={[10, 10, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

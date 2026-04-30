@@ -1,0 +1,64 @@
+{
+  "name": "DersRotasi",
+  "short_name": "DersRotasi",
+  "description": "Tablet odakli ogrenci sinav ve calisma performansi takip uygulamasi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1320",
+  "theme_color": "#8AB4FF",
+  "shortcuts": [
+    {
+      "name": "Yeni gorev ata",
+      "short_name": "Gorev ata",
+      "description": "Ebeveyn panelinde gorev yonetimini ac.",
+      "url": "/?quick=tasks",
+      "icons": [
+        {
+          "src": "/app-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Performans analizi",
+      "short_name": "Analiz",
+      "description": "Ogrencinin calisma ve sinav analizini ac.",
+      "url": "/?quick=analysis",
+      "icons": [
+        {
+          "src": "/app-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Akademik planlama",
+      "short_name": "Planlama",
+      "description": "Mufredat, ders programi ve planlama ekranini ac.",
+      "url": "/?quick=planning",
+      "icons": [
+        {
+          "src": "/app-icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app-icon-dark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "monochrome"
+    }
+  ]
+}

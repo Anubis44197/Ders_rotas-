@@ -3,6 +3,8 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { Task } from '../../types';
 import EmptyState from '../shared/EmptyState';
 import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
+import { Info } from '../icons';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartLegendProps, chartPalette } from '../shared/chartDesign';
 
 interface PerformanceAnalyticsProps {
   tasks: Task[];
@@ -69,7 +71,7 @@ function getYearlyPerformance(tasks: Task[]) {
   return [...bucket.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([year, value]) => ({ year, ...value }));
 }
 
-const card = 'rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm';
+const card = 'ios-card rounded-[28px] p-5';
 
 const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) => {
   const completedTasks = useMemo(() => tasks.filter((task) => task.status === 'tamamlandı'), [tasks]);
@@ -87,7 +89,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
   const weakestTopics = analysis.topics.filter((topic) => topic.needsRevision).slice(0, 3);
 
   if (!completedTasks.length) {
-    return <EmptyState icon={<div className="text-xl text-slate-400">i</div>} title="Performans ozeti icin veri yok" message="Tamamlanan gorevler geldikce haftalik, aylik ve yillik ozet burada gorunecek." />;
+    return <EmptyState icon={<Info className="h-6 w-6" />} title="Performans ozeti icin veri yok" message="Tamamlanan gorevler geldikce haftalik, aylik ve yillik ozet burada gorunecek." />;
   }
 
   return (
@@ -107,13 +109,13 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
           </div>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="month" tickLine={false} axisLine={false} />
-              <YAxis tickLine={false} axisLine={false} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="completed" stroke="#2563eb" strokeWidth={3} name="Tamamlanan gorev" />
-              <Line type="monotone" dataKey="score" stroke="#f59e0b" strokeWidth={3} name="Ortalama skor" />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="month" {...chartAxisProps} />
+              <YAxis {...chartAxisProps} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name.includes('skor') ? `${value} puan` : `${value} gorev`} />} />
+              <Legend {...chartLegendProps} />
+              <Line type="monotone" dataKey="completed" stroke={chartPalette.blue} strokeWidth={3} name="Tamamlanan gorev" dot={{ r: 4, fill: chartPalette.blue, strokeWidth: 0 }} activeDot={{ r: 7 }} />
+              <Line type="monotone" dataKey="score" stroke={chartPalette.mint} strokeWidth={3} name="Ortalama skor" dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} activeDot={{ r: 7 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -125,7 +127,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
               <div className="rounded-2xl bg-emerald-50 px-4 py-3">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Guclu ders</div>
                 <div className="mt-1 font-semibold text-slate-900">{strongestCourse ? strongestCourse.courseName : 'Veri yok'}</div>
-                <div className="mt-1 text-xs text-slate-500">{strongestCourse ? `Hakimiyet ${strongestCourse.averageMastery} / Zayif konu ${strongestCourse.weakTopicCount}` : 'Tamamlanan gorev geldikce hesaplanir.'}</div>
+                <div className="mt-1 text-xs text-slate-500">{strongestCourse ? `Hakimiyet ${strongestCourse.averageMastery} / Odak konusu ${strongestCourse.weakTopicCount}` : 'Tamamlanan gorev geldikce hesaplanir.'}</div>
               </div>
               <div className="rounded-2xl bg-sky-50 px-4 py-3">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">En verimli gorev tipi</div>
@@ -166,13 +168,13 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
           <h3 className="mb-4 text-lg font-black text-slate-900">Haftalik performans</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={weeklyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="week" tickLine={false} axisLine={false} />
-              <YAxis tickLine={false} axisLine={false} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="completed" fill="#2563eb" name="Tamamlanan gorev" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="duration" fill="#10b981" name="Toplam sure (dk)" radius={[8, 8, 0, 0]} />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="week" {...chartAxisProps} />
+              <YAxis {...chartAxisProps} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name.includes('sure') ? `${value} dk` : `${value} gorev`} />} />
+              <Legend {...chartLegendProps} />
+              <Bar dataKey="completed" fill={chartPalette.blue} name="Tamamlanan gorev" radius={[10, 10, 0, 0]} />
+              <Bar dataKey="duration" fill={chartPalette.mint} name="Toplam sure (dk)" radius={[10, 10, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -181,13 +183,13 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
           <h3 className="mb-4 text-lg font-black text-slate-900">Yillik genel gorunum</h3>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={yearlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="year" tickLine={false} axisLine={false} />
-              <YAxis tickLine={false} axisLine={false} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="completed" stroke="#2563eb" strokeWidth={3} name="Tamamlanan gorev" />
-              <Line type="monotone" dataKey="duration" stroke="#10b981" strokeWidth={3} name="Toplam sure (dk)" />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="year" {...chartAxisProps} />
+              <YAxis {...chartAxisProps} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name.includes('sure') ? `${value} dk` : `${value} gorev`} />} />
+              <Legend {...chartLegendProps} />
+              <Line type="monotone" dataKey="completed" stroke={chartPalette.blue} strokeWidth={3} name="Tamamlanan gorev" dot={{ r: 4, fill: chartPalette.blue, strokeWidth: 0 }} activeDot={{ r: 7 }} />
+              <Line type="monotone" dataKey="duration" stroke={chartPalette.mint} strokeWidth={3} name="Toplam sure (dk)" dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} activeDot={{ r: 7 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

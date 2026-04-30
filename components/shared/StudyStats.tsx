@@ -1,9 +1,10 @@
 ﻿import React from 'react';
 import { Task } from '../../types';
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, Clock, Target, Trophy, Calendar, BarChart as BarChartIcon, Info } from '../icons';
 import '../child/progress-bar.css';
 import { getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartLegendProps, chartPalette, chartSeries } from './chartDesign';
 
 interface StudyStatsProps {
   tasks: Task[];
@@ -33,7 +34,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks }) => {
     return Object.entries(subjects).map(([subject, count]) => ({ name: subject, value: count }));
   }, [completedTasks]);
 
-  const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#F97316'];
+  const colors = chartSeries;
 
   const stats = React.useMemo(() => {
     const totalTasks = completedTasks.length;
@@ -47,7 +48,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks }) => {
   }, [completedTasks]);
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow-lg">
+    <div className="ios-card rounded-[28px] p-6">
       <div className="mb-6 flex items-center justify-between">
         <h3 className="flex items-center text-xl font-bold text-slate-800"><BarChartIcon className="mr-3 h-6 w-6 text-primary-600" />Gelismis Istatistikler</h3>
       </div>
@@ -60,41 +61,43 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks }) => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="ios-widget rounded-[24px] p-4">
           <div className="mb-4 flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary-600" /><h4 className="font-bold text-slate-700">7 Gunluk Performans</h4></div>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={weeklyData}>
-              <XAxis dataKey="day" />
-              <YAxis />
-              <Tooltip formatter={(value, name) => name === 'tasks' ? [`${value} gorev`, 'Tamamlanan Gorev'] : [`${value} puan`, 'Ortalama Puan']} />
-              <Legend formatter={(value) => value === 'tasks' ? 'Gorev Sayisi' : value === 'score' ? 'Ortalama Puan' : value} />
-              <Line type="monotone" dataKey="tasks" stroke="#3B82F6" strokeWidth={3} dot={{ r: 4 }} />
-              <Line type="monotone" dataKey="score" stroke="#10B981" strokeWidth={3} dot={{ r: 4 }} />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="day" {...chartAxisProps} />
+              <YAxis {...chartAxisProps} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name.includes('Puan') ? `${value} puan` : `${value} gorev`} />} />
+              <Legend {...chartLegendProps} />
+              <Line type="monotone" dataKey="tasks" name="Gorev sayisi" stroke={chartPalette.blue} strokeWidth={3} dot={{ r: 4, fill: chartPalette.blue, strokeWidth: 0 }} activeDot={{ r: 7 }} />
+              <Line type="monotone" dataKey="score" name="Ortalama puan" stroke={chartPalette.mint} strokeWidth={3} dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} activeDot={{ r: 7 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="ios-widget rounded-[24px] p-4">
           <div className="mb-4 flex items-center gap-2"><BarChartIcon className="h-5 w-5 text-primary-600" /><h4 className="font-bold text-slate-700">Ders Dagilimi</h4></div>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie data={subjectData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }: any) => `${name} %${(percent * 100).toFixed(0)}`}>
                 {subjectData.map((_, index) => <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />)}
               </Pie>
-              <Tooltip formatter={(value) => [`${value} gorev`, 'Tamamlanan']} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} gorev`} />} />
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div className="ios-widget mt-6 rounded-[24px] p-4">
         <h4 className="mb-4 flex items-center font-bold text-slate-700"><Clock className="mr-2 h-5 w-5 text-primary-600" />Gunluk Calisma Sureleri (dk)</h4>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={weeklyData}>
-            <XAxis dataKey="day" />
-            <YAxis />
-            <Tooltip formatter={(value) => [`${value} dakika`, 'Calisma Suresi']} />
-            <Bar dataKey="time" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+            <CartesianGrid {...chartGridProps} />
+            <XAxis dataKey="day" {...chartAxisProps} />
+            <YAxis {...chartAxisProps} />
+            <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} dakika`} />} />
+            <Bar dataKey="time" name="Calisma suresi" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

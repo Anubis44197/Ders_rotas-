@@ -61,7 +61,7 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
         title: 'Guclu Alanlar',
         description: `${userPerformance.strongSubjects.join(', ')} alanlarinda istikrarli performans var.`,
         actionable: true,
-        suggestion: 'Guclu oldugun dersleri zayif konulari tekrar etmek icin kaldirac olarak kullan.',
+        suggestion: 'Guclu oldugun dersleri odak isteyen konulari tekrar etmek icin kaldirac olarak kullan.',
       });
     }
 

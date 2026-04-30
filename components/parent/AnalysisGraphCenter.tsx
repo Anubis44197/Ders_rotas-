@@ -2,9 +2,16 @@ import React, { useMemo, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { AnalysisSnapshot, SessionMetrics } from '../../utils/analysisEngine';
 import { Course, SubjectCurriculum, Task } from '../../types';
+import { ChartAccessibilitySummary, ChartTooltip, chartPalette } from '../shared/chartDesign';
 
-const card = 'rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm';
-const navButton = 'w-full rounded-xl border px-3 py-2 text-left text-sm font-semibold transition';
+const card = 'ios-card rounded-[30px] p-5';
+const navButton = 'ios-button w-full rounded-[18px] px-3 py-2 text-left text-sm font-semibold transition';
+const chartGrid = chartPalette.grid;
+const chartBlue = chartPalette.blue;
+const chartMint = chartPalette.mint;
+const chartLilac = chartPalette.lilac;
+const chartCoral = chartPalette.coral;
+const chartPeach = chartPalette.peach;
 
 const normalizeForLookup = (value: string) =>
   value
@@ -46,7 +53,7 @@ interface GraphOption {
 const GRAPH_OPTIONS: GraphOption[] = [
   { key: 'general-score-trend', category: 'ust', label: 'Genel skor trendi', description: 'Gunluk ozet skorun zamani nasil takip ettigini gosterir.' },
   { key: 'course-performance', category: 'ust', label: 'Ders bazli performans', description: 'Ders hakimiyeti ve verim puanini birlikte sunar.' },
-  { key: 'risk-graph', category: 'ust', label: 'Risk grafigi', description: 'Konu bazli risk skorlarini yuksekten dusuge siralar.' },
+  { key: 'risk-graph', category: 'ust', label: 'Odak grafigi', description: 'Konu bazli destek ihtiyacini oncelik sirasiyla gosterir.' },
   { key: 'curriculum-coverage', category: 'ust', label: 'Mufredat kapsama', description: 'Mastery esigini gecen konu oranini ders bazli verir.' },
   { key: 'retention-curve', category: 'analiz', label: 'Retention egrisi', description: '1g / 7g / 30g retention ortalamalarini gosterir.' },
   { key: 'accuracy-vs-time', category: 'analiz', label: 'Accuracy vs Time', description: 'Soru oturumlarinda sure ile dogruluk iliskisini gosterir.' },
@@ -97,6 +104,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
     () => GRAPH_OPTIONS.find((option) => option.key === selectedGraph) || GRAPH_OPTIONS[0],
     [selectedGraph],
   );
+  const selectedChartSummary = `${selectedOption.description} Grafik ${CATEGORY_LABELS[selectedOption.category]} kategorisinde yer alir. Kritik bilgi aciklama ve tooltip ile de sunulur; renk tek basina anlam tasimaz.`;
 
   const generalScoreTrendData = useMemo(() => {
     const bucket = new Map<string, number[]>();
@@ -443,7 +451,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
   };
 
   const renderEmpty = (text: string) => (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">{text}</div>
+    <div className="ios-widget rounded-[22px] px-4 py-8 text-center text-sm text-slate-500">{text}</div>
   );
 
   const renderGraph = () => {
@@ -456,12 +464,12 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={generalScoreTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="date" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={3} name="Genel skor" />
+              <Line type="monotone" dataKey="score" stroke={chartBlue} strokeWidth={4} name="Genel skor" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -471,28 +479,28 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={coursePerformanceData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="courseName" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Bar dataKey="mastery" fill="#0f766e" name="Hakimiyet" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="efficiency" fill="#2563eb" name="Verim" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="mastery" fill={chartMint} name="Hakimiyet" radius={[12, 12, 0, 0]} />
+              <Bar dataKey="efficiency" fill={chartBlue} name="Verim" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
 
       case 'risk-graph':
-        if (!riskData.length) return renderEmpty('Risk verisi olusmadi.');
+        if (!riskData.length) return renderEmpty('Odak verisi olusmadi.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={riskData} layout="vertical" margin={{ left: 20, right: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis type="number" domain={[0, 100]} tickLine={false} axisLine={false} />
               <YAxis type="category" dataKey="topic" width={180} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Bar dataKey="risk" fill="#dc2626" name="Risk" radius={[0, 8, 8, 0]} />
+              <Bar dataKey="risk" fill={chartCoral} name="Takip" radius={[0, 12, 12, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -502,12 +510,12 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={coverageData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="courseName" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Bar dataKey="coverage" fill="#16a34a" name="Kapsama %" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="coverage" fill={chartMint} name="Kapsama %" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -517,12 +525,12 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={retentionData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="day" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Line type="monotone" dataKey="retention" stroke="#9333ea" strokeWidth={3} name="Retention" />
+              <Line type="monotone" dataKey="retention" stroke={chartLilac} strokeWidth={4} name="Retention" dot={{ fill: chartLilac, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -532,13 +540,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis type="number" dataKey="duration" name="Sure" unit=" dk" tickLine={false} axisLine={false} />
               <YAxis type="number" dataKey="accuracy" name="Dogruluk" unit="%" domain={[0, 100]} tickLine={false} axisLine={false} />
               <ZAxis type="number" dataKey="z" range={[60, 120]} />
-              <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ strokeDasharray: '3 3' }} />
               <Legend />
-              <Scatter name="Oturum" data={accuracyVsTimeData} fill="#2563eb" />
+              <Scatter name="Oturum" data={accuracyVsTimeData} fill={chartBlue} />
             </ScatterChart>
           </ResponsiveContainer>
         );
@@ -548,13 +556,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={bestTimeWindowData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="window" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Bar dataKey="focus" fill="#0f766e" name="Odak" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="accuracy" fill="#f59e0b" name="Dogruluk" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="focus" fill={chartMint} name="Odak" radius={[12, 12, 0, 0]} />
+              <Bar dataKey="accuracy" fill={chartPeach} name="Dogruluk" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -564,12 +572,12 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={learningEfficiencyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="label" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Line type="monotone" dataKey="efficiency" stroke="#0891b2" strokeWidth={3} name="Mastery / dk" />
+              <Line type="monotone" dataKey="efficiency" stroke={chartBlue} strokeWidth={4} name="Mastery / dk" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -579,12 +587,12 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={deepWorkData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="name" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Bar dataKey="value" fill="#7c3aed" name="Oran %" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="value" fill={chartLilac} name="Oran %" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -594,13 +602,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={emaTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="date" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Line type="monotone" dataKey="raw" stroke="#94a3b8" strokeWidth={2} name="Ham" />
-              <Line type="monotone" dataKey="ema" stroke="#2563eb" strokeWidth={3} name="EMA" />
+              <Line type="monotone" dataKey="raw" stroke="#a9b7cd" strokeWidth={2} name="Ham" dot={false} />
+              <Line type="monotone" dataKey="ema" stroke={chartBlue} strokeWidth={4} name="EMA" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -610,13 +618,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={taskTypeData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="taskType" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Bar dataKey="mastery" fill="#16a34a" name="Hakimiyet" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="efficiency" fill="#2563eb" name="Verim" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="mastery" fill={chartMint} name="Hakimiyet" radius={[12, 12, 0, 0]} />
+              <Bar dataKey="efficiency" fill={chartBlue} name="Verim" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -626,13 +634,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={readingData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="month" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
-              <Tooltip />
+              <Tooltip content={<ChartTooltip />} />
               <Legend />
-              <Line type="monotone" dataKey="pages" stroke="#0f766e" strokeWidth={3} name="Sayfa" />
-              <Line type="monotone" dataKey="comprehension" stroke="#f59e0b" strokeWidth={3} name="Comprehension" />
+              <Line type="monotone" dataKey="pages" stroke={chartMint} strokeWidth={4} name="Sayfa" dot={{ fill: chartMint, strokeWidth: 0, r: 4 }} />
+              <Line type="monotone" dataKey="comprehension" stroke={chartPeach} strokeWidth={4} name="Comprehension" dot={{ fill: chartPeach, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -651,7 +659,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 hidden lg:block">
+            <div className="ios-widget hidden rounded-[24px] p-3 lg:block">
               <div className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Kategori</div>
               <div className="grid grid-cols-1 gap-2">
                 {categoryKeys.map((key) => (
@@ -662,7 +670,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
                       setSelectedCategory(key);
                       ensureGraphInCategory(key);
                     }}
-                    className={`${navButton} ${selectedCategory === key ? 'border-primary-300 bg-primary-50 text-primary-700' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}`}
+                    className={`${navButton} ${selectedCategory === key ? 'ios-button-active' : 'text-slate-700 hover:bg-white/75'}`}
                   >
                     {CATEGORY_LABELS[key]}
                   </button>
@@ -670,7 +678,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 hidden lg:block">
+            <div className="ios-widget hidden rounded-[24px] p-3 lg:block">
               <div className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Grafik</div>
               <div className="grid grid-cols-1 gap-2">
                 {optionsInCategory.map((option) => (
@@ -678,7 +686,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
                     key={option.key}
                     type="button"
                     onClick={() => setSelectedGraph(option.key)}
-                    className={`${navButton} ${selectedGraph === option.key ? 'border-primary-300 bg-primary-50 text-primary-700' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}`}
+                    className={`${navButton} ${selectedGraph === option.key ? 'ios-button-active' : 'text-slate-700 hover:bg-white/75'}`}
                   >
                     {option.label}
                   </button>
@@ -686,7 +694,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-3 lg:hidden space-y-3">
+            <div className="ios-widget space-y-3 rounded-[24px] p-3 lg:hidden">
               <label className="text-sm font-semibold text-slate-700 block">
                 Kategori
                 <select
@@ -696,7 +704,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
                     setSelectedCategory(next);
                     ensureGraphInCategory(next);
                   }}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  className="ios-button mt-1 w-full rounded-[18px] px-3 py-2 text-sm"
                 >
                   {categoryKeys.map((key) => (
                     <option key={key} value={key}>{CATEGORY_LABELS[key]}</option>
@@ -709,7 +717,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
                 <select
                   value={selectedGraph}
                   onChange={(event) => setSelectedGraph(event.target.value as GraphKey)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  className="ios-button mt-1 w-full rounded-[18px] px-3 py-2 text-sm"
                 >
                   {optionsInCategory.map((option) => (
                     <option key={option.key} value={option.key}>{option.label}</option>
@@ -719,67 +727,72 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
             </div>
           </aside>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="ios-chart-surface rounded-[26px] p-4">
             <div className="mb-4">
               <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{CATEGORY_LABELS[selectedOption.category]}</div>
               <h4 className="mt-1 text-xl font-black text-slate-900">{selectedOption.label}</h4>
               <p className="mt-1 text-sm text-slate-500">{selectedOption.description}</p>
             </div>
-            {renderGraph()}
-
-            <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">First Attempt</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{qualityInsights.firstAttemptAverage ?? '-'}</div>
-                <p className="mt-1 text-xs text-slate-500">Ilk deneme dogruluk ortalamasi (konu bazli)</p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Altin Saat</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{goldenHourInsight.label}</div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Odak {goldenHourInsight.focus ?? '-'} / Dogruluk {goldenHourInsight.accuracy ?? '-'}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Error Type Dagilimi</div>
-                {qualityInsights.errorDistribution.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">
-                    Error type dagilimi icin yeterli soru oturumu verisi yok.
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={qualityInsights.errorDistribution}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="name" tickLine={false} axisLine={false} />
-                      <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="value" fill="#f97316" name="Oran %" radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Throughput</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{throughputInsight.correlation ?? '-'}</div>
-                <p className="mt-1 text-xs text-slate-500">Korelasyon: sure-dogruluk iliskisi ({throughputInsight.profile})</p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Akademik Ozguven</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{confidenceInsight.calibrationScore ?? '-'}</div>
-                <p className="mt-1 text-xs text-slate-500">Kalibrasyon skoru / Ortalama fark: {confidenceInsight.averageGap ?? '-'}</p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Yorgunluk Endeksi</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{fatigueInsight.fatiguePerHour ?? '-'}</div>
-                <p className="mt-1 text-xs text-slate-500">Saat basina odak dususu / Seviye: {fatigueInsight.level}</p>
-              </div>
+            <ChartAccessibilitySummary title={selectedOption.label} summary={selectedChartSummary} />
+            <div role="img" aria-label={`${selectedOption.label}. ${selectedChartSummary}`}>
+              {renderGraph()}
             </div>
+
+            {selectedGraph === 'general-score-trend' && (
+              <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <div className="ios-widget ios-blue rounded-[22px] p-4">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">İlk Deneme Doğruluğu</div>
+                  <div className="mt-2 text-3xl font-black text-slate-900">{qualityInsights.firstAttemptAverage ?? '-'}</div>
+                  <p className="mt-1 text-xs text-slate-500">Konu bazında ilk deneme doğruluk ortalaması</p>
+                </div>
+
+                <div className="ios-widget ios-mint rounded-[22px] p-4">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Altın Saat</div>
+                  <div className="mt-2 text-3xl font-black text-slate-900">{goldenHourInsight.label}</div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Odak {goldenHourInsight.focus ?? '-'} / Doğruluk {goldenHourInsight.accuracy ?? '-'}
+                  </p>
+                </div>
+
+                <div className="ios-widget ios-peach rounded-[22px] p-4">
+                  <div className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Hata Tipi Dağılımı</div>
+                  {qualityInsights.errorDistribution.length === 0 ? (
+                    <div className="ios-widget rounded-[18px] px-4 py-6 text-center text-sm text-slate-500">
+                      Hata tipi dağılımı için yeterli soru oturumu verisi yok.
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={qualityInsights.errorDistribution}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
+                        <XAxis dataKey="name" tickLine={false} axisLine={false} />
+                        <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Legend />
+                        <Bar dataKey="value" fill={chartPeach} name="Oran %" radius={[12, 12, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+
+                <div className="ios-widget ios-lilac rounded-[22px] p-4">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Verimlilik (Throughput)</div>
+                  <div className="mt-2 text-3xl font-black text-slate-900">{throughputInsight.correlation ?? '-'}</div>
+                  <p className="mt-1 text-xs text-slate-500">Süre-doğruluk ilişkisi: {throughputInsight.profile}</p>
+                </div>
+
+                <div className="ios-widget ios-coral rounded-[22px] p-4">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Akademik Özgüven</div>
+                  <div className="mt-2 text-3xl font-black text-slate-900">{confidenceInsight.calibrationScore ?? '-'}</div>
+                  <p className="mt-1 text-xs text-slate-500">Kalibrasyon skoru / Ortalama fark: {confidenceInsight.averageGap ?? '-'}</p>
+                </div>
+
+                <div className="ios-widget ios-yellow rounded-[22px] p-4">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Yorgunluk Endeksi</div>
+                  <div className="mt-2 text-3xl font-black text-slate-900">{fatigueInsight.fatiguePerHour ?? '-'}</div>
+                  <p className="mt-1 text-xs text-slate-500">Saat başına odak düşüşü / Seviye: {fatigueInsight.level}</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

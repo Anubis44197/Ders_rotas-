@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">DersRotasi tinted app icon</title>
+  <desc id="desc">A monochrome route path for tinted app icon appearances.</desc>
+  <rect width="1024" height="1024" rx="224" fill="#6fa8ff"/>
+  <path d="M281 687c0-126 92-221 220-221h42c78 0 139-57 139-130 0-66-51-118-119-118-71 0-123 50-123 118" fill="none" stroke="#ffffff" stroke-width="74" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="280" cy="687" r="74" fill="#ffffff"/>
+  <circle cx="441" cy="336" r="74" fill="#ffffff"/>
+  <path d="M681 601h-142c-31 0-57 25-57 57v54c0 31 26 57 57 57h142c31 0 57-26 57-57v-54c0-32-26-57-57-57Z" fill="#ffffff"/>
+</svg>

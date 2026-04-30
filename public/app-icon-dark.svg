@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">DersRotasi dark app icon</title>
+  <desc id="desc">A route path forming a study progress mark on a deeper pastel system background.</desc>
+  <rect width="1024" height="1024" rx="224" fill="#506079"/>
+  <path d="M281 687c0-126 92-221 220-221h42c78 0 139-57 139-130 0-66-51-118-119-118-71 0-123 50-123 118" fill="none" stroke="#a9cbff" stroke-width="74" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="280" cy="687" r="74" fill="#a9cbff"/>
+  <circle cx="280" cy="687" r="28" fill="#ffffff"/>
+  <circle cx="441" cy="336" r="74" fill="#a9cbff"/>
+  <circle cx="441" cy="336" r="28" fill="#ffffff"/>
+  <path d="M681 601h-142c-31 0-57 25-57 57v54c0 31 26 57 57 57h142c31 0 57-26 57-57v-54c0-32-26-57-57-57Z" fill="#f5f5f7"/>
+  <path d="M536 652h150M536 711h102" stroke="#6fa8ff" stroke-width="24" stroke-linecap="round"/>
+</svg>

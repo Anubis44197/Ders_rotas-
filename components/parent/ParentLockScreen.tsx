@@ -18,8 +18,8 @@ const ParentLockScreen: React.FC<ParentLockScreenProps> = ({ onUnlock, error }) 
 
   return (
     <div className="flex min-h-[calc(100vh-81px)] items-center justify-center px-4 py-10">
-      <div className="dr-panel w-full max-w-md rounded-[28px] border border-slate-200 bg-white/95 p-8 text-center shadow-xl">
-        <div className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-[24px] bg-gradient-to-br from-slate-900 to-primary-700 text-white shadow-lg">
+      <div className="ios-card w-full max-w-md rounded-[28px] p-8 text-center">
+        <div className="ios-ink mx-auto inline-flex h-20 w-20 items-center justify-center rounded-[24px] text-slate-800">
           <Lock className="h-9 w-9" />
         </div>
         <div className="mt-6">
@@ -34,7 +34,7 @@ const ParentLockScreen: React.FC<ParentLockScreenProps> = ({ onUnlock, error }) 
             onChange={(e) => setPassword(e.target.value)}
             placeholder="****"
             autoFocus
-            className="w-full rounded-[20px] border border-slate-300 bg-white px-4 py-4 text-center text-xl tracking-[0.35em] focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="ios-button w-full rounded-[20px] px-4 py-4 text-center text-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
           {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
         </form>

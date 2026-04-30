@@ -1,7 +1,8 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { Task, TaskCompletionData } from '../../types';
-import { Play, Pause, Coffee, StopCircle, Trash2, Clock } from '../icons';
+import { Play, Pause, Coffee, StopCircle, Trash2, Clock, Maximize, Minimize } from '../icons';
 import NotesModal from '../shared/NotesModal';
+import { playHaptic } from '../../utils/haptics';
 
 const formatTime = (seconds: number) => {
   const minutes = Math.floor(seconds / 60);
@@ -71,6 +72,9 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [taskNote, setTaskNote] = useState(initialTimerState?.note || '');
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
+  const sessionRef = useRef<HTMLDivElement | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTickRef = useRef<number | null>(null);
 
@@ -120,7 +124,32 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
     };
   }, [status, showCountdown, showCompleteModal, showAnalysisModal]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFocusMode(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const handleToggleFocusMode = async () => {
+    playHaptic('selection');
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      setIsFocusMode(false);
+      return;
+    }
+
+    setIsFocusMode(true);
+    try {
+      await sessionRef.current?.requestFullscreen?.();
+    } catch {
+      setIsFocusMode(true);
+    }
+  };
+
   const handleFinishRequest = () => {
+    playHaptic('selection');
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -135,9 +164,11 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
 
   const handleAnalysisSubmit = () => {
     if (totalQuestions !== task.questionCount) {
-      window.alert(`Toplam ${task.questionCount} soru olmali.`);
+      playHaptic('warning');
+      setAnalysisError(`Toplam ${task.questionCount} soru olmali.`);
       return;
     }
+    setAnalysisError('');
     setShowAnalysisModal(false);
     setShowCompleteModal(true);
   };
@@ -178,22 +209,22 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
   return (
     <>
       {wasTaskDeleted && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-sm rounded-[28px] bg-white p-6 text-center shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <div className="ios-card w-full max-w-sm rounded-[28px] p-6 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100"><Trash2 className="h-6 w-6 text-red-600" /></div>
             <h3 className="mb-2 text-xl font-black">Gorev silindi</h3>
             <p className="mb-6 text-sm leading-6 text-slate-600">Bu gorev ebeveyn tarafindan silindigi icin seans devam ettirilemez.</p>
-            <button onClick={onFinishSession} className="w-full rounded-2xl bg-primary-600 px-4 py-3 text-sm font-bold text-white hover:bg-primary-700">Anladim</button>
+            <button onClick={onFinishSession} className="ios-button-active w-full rounded-[18px] px-4 py-3 text-sm font-bold">Anladim</button>
           </div>
         </div>
       )}
 
       {showCompleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
-          <div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
+          <div className="ios-card w-full max-w-md rounded-[28px] p-6">
             <h3 className="text-2xl font-black text-slate-900">Seansi bitir</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">Tamamlamadan once sure ozetini kontrol et.</p>
-            <div className="mt-5 space-y-2 rounded-3xl bg-slate-50 p-4 text-sm">
+            <div className="ios-widget mt-5 space-y-2 rounded-[24px] p-4 text-sm">
               <div className="flex justify-between"><span className="text-slate-500">Calisma</span><strong>{formatTime(mainTime)}</strong></div>
               <div className="flex justify-between"><span className="text-slate-500">Mola</span><strong>{formatTime(breakTime)}</strong></div>
               <div className="flex justify-between"><span className="text-slate-500">Duraklatma</span><strong>{formatTime(pauseTime)}</strong></div>
@@ -207,15 +238,15 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
                 value={selfAssessmentScore}
                 onChange={(e) => setSelfAssessmentScore(e.target.value)}
                 placeholder="Opsiyonel"
-                className="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-3 text-slate-800"
+                className="ios-button mt-1 w-full rounded-[18px] px-3 py-3 text-slate-800"
               />
             </label>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button onClick={() => { setShowCompleteModal(false); setStatus('running'); }} className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">Geri don</button>
+              <button onClick={() => { setShowCompleteModal(false); setStatus('running'); }} className="ios-button rounded-[18px] px-5 py-3 text-sm font-bold text-slate-700">Geri don</button>
               <button
                 onClick={handleConfirmCompletion}
                 disabled={isCompleting}
-                className={`rounded-2xl px-5 py-3 text-sm font-bold text-white ${isCompleting ? 'cursor-not-allowed bg-slate-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                className={`rounded-[18px] px-5 py-3 text-sm font-bold ${isCompleting ? 'ios-button cursor-not-allowed text-slate-500 opacity-60' : 'ios-mint text-emerald-950'}`}
               >
                 {isCompleting ? 'Tamamlaniyor...' : 'Tamamla'}
               </button>
@@ -225,28 +256,38 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
       )}
 
       {showAnalysisModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
-          <div className="w-full max-w-lg rounded-[28px] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
+          <div className="ios-card w-full max-w-lg rounded-[28px] p-6">
             <h3 className="text-2xl font-black text-slate-900">Soru analizi</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">Dogru, yanlis ve bos sayilarini gir. Analiz ekrani bu kayittan beslenecek.</p>
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <label className="text-sm font-bold text-emerald-700">Dogru<input type="number" min="0" max={task.questionCount} value={correctCount} onChange={(e) => setCorrectCount(e.target.value)} className="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-3 text-slate-800" placeholder="0" /></label>
-              <label className="text-sm font-bold text-rose-700">Yanlis<input type="number" min="0" max={task.questionCount} value={incorrectCount} onChange={(e) => setIncorrectCount(e.target.value)} className="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-3 text-slate-800" placeholder="0" /></label>
-              <label className="text-sm font-bold text-slate-700">Bos<input type="number" min="0" max={task.questionCount} value={emptyCount} onChange={(e) => setEmptyCount(e.target.value)} className="mt-1 w-full rounded-2xl border border-slate-300 px-3 py-3 text-slate-800" placeholder="0" /></label>
+              <label className="text-sm font-bold text-emerald-700">Dogru<input type="number" min="0" max={task.questionCount} value={correctCount} onChange={(e) => setCorrectCount(e.target.value)} className="ios-button mt-1 w-full rounded-[18px] px-3 py-3 text-slate-800" placeholder="0" /></label>
+              <label className="text-sm font-bold text-rose-700">Yanlis<input type="number" min="0" max={task.questionCount} value={incorrectCount} onChange={(e) => setIncorrectCount(e.target.value)} className="ios-button mt-1 w-full rounded-[18px] px-3 py-3 text-slate-800" placeholder="0" /></label>
+              <label className="text-sm font-bold text-slate-700">Bos<input type="number" min="0" max={task.questionCount} value={emptyCount} onChange={(e) => setEmptyCount(e.target.value)} className="ios-button mt-1 w-full rounded-[18px] px-3 py-3 text-slate-800" placeholder="0" /></label>
             </div>
-            <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Toplam: <strong>{totalQuestions}</strong> / {task.questionCount}</div>
+            <div className="ios-widget mt-4 rounded-[18px] px-4 py-3 text-sm text-slate-600">Toplam: <strong>{totalQuestions}</strong> / {task.questionCount}</div>
+            {analysisError && <div className="ios-coral mt-3 rounded-[18px] px-4 py-3 text-sm font-semibold text-rose-950">{analysisError}</div>}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button onClick={() => setShowAnalysisModal(false)} className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-200">Geri don</button>
-              <button onClick={handleAnalysisSubmit} className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700">Devam et</button>
+              <button onClick={() => setShowAnalysisModal(false)} className="ios-button rounded-[18px] px-5 py-3 text-sm font-bold text-slate-700">Geri don</button>
+              <button onClick={handleAnalysisSubmit} className="ios-button-active rounded-[18px] px-5 py-3 text-sm font-bold">Devam et</button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="fixed inset-0 z-40 overflow-y-auto bg-[radial-gradient(circle_at_top,#dbeafe_0%,#eff6ff_30%,#f8fafc_100%)] px-4 py-6 pb-28 sm:px-6">
+      <div ref={sessionRef} className={`dr-session-shell fixed inset-0 z-40 overflow-y-auto bg-[radial-gradient(circle_at_top,#dbeafe_0%,#eff6ff_30%,#f8fafc_100%)] sm:px-6 ${isFocusMode ? 'dr-session-shell-full' : ''}`} role="application" aria-label="Aktif calisma seansi">
+        <button
+          type="button"
+          onClick={handleToggleFocusMode}
+          className="dr-session-focus-toggle ios-button flex items-center gap-2 rounded-[18px] px-3 py-2 text-sm font-bold text-slate-700"
+          aria-label={isFocusMode ? 'Odak modundan cik' : 'Odak moduna gec'}
+        >
+          {isFocusMode ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          <span className="hidden sm:inline">{isFocusMode ? 'Odaktan cik' : 'Odak modu'}</span>
+        </button>
         <div className="mx-auto flex min-h-full w-full max-w-6xl items-center">
           <div className="grid w-full gap-6 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
-            <aside className="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+            <aside className="dr-session-context-card ios-card rounded-[32px] p-6">
               <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Aktif seans</div>
               <h1 className="mt-2 text-3xl font-black leading-tight text-slate-900">{task.title}</h1>
               <p className="mt-3 text-sm leading-6 text-slate-500">{task.description || 'Bu gorev icin odakli calisma seansi acik.'}</p>
@@ -258,21 +299,21 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
                 {task.taskGoalType ? <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Hedef: {task.taskGoalType}</span> : null}
               </div>
               <div className="mt-6 grid grid-cols-3 gap-3">
-                <div className="rounded-3xl bg-slate-50 p-4"><div className="text-xs font-bold uppercase tracking-wide text-slate-400">Calisma</div><div className="mt-2 text-xl font-black text-slate-900">{formatTime(mainTime)}</div></div>
-                <div className="rounded-3xl bg-amber-50 p-4"><div className="text-xs font-bold uppercase tracking-wide text-amber-500">Mola</div><div className="mt-2 text-xl font-black text-amber-700">{formatTime(breakTime)}</div></div>
-                <div className="rounded-3xl bg-slate-100 p-4"><div className="text-xs font-bold uppercase tracking-wide text-slate-400">Duraklat</div><div className="mt-2 text-xl font-black text-slate-700">{formatTime(pauseTime)}</div></div>
+                <div className="ios-widget ios-blue rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Calisma</div><div className="mt-2 text-xl font-black text-slate-900">{formatTime(mainTime)}</div></div>
+                <div className="ios-widget ios-yellow rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-amber-600">Mola</div><div className="mt-2 text-xl font-black text-amber-800">{formatTime(breakTime)}</div></div>
+                <div className="ios-widget rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-slate-400">Duraklat</div><div className="mt-2 text-xl font-black text-slate-700">{formatTime(pauseTime)}</div></div>
               </div>
               <div className="mt-6 hidden grid-cols-2 gap-3 xl:grid">
-                {status === 'running' ? <button onClick={() => setStatus('paused')} className="flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-4 text-sm font-bold text-slate-700 hover:bg-slate-50"><Pause className="mr-2 h-5 w-5" />Durdur</button> : <button onClick={() => setStatus('running')} className="flex items-center justify-center rounded-2xl border border-primary-200 bg-primary-50 px-4 py-4 text-sm font-bold text-primary-700 hover:bg-primary-100"><Play className="mr-2 h-5 w-5" />Devam et</button>}
-                {status !== 'break' ? <button onClick={() => setStatus('break')} className="flex items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-bold text-amber-700 hover:bg-amber-100"><Coffee className="mr-2 h-5 w-5" />Mola ver</button> : <button onClick={() => setStatus('running')} className="flex items-center justify-center rounded-2xl bg-amber-500 px-4 py-4 text-sm font-bold text-white hover:bg-amber-600"><Coffee className="mr-2 h-5 w-5" />Molayi bitir</button>}
-                <button onClick={() => setShowNotesModal(true)} className="flex items-center justify-center rounded-2xl bg-slate-700 px-4 py-4 text-sm font-bold text-white hover:bg-slate-800"><Clock className="mr-2 h-5 w-5" />Daha sonra</button>
-                <button onClick={handleFinishRequest} className="flex items-center justify-center rounded-2xl bg-emerald-600 px-4 py-4 text-sm font-bold text-white hover:bg-emerald-700"><StopCircle className="mr-2 h-5 w-5" />Bitir</button>
+                {status === 'running' ? <button onClick={() => setStatus('paused')} className="ios-button flex items-center justify-center rounded-[18px] px-4 py-4 text-sm font-bold text-slate-700"><Pause className="mr-2 h-5 w-5" />Durdur</button> : <button onClick={() => setStatus('running')} className="ios-button-active flex items-center justify-center rounded-[18px] px-4 py-4 text-sm font-bold"><Play className="mr-2 h-5 w-5" />Devam et</button>}
+                {status !== 'break' ? <button onClick={() => setStatus('break')} className="ios-yellow flex items-center justify-center rounded-[18px] px-4 py-4 text-sm font-bold text-amber-900"><Coffee className="mr-2 h-5 w-5" />Mola ver</button> : <button onClick={() => setStatus('running')} className="ios-yellow flex items-center justify-center rounded-[18px] px-4 py-4 text-sm font-bold text-amber-900"><Coffee className="mr-2 h-5 w-5" />Molayi bitir</button>}
+                <button onClick={() => setShowNotesModal(true)} className="ios-button flex items-center justify-center rounded-[18px] px-4 py-4 text-sm font-bold text-slate-700"><Clock className="mr-2 h-5 w-5" />Daha sonra</button>
+                <button onClick={handleFinishRequest} className="ios-mint flex items-center justify-center rounded-[18px] px-4 py-4 text-sm font-bold text-emerald-950"><StopCircle className="mr-2 h-5 w-5" />Bitir</button>
               </div>
             </aside>
 
-            <section className="rounded-[36px] border border-white/70 bg-white/90 p-6 shadow-xl backdrop-blur">
+            <section className="ios-card rounded-[36px] p-6">
               <div className="mb-5 flex items-center justify-between">
-                <div><div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Canli takip</div><h2 className="mt-1 text-2xl font-black text-slate-900">Seans gostergesi</h2></div>
+                <div><div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Canli takip</div><h2 className="mt-1 text-2xl font-black text-slate-900">Seans gostergesi</h2></div>
                 <div className={`rounded-full px-4 py-2 text-sm font-bold ${isOvertime ? 'bg-rose-100 text-rose-700' : status === 'break' ? 'bg-amber-100 text-amber-700' : status === 'paused' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>{isOvertime ? 'Ekstra sure' : status === 'break' ? 'Molada' : status === 'paused' ? 'Durakladi' : 'Calisiyor'}</div>
               </div>
               <div className="flex min-h-[420px] flex-col items-center justify-center">
@@ -287,9 +328,9 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
                   </div>
                 </div>
                 <div className="mt-4 grid w-full max-w-2xl gap-3 md:grid-cols-3">
-                  <div className="rounded-3xl bg-slate-50 p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-400">Plan doluluk</div><div className="mt-2 text-2xl font-black text-slate-900">{Math.round(progress * 100)}%</div></div>
-                  <div className="rounded-3xl bg-slate-50 p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-400">Durum</div><div className="mt-2 text-2xl font-black text-slate-900">{status === 'running' ? 'Akis' : status === 'break' ? 'Mola' : 'Bekle'}</div></div>
-                  <div className="rounded-3xl bg-slate-50 p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-400">Not</div><div className="mt-2 truncate text-sm font-bold text-slate-900">{taskNote || 'Yok'}</div></div>
+                  <div className="ios-widget ios-blue rounded-[22px] p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Plan doluluk</div><div className="mt-2 text-2xl font-black text-slate-900">{Math.round(progress * 100)}%</div></div>
+                  <div className="ios-widget ios-mint rounded-[22px] p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Durum</div><div className="mt-2 text-2xl font-black text-slate-900">{status === 'running' ? 'Akis' : status === 'break' ? 'Mola' : 'Bekle'}</div></div>
+                  <div className="ios-widget ios-lilac rounded-[22px] p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Not</div><div className="mt-2 truncate text-sm font-bold text-slate-900">{taskNote || 'Yok'}</div></div>
                 </div>
               </div>
             </section>
@@ -297,12 +338,12 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur xl:hidden">
+      <div className="ios-panel fixed bottom-0 left-0 right-0 z-40 px-4 py-3 xl:hidden">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-2">
-          {status === 'running' ? <button onClick={() => setStatus('paused')} className="flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"><Pause className="mr-2 h-5 w-5" />Durdur</button> : <button onClick={() => setStatus('running')} className="flex items-center justify-center rounded-2xl border border-primary-200 bg-primary-50 px-3 py-3 text-sm font-bold text-primary-700 hover:bg-primary-100"><Play className="mr-2 h-5 w-5" />Devam et</button>}
-          {status !== 'break' ? <button onClick={() => setStatus('break')} className="flex items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-bold text-amber-700 hover:bg-amber-100"><Coffee className="mr-2 h-5 w-5" />Mola ver</button> : <button onClick={() => setStatus('running')} className="flex items-center justify-center rounded-2xl bg-amber-500 px-3 py-3 text-sm font-bold text-white hover:bg-amber-600"><Coffee className="mr-2 h-5 w-5" />Molayi bitir</button>}
-          <button onClick={() => setShowNotesModal(true)} className="flex items-center justify-center rounded-2xl bg-slate-700 px-3 py-3 text-sm font-bold text-white hover:bg-slate-800"><Clock className="mr-2 h-5 w-5" />Daha sonra</button>
-          <button onClick={handleFinishRequest} className="flex items-center justify-center rounded-2xl bg-emerald-600 px-3 py-3 text-sm font-bold text-white hover:bg-emerald-700"><StopCircle className="mr-2 h-5 w-5" />Bitir</button>
+          {status === 'running' ? <button onClick={() => setStatus('paused')} className="ios-button flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold text-slate-700"><Pause className="mr-2 h-5 w-5" />Durdur</button> : <button onClick={() => setStatus('running')} className="ios-button-active flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold"><Play className="mr-2 h-5 w-5" />Devam et</button>}
+          {status !== 'break' ? <button onClick={() => setStatus('break')} className="ios-yellow flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold text-amber-900"><Coffee className="mr-2 h-5 w-5" />Mola ver</button> : <button onClick={() => setStatus('running')} className="ios-yellow flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold text-amber-900"><Coffee className="mr-2 h-5 w-5" />Molayi bitir</button>}
+          <button onClick={() => setShowNotesModal(true)} className="ios-button flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold text-slate-700"><Clock className="mr-2 h-5 w-5" />Daha sonra</button>
+          <button onClick={handleFinishRequest} className="ios-mint flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold text-emerald-950"><StopCircle className="mr-2 h-5 w-5" />Bitir</button>
         </div>
       </div>
 

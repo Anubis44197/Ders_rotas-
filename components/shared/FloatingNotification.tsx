@@ -175,10 +175,12 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
 
     return (
         <>
-            <div className="fixed bottom-6 right-6 z-50">
+            <div className="fixed bottom-6 right-6 z-50" aria-live="polite">
                 <button
                     onClick={() => setShowPanel(!showPanel)}
-                    className="relative bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-105"
+                    aria-label={`Bildirimler. ${unreadCount} okunmamis bildirim`}
+                    aria-expanded={showPanel}
+                    className="ios-button-active relative rounded-full p-4 transition-all duration-200 hover:scale-105"
                 >
                     <Bell className="w-6 h-6" />
                     {unreadCount > 0 && (
@@ -190,7 +192,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
             </div>
 
             {showPanel && (
-                <div className="fixed bottom-24 right-6 z-50 w-96 max-w-[calc(100vw-3rem)] bg-white rounded-xl shadow-2xl border border-slate-200 max-h-[70vh] overflow-hidden">
+                <div className="ios-card fixed bottom-24 right-6 z-50 max-h-[70vh] w-96 max-w-[calc(100vw-3rem)] overflow-hidden rounded-[24px]" role="dialog" aria-modal="false" aria-label="Bildirimler">
                     <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
                         <div>
                             <h3 className="font-bold text-lg text-slate-800">Bildirimler</h3>
@@ -202,7 +204,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                                     Tumunu oku
                                 </button>
                             )}
-                            <button onClick={() => setShowPanel(false)} className="p-1 hover:bg-slate-200 rounded-lg transition-colors">
+                            <button onClick={() => setShowPanel(false)} className="ios-button rounded-full p-1 transition-colors" aria-label="Bildirim panelini kapat">
                                 <X className="w-5 h-5 text-slate-500" />
                             </button>
                         </div>
@@ -224,7 +226,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                                                 </p>
                                                 <p className="text-xs text-slate-400 mt-2">{notification.timestamp.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
                                             </div>
-                                            <button onClick={() => deleteNotification(notification.id)} className="flex-shrink-0 p-1 hover:bg-white hover:bg-opacity-60 rounded transition-colors">
+                                            <button onClick={() => deleteNotification(notification.id)} className="ios-button flex-shrink-0 rounded-full p-1 transition-colors" aria-label={`${notification.title} bildirimini sil`}>
                                                 <X className="w-4 h-4 text-slate-400" />
                                             </button>
                                         </div>

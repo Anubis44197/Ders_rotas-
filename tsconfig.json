@@ -30,7 +30,20 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "**/*",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.d.ts",
+    "**/*.js",
     "vite-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".git",
+    ".firebase",
+    ".playwright-mcp",
+    "docs",
+    "public",
+    "Anubis44197-ders-tak-p"
   ]
 }

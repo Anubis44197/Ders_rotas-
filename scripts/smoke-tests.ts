@@ -3,10 +3,10 @@ import { calculateTaskPoints } from '../utils/scoringAlgorithm';
 import type { Course, Reward, Task, TaskCompletionData } from '../types';
 
 const today = new Date();
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-const daysAgo = (n: number) => {
+const iso = (date: Date) => date.toISOString().slice(0, 10);
+const daysAgo = (count: number) => {
   const copy = new Date(today);
-  copy.setDate(copy.getDate() - n);
+  copy.setDate(copy.getDate() - count);
   return iso(copy);
 };
 
@@ -47,9 +47,7 @@ const runAssignmentCompletionRewardFlow = () => {
   const assignmentTask = baseTask({ taskType: 'soru çözme', questionCount: 20, title: 'Soru cozme gorevi' });
   const scoring = calculateTaskPoints(assignmentTask, completion, 82, 78);
 
-  let successPoints = 0;
-  successPoints += scoring.pointsAwarded;
-
+  let successPoints = scoring.pointsAwarded;
   const reward: Reward = { id: 'r1', name: 'Mini Odul', cost: Math.max(1, scoring.pointsAwarded - 1), icon: 'Gift' };
   const canClaim = successPoints >= reward.cost;
   if (canClaim) {

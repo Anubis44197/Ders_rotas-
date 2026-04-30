@@ -65,6 +65,7 @@ export interface CourseMetrics {
   averageAccuracy?: number;
   averageEfficiency: number;
   averageMastery: number;
+  averageRisk: number;
   weakTopicCount: number;
 }
 
@@ -516,6 +517,7 @@ export const deriveAnalysisSnapshot = (
       averageAccuracy: accuracyValues.length > 0 ? Math.round(accuracyValues.reduce((sum, value) => sum + value, 0) / accuracyValues.length) : undefined,
       averageEfficiency: Math.round(bucket.reduce((sum, item) => sum + item.averageEfficiency, 0) / bucket.length),
       averageMastery: clamp(Math.round((bucket.reduce((sum, item) => sum + item.masteryScore, 0) / bucket.length) - weakTopics.length * 2)),
+      averageRisk: Math.round(bucket.reduce((sum, item) => sum + item.riskScore, 0) / bucket.length),
       weakTopicCount: weakTopics.length,
     };
   }).sort((a, b) => b.averageMastery - a.averageMastery);
@@ -681,7 +683,7 @@ export const deriveAnalysisSnapshot = (
       predictedSchoolScore,
       alignmentGap,
       alignmentStatus: getAlignmentStatus(alignmentGap),
-      trend: courseMetrics?.weakTopicCount ? (courseMetrics.weakTopicCount >= 2 ? 'down' : 'flat') : 'flat',
+      trend: (courseMetrics?.weakTopicCount ? (courseMetrics.weakTopicCount >= 2 ? 'down' : 'flat') : 'flat') as PeriodCoursePerformance['trend'],
       riskLevel: getRiskLevelLabel(courseMetrics ? 100 - courseMetrics.averageMastery : 0),
     };
   }).sort((left, right) => {

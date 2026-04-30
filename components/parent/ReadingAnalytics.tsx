@@ -2,12 +2,13 @@
 import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter } from 'recharts';
 import { BookOpen, Info } from '../icons';
 import { Task } from '../../types';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries } from '../shared/chartDesign';
 
 interface ReadingAnalyticsProps {
   tasks: Task[];
 }
 
-const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#7c3aed', '#06b6d4'];
+const COLORS = chartSeries;
 
 const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
   const readingTasks = useMemo(
@@ -66,61 +67,61 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="ios-widget rounded-[24px] p-6">
           <p className="text-sm font-medium text-gray-600">En Cok Okunan Tur</p>
           <p className="mt-2 text-2xl font-bold text-indigo-600">{favoriteGenre}</p>
         </div>
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="ios-widget rounded-[24px] p-6">
           <p className="text-sm font-medium text-gray-600">En Cok Okunan Kitap</p>
           <p className="mt-2 text-2xl font-bold text-emerald-600">{favoriteBook}</p>
         </div>
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="ios-widget rounded-[24px] p-6">
           <p className="text-sm font-medium text-gray-600">Toplam Okunan Sayfa</p>
           <p className="mt-2 text-2xl font-bold text-sky-600">{totalPages}</p>
         </div>
       </div>
 
-      <div className="rounded-xl border bg-white p-6 shadow-sm">
+      <div className="ios-card rounded-[28px] p-6">
         <div className="mb-6 flex items-center gap-2">
           <h3 className="text-lg font-semibold text-gray-900">Haftalik Okuma Skoru</h3>
           <Info className="h-4 w-4 text-slate-400" />
         </div>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={weeklyScores}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="day" />
-            <YAxis />
-            <Tooltip />
-            <Line type="monotone" dataKey="score" stroke="#f59e0b" strokeWidth={3} dot={{ fill: '#f59e0b' }} />
+            <CartesianGrid {...chartGridProps} />
+            <XAxis dataKey="day" {...chartAxisProps} />
+            <YAxis {...chartAxisProps} />
+            <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} puan`} />} />
+            <Line type="monotone" dataKey="score" name="Okuma skoru" stroke={chartPalette.lilac} strokeWidth={3} dot={{ r: 4, fill: chartPalette.lilac, strokeWidth: 0 }} activeDot={{ r: 7 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="ios-card rounded-[28px] p-6">
           <h3 className="mb-6 text-lg font-semibold text-gray-900">Aylik Okuma Trendi</h3>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="books" fill="#2563eb" radius={4} />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="month" {...chartAxisProps} />
+              <YAxis {...chartAxisProps} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} kitap`} />} />
+              <Bar dataKey="books" name="Kitap" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="ios-card rounded-[28px] p-6">
           <h3 className="mb-6 text-lg font-semibold text-gray-900">Tur Dagilimi</h3>
           {genreData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={genreData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, value }) => `${name} (${value})`}>
+                <Pie data={genreData} cx="50%" cy="50%" innerRadius={52} outerRadius={90} dataKey="value">
                   {genreData.map((entry, index) => (
                     <Cell key={`genre-${entry.name}-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} okuma`} />} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -132,15 +133,15 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
         </div>
       </div>
 
-      <div className="rounded-xl border bg-white p-6 shadow-sm">
+      <div className="ios-card rounded-[28px] p-6">
         <h3 className="mb-6 text-lg font-semibold text-gray-900">Sure ve Skor Iliskisi</h3>
         <ResponsiveContainer width="100%" height={260}>
           <ScatterChart>
-            <CartesianGrid />
-            <XAxis dataKey="duration" name="Sure" unit=" dk" />
-            <YAxis dataKey="score" name="Skor" />
-            <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-            <Scatter name="Okuma" data={durationScoreData} fill="#ef4444" />
+            <CartesianGrid {...chartGridProps} />
+            <XAxis dataKey="duration" name="Sure" unit=" dk" {...chartAxisProps} />
+            <YAxis dataKey="score" name="Skor" {...chartAxisProps} />
+            <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name === 'Skor' ? `${value} puan` : `${value}`} />} cursor={{ stroke: chartPalette.blue, strokeDasharray: '2 8' }} />
+            <Scatter name="Okuma" data={durationScoreData} fill={chartPalette.coral} />
           </ScatterChart>
         </ResponsiveContainer>
       </div>

@@ -2,87 +2,79 @@ import React, { useState } from 'react';
 import { X, FileText } from '../icons';
 
 interface NotesModalProps {
-    show: boolean;
-    onClose: () => void;
-    onSave: (note: string) => void;
-    taskName: string;
-    initialNote?: string;
+  show: boolean;
+  onClose: () => void;
+  onSave: (note: string) => void;
+  taskName: string;
+  initialNote?: string;
 }
 
-const NotesModal: React.FC<NotesModalProps> = ({ 
-    show, 
-    onClose, 
-    onSave, 
-    taskName, 
-    initialNote = '' 
+const NotesModal: React.FC<NotesModalProps> = ({
+  show,
+  onClose,
+  onSave,
+  taskName,
+  initialNote = '',
 }) => {
-    const [note, setNote] = useState(initialNote);
+  const [note, setNote] = useState(initialNote);
 
-    if (!show) return null;
+  if (!show) return null;
 
-    const handleSave = () => {
-        onSave(note);
-        onClose();
-    };
+  const handleSave = () => {
+    onSave(note);
+    onClose();
+  };
 
-    const handleClose = () => {
-        setNote(initialNote); // Reset to initial value
-        onClose();
-    };
+  const handleClose = () => {
+    setNote(initialNote);
+    onClose();
+  };
 
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center" onClick={handleClose}>
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center space-x-2">
-                        <FileText className="w-5 h-5 text-blue-600" />
-                        <h3 className="text-xl font-bold text-gray-800">Not Ekle</h3>
-                    </div>
-                    <button 
-                        onClick={handleClose} 
-                        aria-label="Kapat" 
-                        title="Kapat" 
-                        className="text-gray-500 hover:text-gray-800 text-2xl font-light"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
-                </div>
-                
-                <div className="space-y-4">
-                    <div>
-                        <p className="text-sm text-gray-600 mb-2">
-                            <span className="font-medium">{taskName}</span> görevi için not:
-                        </p>
-                        <textarea
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            placeholder="Nerede kaldığını, ne düşündügünü veya hatırlamanı istedigin şeyleri yaz..."
-                            className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                            maxLength={500}
-                        />
-                        <div className="text-xs text-gray-500 mt-1">
-                            {note.length}/500 karakter
-                        </div>
-                    </div>
-                    
-                    <div className="flex space-x-3">
-                        <button
-                            onClick={handleClose}
-                            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                        >
-                            İptal
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                        >
-                            Kaydet ve Devam Et
-                        </button>
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" onClick={handleClose}>
+      <div className="ios-card w-full max-w-lg rounded-[28px] p-6" role="dialog" aria-modal="true" aria-labelledby="notes-modal-title" onClick={(event) => event.stopPropagation()}>
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-blue-600" />
+            <h3 id="notes-modal-title" className="text-xl font-bold text-slate-900">Not Ekle</h3>
+          </div>
+          <button onClick={handleClose} aria-label="Kapat" title="Kapat" className="ios-button flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:text-slate-800">
+            <X className="h-5 w-5" />
+          </button>
         </div>
-    );
+
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="session-note" className="mb-2 block text-sm font-semibold text-slate-700">
+              <span className="font-bold text-slate-900">{taskName}</span> gorevi icin not
+            </label>
+            <textarea
+              id="session-note"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Nerede kaldigini, neyi hatirlamak istedigini veya sonraki adimi yaz..."
+              className="dr-text-view"
+              maxLength={500}
+              rows={5}
+            />
+            <div className="dr-text-view-meta mt-2">
+              <span>Uzun notlar kendi alaninda kaydirilir.</span>
+              <span>{note.length}/500</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button onClick={handleClose} className="ios-button flex-1 rounded-[18px] px-4 py-3 font-bold text-slate-700">
+              Iptal
+            </button>
+            <button onClick={handleSave} className="ios-button-active flex-1 rounded-[18px] px-4 py-3 font-black">
+              Kaydet ve Devam Et
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default NotesModal;

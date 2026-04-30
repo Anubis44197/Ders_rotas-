@@ -3,6 +3,7 @@ import { Task } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Clock, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartLegendProps, chartPalette } from '../shared/chartDesign';
 
 interface BestPeriodAnalysisProps {
   tasks: Task[];
@@ -73,7 +74,7 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
 
   if (loading) {
     return (
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="ios-card rounded-[28px] p-6">
         <h3 className="mb-4 flex items-center text-xl font-bold"><Clock className="mr-2 h-6 w-6 text-primary-600" />En verimli zaman</h3>
         <LoadingSpinner />
       </div>
@@ -82,7 +83,7 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
 
   if (error) {
     return (
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
+      <div className="ios-card rounded-[28px] p-6">
         <h3 className="mb-4 flex items-center text-xl font-bold"><Clock className="mr-2 h-6 w-6 text-primary-600" />En verimli zaman</h3>
         <ErrorState error={error} />
       </div>
@@ -94,15 +95,15 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
   }
 
   return (
-    <div className="rounded-2xl border bg-white p-6 shadow-sm">
+    <div className="ios-card rounded-[28px] p-6">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h3 className="flex items-center text-xl font-bold"><Clock className="mr-2 h-6 w-6 text-primary-600" />En verimli zaman</h3>
           <p className="text-sm text-slate-500">Tamamlanan gorevlerde skor ortalamasi hangi gun ve saatlerde yukseliyor.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">En guclu gun: <strong>{bestDay?.day || '-'}</strong></div>
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">En guclu saat: <strong>{bestHour?.hour || '-'}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">En guclu gun: <strong>{bestDay?.day || '-'}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">En guclu saat: <strong>{bestHour?.hour || '-'}</strong></div>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -110,13 +111,13 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
           <h4 className="mb-2 font-semibold text-slate-800">Gun bazli skor</h4>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={weekdayData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" fontSize={12} />
-              <YAxis domain={[0, 100]} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="score" name="Skor" fill="#2563eb" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="count" name="Gorev" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="day" {...chartAxisProps} />
+              <YAxis domain={[0, 100]} {...chartAxisProps} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name === 'Skor' ? `${value} puan` : `${value} gorev`} />} />
+              <Legend {...chartLegendProps} />
+              <Bar dataKey="score" name="Skor" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
+              <Bar dataKey="count" name="Gorev" fill={chartPalette.mint} radius={[10, 10, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -124,13 +125,13 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
           <h4 className="mb-2 font-semibold text-slate-800">Saat bazli skor</h4>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={hourData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hour" fontSize={12} interval={2} />
-              <YAxis domain={[0, 100]} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="score" name="Skor" fill="#10b981" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="count" name="Gorev" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="hour" interval={2} {...chartAxisProps} />
+              <YAxis domain={[0, 100]} {...chartAxisProps} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name === 'Skor' ? `${value} puan` : `${value} gorev`} />} />
+              <Legend {...chartLegendProps} />
+              <Bar dataKey="score" name="Skor" fill={chartPalette.lilac} radius={[10, 10, 0, 0]} />
+              <Bar dataKey="count" name="Gorev" fill={chartPalette.peach} radius={[10, 10, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

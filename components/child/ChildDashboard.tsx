@@ -7,9 +7,11 @@ import StudyStats from './StudyStats';
 import { Trophy, PlusCircle, Play, Gift, BadgeCheck, Target, BarChart, Brain, BookMarked, Calendar, CheckCircle } from '../icons';
 import { getTodayString, getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
 import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
+import { ChartTooltip, chartAxisProps, chartPalette } from '../shared/chartDesign';
+import ContextHelp from '../shared/ContextHelp';
 
-const card = 'rounded-[26px] border border-slate-200 bg-white p-4 shadow-sm';
-const subtleCard = 'rounded-[26px] border border-slate-200 bg-white/95 p-4 shadow-sm';
+const card = 'ios-card rounded-[28px] p-4';
+const subtleCard = 'ios-widget rounded-[26px] p-4';
 const looksCorrupted = (value?: string) => typeof value === 'string' && (value.includes('\u00C3') || value.includes('\u00C2') || value.includes('\u00E2'));
 
 const repairText = (value?: string) => {
@@ -54,6 +56,12 @@ const safePlanSource = (value?: string) => planSourceLabelMap[safeText(value, ''
 const getTaskDateKey = (value?: string) => {
   if (typeof value !== 'string' || !value) return '';
   return value.split('T')[0];
+};
+
+const formatTime = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 };
 
 const parseSavedTimerState = (taskId: string): ResumeTimerState | undefined => {
@@ -140,10 +148,10 @@ const WeeklyPointsPanel: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
       </div>
       <ResponsiveContainer width="100%" height={150}>
         <RechartsBarChart data={weeklyData} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
-          <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={12} />
-          <YAxis tickLine={false} axisLine={false} fontSize={12} />
-          <Tooltip formatter={(value) => [`${value} BP`, 'Puan']} />
-          <Bar dataKey="points" radius={[10, 10, 0, 0]} fill="#2563eb" />
+          <XAxis dataKey="day" {...chartAxisProps} />
+          <YAxis {...chartAxisProps} />
+          <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} BP`} />} />
+          <Bar dataKey="points" name="Puan" radius={[12, 12, 0, 0]} fill={chartPalette.blue} />
         </RechartsBarChart>
       </ResponsiveContainer>
     </div>
@@ -176,9 +184,9 @@ const ReadingLibraryPanel: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
         <BookMarked className="h-5 w-5 text-teal-500" />
       </div>
       <div className="space-y-3">
-        {books.length === 0 && <div className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">Henuz tamamlanmis kitap okuma oturumu yok.</div>}
+        {books.length === 0 && <div className="ios-widget rounded-[20px] px-4 py-5 text-sm text-slate-500">Henuz tamamlanmis kitap okuma oturumu yok.</div>}
         {books.map((book) => (
-          <div key={book.title} className="rounded-2xl bg-slate-50 px-4 py-3">
+          <div key={book.title} className="ios-widget rounded-[20px] px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="truncate font-semibold text-slate-800">{book.title}</div>
@@ -208,7 +216,7 @@ const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task,
   const isOverdue = !completed && getTaskDateKey(task.dueDate) < today;
 
   return (
-    <div className={`rounded-[24px] border bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md ${isOverdue ? 'border-rose-200' : 'border-slate-200'}`}>
+    <div className={`ios-widget rounded-[24px] p-4 transition ${isOverdue ? 'ios-coral' : ''}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -217,7 +225,7 @@ const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task,
             <span>{formatTaskType(task.taskType)}</span>
             <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] tracking-normal text-slate-600">{safeText(task.planLabel, '') || safePlanSource(task.planSource)}</span>
             {task.isSelfAssigned && <span className="rounded-full bg-indigo-100 px-2 py-1 text-[11px] tracking-normal text-indigo-700">Serbest</span>}
-            {isOverdue && <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] tracking-normal text-rose-700">Gecikti</span>}
+            {isOverdue && <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] tracking-normal text-rose-700">Takipte</span>}
           </div>
           <h4 className="mt-2 text-lg font-bold leading-7 text-slate-900">{safeText(task.bookTitle || task.title, 'Gorev')}</h4>
           <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
@@ -230,9 +238,9 @@ const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task,
           </div>
           {completed ? (
             <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-              <div className="rounded-2xl bg-slate-50 px-3 py-2"><div className="text-slate-400">Basari</div><div className="font-bold text-slate-800">{task.successScore || 0}</div></div>
-              <div className="rounded-2xl bg-slate-50 px-3 py-2"><div className="text-slate-400">Odak</div><div className="font-bold text-slate-800">{task.focusScore || 0}</div></div>
-              <div className="rounded-2xl bg-slate-50 px-3 py-2"><div className="text-slate-400">Puan</div><div className="font-bold text-amber-600">+{task.pointsAwarded || 0}</div></div>
+              <div className="ios-widget rounded-[18px] px-3 py-2"><div className="text-slate-400">Basari</div><div className="font-bold text-slate-800">{task.successScore || 0}</div></div>
+              <div className="ios-widget rounded-[18px] px-3 py-2"><div className="text-slate-400">Odak</div><div className="font-bold text-slate-800">{task.focusScore || 0}</div></div>
+              <div className="ios-widget ios-yellow rounded-[18px] px-3 py-2"><div className="text-slate-500">Puan</div><div className="font-bold text-amber-700">+{task.pointsAwarded || 0}</div></div>
             </div>
           ) : null}
         </div>
@@ -244,7 +252,7 @@ const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task,
           <button
             onClick={() => onStart(task, resumeState)}
             disabled={isStarting}
-            className={`self-start rounded-2xl px-5 py-3 text-sm font-bold text-white ${isStarting ? 'cursor-not-allowed bg-slate-300 text-slate-600' : isPaused ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-600 hover:bg-primary-700'}`}
+            className={`self-start rounded-[18px] px-5 py-3 text-sm font-bold ${isStarting ? 'ios-button cursor-not-allowed text-slate-500 opacity-60' : isPaused ? 'ios-yellow text-amber-950' : 'ios-button-active text-slate-900'}`}
           >
             <Play className="mr-2 inline h-4 w-4" />
             {isStarting ? 'Baslatiliyor...' : isPaused ? 'Devam et' : 'Baslat'}
@@ -366,6 +374,12 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
   const readPages = useMemo(() => completedTasksForSummary
     .filter((task) => task.taskType === 'kitap okuma')
     .reduce((sum, task) => sum + (task.pagesRead || 0), 0), [completedTasksForSummary]);
+  const resumableSessions = useMemo(() => tasks
+    .filter((task) => task.status === 'bekliyor')
+    .map((task) => ({ task, timerState: parseSavedTimerState(task.id) }))
+    .filter((item): item is { task: Task; timerState: ResumeTimerState } => Boolean(item.timerState))
+    .sort((left, right) => (right.timerState.pausedAt || 0) - (left.timerState.pausedAt || 0)), [tasks]);
+  const currentLiveSession = resumableSessions[0];
 
   const topTopic = analysis.topics[0];
   const weakestTopic = analysis.topics.find((topic) => topic.needsRevision) || analysis.topics[0];
@@ -459,14 +473,14 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 lg:px-6">
-      <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.14),_transparent_34%),linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 py-5 shadow-sm">
+      <section className="ios-card overflow-hidden rounded-[32px] px-5 py-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
-            <div className="mb-3 inline-flex items-center rounded-full border border-blue-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Cocuk paneli</div>
+            <div className="ios-blue mb-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-900">Cocuk paneli</div>
             <h2 className="text-[28px] font-black tracking-tight text-slate-900">Bugunku calisma alani</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">Atanan gorevler, serbest calisma ve ilerleme ozetleri tek yerde. Burada once ne calisacagini net gorursun.</p>
           </div>
-          <div className="flex items-center gap-3 self-start rounded-[24px] bg-slate-950 px-4 py-3 text-white shadow-lg shadow-slate-300/40">
+          <div className="ios-ink flex items-center gap-3 self-start rounded-[24px] px-4 py-3 text-white">
             <Trophy className="h-6 w-6 text-amber-300" />
             <div>
               <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Basari Puani</div>
@@ -476,18 +490,43 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
         </div>
       </section>
 
+      {currentLiveSession && (
+        <section className="ios-card ios-mint rounded-[30px] p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-800">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                Canli seans
+              </div>
+              <h3 className="truncate text-xl font-black text-slate-900">{safeText(currentLiveSession.task.bookTitle || currentLiveSession.task.title, 'Calisma')}</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Calisma {formatTime(currentLiveSession.timerState.mainTime)} / Mola {formatTime(currentLiveSession.timerState.breakTime)} / Durum {currentLiveSession.timerState.status === 'break' ? 'Molada' : currentLiveSession.timerState.status === 'paused' ? 'Durakladi' : 'Akista'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => startSelectedTask(currentLiveSession.task, currentLiveSession.timerState)}
+              className="ios-button-active flex shrink-0 items-center justify-center gap-2 rounded-[20px] px-5 py-3 text-sm font-black"
+            >
+              <Play className="h-4 w-4" />
+              Devam et
+            </button>
+          </div>
+        </section>
+      )}
+
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bugun atanan</div><div className="mt-2 text-2xl font-black text-slate-900">{assignedTodayCount}</div><div className="mt-1 text-sm text-slate-500">Planlanan gorev</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bugun biten</div><div className="mt-2 text-2xl font-black text-emerald-600">{completedToday.length}</div><div className="mt-1 text-sm text-slate-500">Tamamlanan oturum</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Odak</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageFocus}</div><div className="mt-1 text-sm text-slate-500">Genel ortalama</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hakimiyet</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageMastery}</div><div className="mt-1 text-sm text-slate-500">Konu tabanli skor</div></div>
+        <div className={`${card} ios-blue`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bugun atanan</div><div className="mt-2 text-2xl font-black text-slate-900">{assignedTodayCount}</div><div className="mt-1 text-sm text-slate-500">Planlanan gorev</div></div>
+        <div className={`${card} ios-mint`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bugun biten</div><div className="mt-2 text-2xl font-black text-emerald-700">{completedToday.length}</div><div className="mt-1 text-sm text-slate-500">Tamamlanan oturum</div></div>
+        <div className={`${card} ios-lilac`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Odak</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageFocus}</div><div className="mt-1 text-sm text-slate-500">Genel ortalama</div></div>
+        <div className={`${card} ios-peach`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hakimiyet</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageMastery}</div><div className="mt-1 text-sm text-slate-500">Konu tabanli skor</div></div>
       </section>
 
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
-        <button onClick={() => setActiveView('tasks')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'tasks' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 shadow-sm'}`}><Target className="mr-2 inline h-4 w-4" />Gorevler</button>
-        <button onClick={() => setActiveView('treasures')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'treasures' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 shadow-sm'}`}><Gift className="mr-2 inline h-4 w-4" />Oduller</button>
-        <button onClick={() => setActiveView('stats')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'stats' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 shadow-sm'}`}><BarChart className="mr-2 inline h-4 w-4" />Istatistik</button>
-        <button onClick={() => setActiveView('assistant')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'assistant' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 shadow-sm'}`}><Brain className="mr-2 inline h-4 w-4" />Koc</button>
+      <div className="ios-panel flex flex-wrap gap-2 rounded-[26px] p-2">
+        <button onClick={() => setActiveView('tasks')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'tasks' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><Target className="mr-2 inline h-4 w-4" />Gorevler</button>
+        <button onClick={() => setActiveView('treasures')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'treasures' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><Gift className="mr-2 inline h-4 w-4" />Oduller</button>
+        <button onClick={() => setActiveView('stats')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'stats' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><BarChart className="mr-2 inline h-4 w-4" />Istatistik</button>
+        <button onClick={() => setActiveView('assistant')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'assistant' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><Brain className="mr-2 inline h-4 w-4" />Koc</button>
       </div>
 
       {activeView === 'tasks' && (
@@ -495,42 +534,52 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
           <div className="space-y-4">
             <div className={card}>
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h3 className="text-xl font-black text-slate-900">Gorev panosu</h3>
-                  <p className="text-sm text-slate-500">Atanan gorevler once, serbest calisma ikinci adim.</p>
+                <div className="flex min-w-0 items-start gap-2">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Gorev panosu</h3>
+                    <p className="text-sm text-slate-500">Atanan gorevler once, serbest calisma ikinci adim.</p>
+                  </div>
+                  <ContextHelp title="Gorev sirasi" tone="mint">
+                    Bugun ve takipteki atanan gorevler once gelir. Serbest calisma, plansiz calismayi kayda almak icindir.
+                  </ContextHelp>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={() => setShowFreeStudy((value) => !value)} className="rounded-full bg-indigo-100 px-4 py-2 text-sm font-semibold text-indigo-700"><PlusCircle className="mr-2 inline h-4 w-4" />Serbest calisma</button>
-                  <button onClick={() => setTaskFilter('today')} className={`rounded-full px-4 py-2 text-sm font-semibold ${taskFilter === 'today' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Bugun + Geciken</button>
-                  <button onClick={() => setTaskFilter('upcoming')} className={`rounded-full px-4 py-2 text-sm font-semibold ${taskFilter === 'upcoming' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Yaklasan</button>
-                  <button onClick={() => setTaskFilter('all')} className={`rounded-full px-4 py-2 text-sm font-semibold ${taskFilter === 'all' ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Tumu</button>
+                  <button onClick={() => setShowFreeStudy((value) => !value)} className="ios-lilac rounded-full px-4 py-2 text-sm font-semibold text-violet-900"><PlusCircle className="mr-2 inline h-4 w-4" />Serbest calisma</button>
+                  <button onClick={() => setTaskFilter('today')} className={`rounded-full px-4 py-2 text-sm font-semibold ${taskFilter === 'today' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}>Bugun + Takipte</button>
+                  <button onClick={() => setTaskFilter('upcoming')} className={`rounded-full px-4 py-2 text-sm font-semibold ${taskFilter === 'upcoming' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}>Yaklasan</button>
+                  <button onClick={() => setTaskFilter('all')} className={`rounded-full px-4 py-2 text-sm font-semibold ${taskFilter === 'all' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}>Tumu</button>
                 </div>
               </div>
 
               {showFreeStudy && (
-                <form onSubmit={handleCreateFreeStudy} className="mb-5 rounded-[28px] border border-indigo-100 bg-[linear-gradient(135deg,#eef2ff_0%,#ffffff_55%,#f8fafc_100%)] p-5 shadow-sm">
+                <form onSubmit={handleCreateFreeStudy} className="ios-card mb-5 rounded-[28px] p-5">
                   <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <h3 className="text-lg font-black text-slate-900">Serbest calisma baslat</h3>
-                      <p className="text-sm text-slate-500">Atanan gorev yoksa kendi calismani ders, unite ve konuya bagla.</p>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900">Serbest calisma baslat</h3>
+                        <p className="text-sm text-slate-500">Atanan gorev yoksa kendi calismani ders, unite ve konuya bagla.</p>
+                      </div>
+                      <ContextHelp title="Analize etkisi" tone="lilac">
+                        Bu kayit planli gorev sayilmaz; ama secilen ders, unite ve konu performansina destek veri ekler.
+                      </ContextHelp>
                     </div>
-                    <div className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-indigo-700 shadow-sm">Kaynak: Serbest calisma</div>
+                    <div className="ios-lilac rounded-[18px] px-3 py-2 text-xs font-bold text-violet-900">Kaynak: Serbest calisma</div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_260px]">
-                    <section className="rounded-3xl border border-white bg-white/85 p-4 shadow-sm">
+                    <section className="ios-widget ios-blue rounded-[24px] p-4">
                       <div className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400">1 Calisma alani</div>
                       <div className="space-y-3">
-                        <input value={freeTitle} onChange={(e) => setFreeTitle(e.target.value)} placeholder="Ne calisacaksin?" className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" required />
-                        <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                        <input value={freeTitle} onChange={(e) => setFreeTitle(e.target.value)} placeholder="Ne calisacaksin?" className="ios-button w-full rounded-[18px] px-3 py-3 text-sm" required />
+                        <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="ios-button w-full rounded-[18px] px-3 py-3 text-sm">
                           {courses.map((course) => <option key={course.id} value={course.id}>{safeText(course.name, course.id)}</option>)}
                         </select>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <select value={freeUnitName} onChange={(e) => setFreeUnitName(e.target.value)} className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                          <select value={freeUnitName} onChange={(e) => setFreeUnitName(e.target.value)} className="ios-button rounded-[18px] px-3 py-3 text-sm">
                             <option value="">Unite sec</option>
                             {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
                           </select>
-                          <select value={freeTopicName} onChange={(e) => setFreeTopicName(e.target.value)} className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" disabled={!freeUnitName}>
+                          <select value={freeTopicName} onChange={(e) => setFreeTopicName(e.target.value)} className="ios-button rounded-[18px] px-3 py-3 text-sm" disabled={!freeUnitName}>
                             <option value="">Konu sec</option>
                             {activeTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}
                           </select>
@@ -538,19 +587,19 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
                       </div>
                     </section>
 
-                    <section className="rounded-3xl border border-white bg-white/85 p-4 shadow-sm">
+                    <section className="ios-widget ios-mint rounded-[24px] p-4">
                       <div className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400">2 Calisma turu</div>
                       <div className="space-y-3">
-                        <select value={freeType} onChange={(e) => setFreeType(e.target.value as 'soru \u00e7\u00f6zme' | 'ders \u00e7al\u0131\u015fma' | 'kitap okuma')} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                        <select value={freeType} onChange={(e) => setFreeType(e.target.value as 'soru \u00e7\u00f6zme' | 'ders \u00e7al\u0131\u015fma' | 'kitap okuma')} className="ios-button w-full rounded-[18px] px-3 py-3 text-sm">
                           <option value="ders \u00e7al\u0131\u015fma">Ders calismasi</option>
                           <option value="soru \u00e7\u00f6zme">Soru cozumu</option>
                           <option value="kitap okuma">Kitap okuma</option>
                         </select>
-                        <input value={freeDuration} onChange={(e) => setFreeDuration(e.target.value)} type="number" min="1" className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" placeholder="Sure (dk)" required />
-                        {freeType === 'soru \u00e7\u00f6zme' && <input value={freeQuestionCount} onChange={(e) => setFreeQuestionCount(e.target.value)} type="number" min="1" className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" placeholder="Soru sayisi" />}
-                        {freeType === 'kitap okuma' && <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm" placeholder="Kitap adi" />}
+                        <input value={freeDuration} onChange={(e) => setFreeDuration(e.target.value)} type="number" min="1" className="ios-button w-full rounded-[18px] px-3 py-3 text-sm" placeholder="Sure (dk)" required />
+                        {freeType === 'soru \u00e7\u00f6zme' && <input value={freeQuestionCount} onChange={(e) => setFreeQuestionCount(e.target.value)} type="number" min="1" className="ios-button w-full rounded-[18px] px-3 py-3 text-sm" placeholder="Soru sayisi" />}
+                        {freeType === 'kitap okuma' && <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="ios-button w-full rounded-[18px] px-3 py-3 text-sm" placeholder="Kitap adi" />}
                         {freeType !== 'kitap okuma' && (
-                          <select value={freeGoalType} onChange={(e) => setFreeGoalType(e.target.value)} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm">
+                          <select value={freeGoalType} onChange={(e) => setFreeGoalType(e.target.value)} className="ios-button w-full rounded-[18px] px-3 py-3 text-sm">
                             <option value="ders calisma">Ders calismasi</option>
                             <option value="konu-tekrari">Konu tekrari</option>
                             <option value="eksik-konu-tamamlama">Eksik konu tamamlama</option>
@@ -560,15 +609,15 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
                       </div>
                     </section>
 
-                    <section className="flex flex-col justify-between rounded-3xl bg-slate-900 p-4 text-white shadow-sm">
+                    <section className="ios-lilac flex flex-col justify-between rounded-[24px] p-4 text-slate-900">
                       <div>
-                        <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">3 Baslat</div>
-                        <p className="mt-3 text-sm leading-6 text-slate-300">Bu kayit analizde planli gorevden ayri tutulur ama konu performansina destek veri olarak eklenir.</p>
-                        <div className="mt-4 rounded-2xl bg-white/10 px-3 py-3 text-xs leading-5 text-slate-300">
+                        <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">3 Baslat</div>
+                        <p className="mt-3 text-sm leading-6 text-slate-600">Bu kayit analizde planli gorevden ayri tutulur ama konu performansina destek veri olarak eklenir.</p>
+                        <div className="ios-widget mt-4 rounded-[18px] px-3 py-3 text-xs leading-5 text-slate-600">
                           {selectedCourseName || 'Ders'} {freeUnitName ? `/ ${freeUnitName}` : ''} {freeTopicName ? `/ ${freeTopicName}` : ''}
                         </div>
                       </div>
-                      <button type="submit" disabled={creatingFreeStudy} className={`mt-4 rounded-2xl px-5 py-3 text-sm font-black ${creatingFreeStudy ? 'cursor-not-allowed bg-slate-200 text-slate-500' : 'bg-white text-slate-900 hover:bg-indigo-50'}`}>
+                      <button type="submit" disabled={creatingFreeStudy} className={`mt-4 rounded-[18px] px-5 py-3 text-sm font-black ${creatingFreeStudy ? 'ios-button cursor-not-allowed text-slate-500 opacity-60' : 'ios-button-active text-slate-900'}`}>
                         {creatingFreeStudy ? 'Olusturuluyor...' : 'Olustur ve baslat'}
                       </button>
                     </section>
@@ -577,7 +626,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
               )}
 
               <div className="space-y-4">
-                {pendingTasks.length === 0 && <div className="rounded-[24px] bg-slate-50 p-8 text-center text-slate-500">Bu filtreye uygun bekleyen gorev yok.</div>}
+                {pendingTasks.length === 0 && <div className="ios-widget rounded-[24px] p-8 text-center text-slate-500">Bu filtreye uygun bekleyen gorev yok.</div>}
                 {assignedPendingTasks.length > 0 && (
                   <div className="space-y-3">
                     <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">Atanan gorevler</div>
@@ -616,11 +665,11 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
             <div className={subtleCard}>
               <h3 className="mb-3 text-base font-bold text-slate-900">Bugun ozeti</h3>
               <div className="grid gap-2 text-sm text-slate-600">
-                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Bekleyen bugun</span><strong>{waitingTodayCount}</strong></div>
-                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Cozulen soru</span><strong>{solvedQuestionCount}</strong></div>
-                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Calisma suresi</span><strong>{studiedMinutes} dk</strong></div>
-                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Okunan sayfa</span><strong>{readPages}</strong></div>
-                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2.5"><span>Toplam tamamlanan</span><strong>{analysis.overall.completedTasks}</strong></div>
+                <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Bekleyen bugun</span><strong>{waitingTodayCount}</strong></div>
+                <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Cozulen soru</span><strong>{solvedQuestionCount}</strong></div>
+                <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Calisma suresi</span><strong>{studiedMinutes} dk</strong></div>
+                <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Okunan sayfa</span><strong>{readPages}</strong></div>
+                <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Toplam tamamlanan</span><strong>{analysis.overall.completedTasks}</strong></div>
               </div>
             </div>
 
@@ -630,9 +679,9 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
             <div className={subtleCard}>
               <h3 className="mb-3 text-base font-bold text-slate-900">Rozetler</h3>
               <div className="space-y-3">
-                {badges.length === 0 && <div className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">Henuz rozet yok.</div>}
+                {badges.length === 0 && <div className="ios-widget rounded-[20px] px-4 py-5 text-sm text-slate-500">Henuz rozet yok.</div>}
                 {badges.slice(0, 4).map((badge) => (
-                  <div key={badge.id} className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3">
+                  <div key={badge.id} className="ios-widget flex items-start gap-3 rounded-[20px] p-3">
                     <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
                     <div className="min-w-0">
                       <div className="font-medium text-slate-800">{safeBadgeName(badge.name)}</div>
@@ -652,12 +701,12 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
             <div className="mb-2 flex items-center gap-2"><Gift className="h-5 w-5 text-amber-500" /><h3 className="text-xl font-black text-slate-900">Odul magazasi</h3></div>
             <p className="mb-4 text-sm text-slate-500">Talep et butonu sadece puanin odul maliyetine esit veya fazlaysa aktif olur.</p>
             <div className="space-y-3">
-              {rewards.length === 0 && <div className="rounded-[24px] bg-slate-50 p-8 text-center text-slate-500">Henuz odul eklenmemis.</div>}
+              {rewards.length === 0 && <div className="ios-widget rounded-[24px] p-8 text-center text-slate-500">Henuz odul eklenmemis.</div>}
               {rewards.map((reward) => {
                 const canAfford = successPoints >= reward.cost;
                 const missingPoints = Math.max(0, reward.cost - successPoints);
                 return (
-                  <div key={reward.id} className="flex items-center justify-between rounded-[24px] bg-slate-50 p-4">
+                  <div key={reward.id} className="ios-widget flex items-center justify-between rounded-[24px] p-4">
                     <div>
                       <div className="font-bold text-slate-800">{safeText(reward.name, 'Odul')}</div>
                       <div className="text-sm text-amber-600">{reward.cost} BP</div>
@@ -669,7 +718,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
                       onClick={() => handleClaimReward(reward.id)}
                       disabled={!canAfford || claimingRewardId === reward.id}
                       title={canAfford ? 'Yeterli puanin var' : `Bu odul icin ${missingPoints} BP daha gerekiyor`}
-                      className={`rounded-2xl px-4 py-2 text-sm font-bold ${canAfford && claimingRewardId !== reward.id ? 'bg-amber-500 text-white' : 'cursor-not-allowed bg-slate-200 text-slate-500'}`}
+                      className={`rounded-[18px] px-4 py-2 text-sm font-bold ${canAfford && claimingRewardId !== reward.id ? 'ios-yellow text-amber-950' : 'ios-button cursor-not-allowed text-slate-500 opacity-60'}`}
                     >
                       {claimingRewardId === reward.id ? 'Talep ediliyor...' : 'Talep et'}
                     </button>
@@ -682,9 +731,9 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
           <div className={card}>
             <div className="mb-4 flex items-center gap-2"><BadgeCheck className="h-5 w-5 text-blue-600" /><h3 className="text-xl font-black text-slate-900">Basarilarim</h3></div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {badges.length === 0 && <div className="rounded-[24px] bg-slate-50 p-8 text-center text-slate-500 sm:col-span-2">Rozet olustukca burada gosterilecek.</div>}
+              {badges.length === 0 && <div className="ios-widget rounded-[24px] p-8 text-center text-slate-500 sm:col-span-2">Rozet olustukca burada gosterilecek.</div>}
               {badges.map((badge) => (
-                <div key={badge.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                <div key={badge.id} className="ios-widget rounded-[24px] p-4">
                   <div className="mb-3 inline-flex rounded-2xl bg-blue-100 p-3 text-blue-700"><BadgeCheck className="h-5 w-5" /></div>
                   <div className="font-bold text-slate-800">{safeBadgeName(badge.name)}</div>
                   <div className="mt-1 text-sm leading-6 text-slate-500">{safeBadgeDescription(badge.description)}</div>
@@ -710,7 +759,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
           <div className={card}>
             <div className="mb-3 flex items-center gap-2 text-slate-900"><Brain className="h-5 w-5 text-violet-600" /><h3 className="text-lg font-black">Calisma kocu</h3></div>
             <div className="text-sm leading-6 text-slate-600">{ai ? 'AI baglantisi mevcut. Sonraki adimda burada konu bazli calisma onerileri ve gunluk uyari sistemi acilacak.' : 'Bu alan simdilik kural tabanli. Once planli gorevleri bitir, sonra serbest calismaya gec.'}</div>
-            <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Ortalama verim: <strong>{analysis.overall.averageEfficiency}</strong> / Ortalama dogruluk: <strong>{analysis.overall.averageAccuracy ?? 0}</strong></div>
+            <div className="ios-widget mt-4 rounded-[20px] px-4 py-3 text-sm text-slate-600">Ortalama verim: <strong>{analysis.overall.averageEfficiency}</strong> / Ortalama dogruluk: <strong>{analysis.overall.averageAccuracy ?? 0}</strong></div>
           </div>
         </div>
       )}

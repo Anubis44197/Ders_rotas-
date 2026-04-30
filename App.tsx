@@ -1,5 +1,4 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
-import FloatingNotification from './components/shared/FloatingNotification';
 import ParentDashboard from './components/parent/ParentDashboard';
 import ChildDashboard from './components/child/ChildDashboard';
 import ParentLockScreen from './components/parent/ParentLockScreen';
@@ -36,11 +35,12 @@ import {
   ReplanTriggerRecord,
   PlanBlockType,
 } from './types';
-import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, Clock, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown } from './components/icons';
+import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, Clock, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown, PlusCircle, Search } from './components/icons';
 import { ALL_ICONS } from './constants';
 import { calculateTaskPoints } from './utils/scoringAlgorithm';
 import { getLocalDateString } from './utils/dateUtils';
 import { deriveAnalysisSnapshot } from './utils/analysisEngine';
+import { playHaptic } from './utils/haptics';
 import { GoogleGenAI } from '@google/genai';
 
 const SCHEDULE_DAYS = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
@@ -95,20 +95,41 @@ interface ToastMessage {
   id: number;
   message: string;
   type: 'success' | 'error';
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 type ParentWorkspaceView = 'overview' | 'planning' | 'tasks' | 'analysis';
 type OverviewStudyPeriod = 'month' | 'quarter' | 'total';
+type SearchScope = 'all' | 'tasks' | 'courses' | 'topics' | 'exams' | 'rewards';
+
+interface AppSearchResult {
+  id: string;
+  scope: SearchScope;
+  title: string;
+  subtitle: string;
+  detail: string;
+  view: ParentWorkspaceView;
+}
+
+const searchScopes: Array<{ id: SearchScope; label: string }> = [
+  { id: 'all', label: 'Tumu' },
+  { id: 'tasks', label: 'Gorev' },
+  { id: 'topics', label: 'Konu' },
+  { id: 'exams', label: 'Sinav' },
+  { id: 'courses', label: 'Ders' },
+  { id: 'rewards', label: 'Odul' },
+];
 
 const Modal: React.FC<{ show: boolean; onClose: () => void; title: string; children: React.ReactNode }> = ({ show, onClose, title, children }) => {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="ios-card w-full max-w-md rounded-[28px] p-6" role="dialog" aria-modal="true" aria-labelledby="app-modal-title" onClick={(event) => event.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-xl font-bold">{title}</h3>
-          <button onClick={onClose} className="text-3xl font-light text-slate-500 hover:text-slate-800" title="Kapat" aria-label="Kapat">
+          <h3 id="app-modal-title" className="text-xl font-bold">{title}</h3>
+          <button onClick={onClose} className="ios-button flex h-9 w-9 items-center justify-center rounded-full text-2xl font-light text-slate-500 hover:text-slate-800" title="Kapat" aria-label="Kapat">
             &times;
           </button>
         </div>
@@ -175,6 +196,8 @@ const normalizeForLookup = (value: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const repairedText = (value: unknown) => repairText(String(value ?? '')) || '';
+
 const createId = (prefix: string) => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `${prefix}_${crypto.randomUUID()}`;
@@ -188,17 +211,17 @@ const EMPTY_STATE_TEXT = 'Analiz icin yeterli veri yok.';
 
 const riskLevelMeta: Record<RiskLevel, { label: string; tone: string; badge: string }> = {
   dusuk: {
-    label: 'Dusuk risk',
+    label: 'Rahat takip',
     tone: 'border-emerald-200 bg-emerald-50 text-emerald-800',
     badge: 'bg-emerald-100 text-emerald-700',
   },
   orta: {
-    label: 'Orta risk',
+    label: 'Dengeli destek',
     tone: 'border-amber-200 bg-amber-50 text-amber-800',
     badge: 'bg-amber-100 text-amber-700',
   },
   yuksek: {
-    label: 'Yuksek risk',
+    label: 'Yakin takip',
     tone: 'border-rose-200 bg-rose-50 text-rose-800',
     badge: 'bg-rose-100 text-rose-700',
   },
@@ -395,7 +418,7 @@ const getNetPerformanceSummary = ({
     return {
       title: 'Iyi, kontrollu ilerleme',
       tone: 'border-sky-200 bg-sky-50 text-sky-800',
-      text: 'Performans iyi seviyede. Zayif konulara kisa tekrar eklemek yeterli olur.',
+      text: 'Performans iyi seviyede. Odak isteyen konulara kisa tekrar eklemek yeterli olur.',
     };
   }
 
@@ -403,14 +426,14 @@ const getNetPerformanceSummary = ({
     return {
       title: 'Orta seviye, destek gerekli',
       tone: 'border-amber-200 bg-amber-50 text-amber-800',
-      text: `Gelisim var ama ${weakTopicCount} zayif konu ve ${overdueCount} geciken gorev icin destek plani gerekli.`,
+      text: `Gelisim var. ${weakTopicCount} odak konusu ve ${overdueCount} takipteki gorev icin destek plani gerekli.`,
     };
   }
 
   return {
-    title: 'Acil toparlama gerekiyor',
+    title: 'Yakin destek gerekiyor',
     tone: 'border-rose-200 bg-rose-50 text-rose-800',
-    text: `Performans dusuk seviyede. Once geciken ${overdueCount} gorevi kapatip temel konulara donulmeli.`,
+    text: `Performans destek istiyor. Once takipteki ${overdueCount} gorevi tamamlayip temel konulara donulmeli.`,
   };
 };
 
@@ -425,7 +448,7 @@ const normalizeTask = (task: any): Task => {
         : task?.taskType;
   const normalizedBookGenre = task?.bookGenre === 'Siir' ? '\u015eiir' : task?.bookGenre === 'Diger' ? 'Di\u011fer' : task?.bookGenre;
   const rawSelectedMetrics = Array.isArray(task?.selectedMetrics)
-    ? task.selectedMetrics.filter((value: unknown): value is Task['selectedMetrics'][number] => (
+    ? task.selectedMetrics.filter((value: unknown): value is NonNullable<Task['selectedMetrics']>[number] => (
       value === 'accuracy' || value === 'focus' || value === 'duration' || value === 'revision' || value === 'completion'
     ))
     : [];
@@ -433,7 +456,7 @@ const normalizeTask = (task: any): Task => {
     Number.isFinite(Number(task?.targetAccuracy)) && Number(task?.targetAccuracy) > 0 ? 'accuracy' : null,
     Number.isFinite(Number(task?.targetFocus)) && Number(task?.targetFocus) > 0 ? 'focus' : null,
     Number.isFinite(Number(task?.minimumDuration)) && Number(task?.minimumDuration) > 0 ? 'duration' : null,
-  ].filter((value): value is Task['selectedMetrics'][number] => value !== null);
+  ].filter((value): value is NonNullable<Task['selectedMetrics']>[number] => value !== null);
   const normalizedSelectedMetrics = Array.from(new Set([...(rawSelectedMetrics || []), ...(legacySelectedMetrics || [])]));
   const normalizedMetricTargetScore = normalizedSelectedMetrics.length > 0 ? 100 : undefined;
 
@@ -461,16 +484,16 @@ const normalizeTask = (task: any): Task => {
 
 const normalizeWeeklyScheduleSlot = (slot: any, fallbackIndex: number): WeeklyScheduleSlot => ({
   id: String(slot?.id || `slot_${fallbackIndex}_${slot?.courseName || slot?.label || 'ders'}`),
-  courseName: repairText(String(slot?.courseName ?? slot?.label ?? '')).trim(),
+  courseName: repairedText(slot?.courseName ?? slot?.label).trim(),
   startTime: String(slot?.startTime ?? '09:00'),
   endTime: String(slot?.endTime ?? '10:00'),
-  note: repairText(String(slot?.note ?? '')).trim() || undefined,
+  note: repairedText(slot?.note).trim() || undefined,
 });
 
 const buildLegacyScheduleDay = (value: string): WeeklyScheduleDay => {
   const tokens = String(value || '')
     .split(',')
-    .map((item) => repairText(item).trim())
+    .map((item) => repairedText(item).trim())
     .filter(Boolean);
 
   const slots = tokens.map((token, index) => {
@@ -517,12 +540,12 @@ const normalizeCurriculum = (value: any): SubjectCurriculum => {
   if (!value || typeof value !== 'object') return {};
   const next: SubjectCurriculum = {};
   for (const [subject, units] of Object.entries(value)) {
-    next[repairText(subject) || subject] = Array.isArray(units)
+    next[repairedText(subject) || subject] = Array.isArray(units)
       ? units.map((unit: any) => ({
-          name: repairText(String(unit?.name ?? '')) || String(unit?.name ?? ''),
+          name: repairedText(unit?.name) || String(unit?.name ?? ''),
           topics: Array.isArray(unit?.topics)
             ? unit.topics.map((topic: any) => ({
-                name: repairText(String(topic?.name ?? '')) || String(topic?.name ?? ''),
+                name: repairedText(topic?.name) || String(topic?.name ?? ''),
                 completed: Boolean(topic?.completed),
               }))
             : [],
@@ -536,7 +559,7 @@ const normalizePerformanceData = (items: any[]): PerformanceData[] =>
   Array.isArray(items)
     ? items.map((item) => ({
         courseId: String(item?.courseId ?? ''),
-        courseName: repairText(String(item?.courseName ?? '')) || String(item?.courseName ?? ''),
+        courseName: repairedText(item?.courseName) || String(item?.courseName ?? ''),
         correct: Number(item?.correct ?? 0),
         incorrect: Number(item?.incorrect ?? 0),
         timeSpent: Number(item?.timeSpent ?? 0),
@@ -548,10 +571,10 @@ const normalizeExamRecords = (items: any[], courses: Course[]): ExamRecord[] => 
 
   return items
     .map((item, index) => {
-      const courseName = repairText(String(item?.courseName ?? '')).trim();
+      const courseName = repairedText(item?.courseName).trim();
       const matchedCourse = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(courseName));
       const courseId = typeof item?.courseId === 'string' && item.courseId ? item.courseId : matchedCourse?.id || '';
-      const title = repairText(String(item?.title ?? '')).trim();
+      const title = repairedText(item?.title).trim();
       const date = typeof item?.date === 'string' ? item.date : '';
       const score = Number(item?.score);
 
@@ -566,12 +589,12 @@ const normalizeExamRecords = (items: any[], courses: Course[]): ExamRecord[] => 
         date,
         termKey: typeof item?.termKey === 'string' && item.termKey ? item.termKey : `${new Date(date).getFullYear()}-genel`,
         scopeType: item?.scopeType || 'course',
-        unitNames: Array.isArray(item?.unitNames) ? item.unitNames.map((entry: string) => repairText(String(entry)).trim()).filter(Boolean) : undefined,
-        topicNames: Array.isArray(item?.topicNames) ? item.topicNames.map((entry: string) => repairText(String(entry)).trim()).filter(Boolean) : undefined,
+        unitNames: Array.isArray(item?.unitNames) ? item.unitNames.map((entry: string) => repairedText(entry).trim()).filter(Boolean) : undefined,
+        topicNames: Array.isArray(item?.topicNames) ? item.topicNames.map((entry: string) => repairedText(entry).trim()).filter(Boolean) : undefined,
         score: Math.max(0, Math.min(100, score)),
         weight: Number.isFinite(Number(item?.weight)) ? Number(item.weight) : undefined,
         maxScore: Number.isFinite(Number(item?.maxScore)) ? Number(item.maxScore) : undefined,
-        notes: repairText(String(item?.notes ?? '')).trim() || undefined,
+        notes: repairedText(item?.notes).trim() || undefined,
         source: item?.source === 'import' ? 'import' : 'manual',
       } as ExamRecord;
     })
@@ -584,12 +607,12 @@ const normalizeCompositeExamResults = (items: any[], courses: Course[]): Composi
 
   return items
     .map((item, index) => {
-      const title = repairText(String(item?.title ?? '')).trim();
+      const title = repairedText(item?.title).trim();
       const date = typeof item?.date === 'string' ? item.date : '';
       const coursesPayload = Array.isArray(item?.courses)
         ? item.courses
             .map((entry: any) => {
-              const courseName = repairText(String(entry?.courseName ?? '')).trim();
+              const courseName = repairedText(entry?.courseName).trim();
               const matchedCourse = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(courseName));
               const courseId = typeof entry?.courseId === 'string' && entry.courseId ? entry.courseId : matchedCourse?.id || '';
               const score = Number(entry?.score);
@@ -601,7 +624,7 @@ const normalizeCompositeExamResults = (items: any[], courses: Course[]): Composi
                 net: Number.isFinite(Number(entry?.net)) ? Number(entry.net) : undefined,
               };
             })
-            .filter((entry): entry is CompositeExamResult['courses'][number] => Boolean(entry))
+            .filter((entry: CompositeExamResult['courses'][number] | null): entry is CompositeExamResult['courses'][number] => Boolean(entry))
         : [];
 
       if (!title || !date || coursesPayload.length === 0) return null;
@@ -613,7 +636,7 @@ const normalizeCompositeExamResults = (items: any[], courses: Course[]): Composi
         date,
         courses: coursesPayload,
         totalScore: Number.isFinite(Number(item?.totalScore)) ? Number(item.totalScore) : undefined,
-        notes: repairText(String(item?.notes ?? '')).trim() || undefined,
+        notes: repairedText(item?.notes).trim() || undefined,
       } as CompositeExamResult;
     })
     .filter((item): item is CompositeExamResult => Boolean(item))
@@ -659,10 +682,10 @@ const normalizeExamScheduleEntries = (items: any[], courses: Course[]): ExamSche
 
   return items
     .map((item, index) => {
-      const courseName = repairText(String(item?.courseName ?? '')).trim();
+      const courseName = repairedText(item?.courseName).trim();
       const matchedCourse = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(courseName));
       const courseId = typeof item?.courseId === 'string' && item.courseId ? item.courseId : matchedCourse?.id || '';
-      const examName = repairText(String(item?.examName ?? item?.name ?? '')).trim();
+      const examName = repairedText(item?.examName ?? item?.name).trim();
       const date = typeof item?.date === 'string' ? item.date : '';
 
       if (!courseId || !courseName || !examName || !date) return null;
@@ -673,7 +696,7 @@ const normalizeExamScheduleEntries = (items: any[], courses: Course[]): ExamSche
         courseName,
         examName,
         date,
-        note: repairText(String(item?.note ?? '')).trim() || undefined,
+        note: repairedText(item?.note).trim() || undefined,
       } as ExamScheduleEntry;
     })
     .filter((item): item is ExamScheduleEntry => Boolean(item))
@@ -922,7 +945,10 @@ const deriveCompensationPlanBlockRecords = (
     const durationMinutes = Math.max(30, Math.min(45, Math.round((task.plannedDuration || 30))));
     const targetDay = preferredDays
       .map((dayName) => scheduleDays.find((day) => day.dayName === dayName))
-      .find((day): day is ScheduleDayRecord => Boolean(day) && Boolean(findRecommendedCompensationSlot(day, [...occupiedBlocks], durationMinutes)));
+      .find((day): day is ScheduleDayRecord => {
+        if (!day) return false;
+        return Boolean(findRecommendedCompensationSlot(day, [...occupiedBlocks], durationMinutes));
+      });
 
     if (!targetDay) return [];
 
@@ -1068,10 +1094,11 @@ const deriveTopicStatuses = (curriculumTopics: CurriculumTopicRecord[], sessions
     }
 
     if (topicSessions.length > 0) {
+      const latestSession = [...topicSessions].sort((left, right) => right.startedAt.localeCompare(left.startedAt))[0];
       return {
         topicId: topic.id,
         status: 'in_progress',
-        lastStudiedAt: [...topicSessions].sort((left, right) => right.startedAt.localeCompare(left.startedAt))[0].startedAt,
+        lastStudiedAt: latestSession?.startedAt,
         consecutiveRevisionCount: topicSessions.filter((session) => session.taskType === 'revision').length,
         nextRecommendedAction: 'assess',
       };
@@ -1094,7 +1121,7 @@ const deriveReplanTriggers = (
   examSchedules: ExamScheduleEntry[],
 ): ReplanTriggerRecord[] => {
   const topicsById = new Map(curriculumTopics.map((topic) => [topic.id, topic]));
-  const triggers = topicStatuses.flatMap((status) => {
+  const triggers: ReplanTriggerRecord[] = topicStatuses.flatMap((status): ReplanTriggerRecord[] => {
     const topic = topicsById.get(status.topicId);
     if (!topic) return [];
     if (status.status === 'risky') {
@@ -1105,7 +1132,7 @@ const deriveReplanTriggers = (
         severity: 'medium' as const,
         relatedCourseId: topic.courseId,
         relatedTopicId: topic.id,
-        reasonText: `${topic.courseName} / ${topic.topicName} konusu riskli durumda.`,
+        reasonText: `${topic.courseName} / ${topic.topicName} konusu yakin takip istiyor.`,
       }];
     }
     if (status.status === 'needs_revision') {
@@ -1359,15 +1386,30 @@ const App: React.FC = () => {
   const tasksRef = useRef<Task[]>(tasks);
   const topbarNotificationsRef = useRef<HTMLDivElement | null>(null);
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
+  const topbarSearchRef = useRef<HTMLDivElement | null>(null);
+  const topbarQuickActionsRef = useRef<HTMLDivElement | null>(null);
+  const topbarToolbarRef = useRef<HTMLDivElement | null>(null);
   const [parentMenuOpen, setParentMenuOpen] = useState(false);
   const [parentSidebarOpen, setParentSidebarOpen] = useStickyState<boolean>(true, 'parentSidebarOpen');
   const [notificationsMuted, setNotificationsMuted] = useStickyState<boolean>(false, 'notificationsMuted');
-  const [themeMode, setThemeMode] = useStickyState<'light' | 'dark'>('light', 'themeMode');
+  const [hapticsEnabled, setHapticsEnabled] = useStickyState<boolean>(true, 'hapticsEnabled');
+  const [themeMode, setThemeMode] = useStickyState<'light' | 'dark'>('dark', 'themeMode');
   const [showNotificationDot, setShowNotificationDot] = useStickyState<boolean>(true, 'showNotificationDot');
-  const [rememberLastParentView, setRememberLastParentView] = useStickyState<boolean>(false, 'rememberLastParentView');
+  const [rememberLastParentView, setRememberLastParentView] = useStickyState<boolean>(true, 'rememberLastParentView');
   const [dismissedNotificationKeys, setDismissedNotificationKeys] = useStickyState<string[]>([], 'dismissedNotificationKeys');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchScope, setGlobalSearchScope] = useState<SearchScope>('all');
+
+  useEffect(() => {
+    const paletteFlag = 'drDarkPaletteApplied';
+    if (window.localStorage.getItem(paletteFlag) === 'true') return;
+    setThemeMode('dark');
+    window.localStorage.setItem(paletteFlag, 'true');
+  }, [setThemeMode]);
 
   useEffect(() => {
     if ((parentWorkspaceView as string) === 'curriculum') {
@@ -1380,21 +1422,33 @@ const App: React.FC = () => {
   }, [parentWorkspaceView, setParentWorkspaceView]);
 
   useEffect(() => {
-    if (!notificationsOpen && !settingsOpen) return;
+    if (!notificationsOpen && !settingsOpen && !searchOpen && !quickActionsOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (topbarNotificationsRef.current?.contains(target)) return;
       if (topbarSettingsRef.current?.contains(target)) return;
+      if (topbarSearchRef.current?.contains(target)) return;
+      if (topbarQuickActionsRef.current?.contains(target)) return;
       setNotificationsOpen(false);
       setSettingsOpen(false);
+      setSearchOpen(false);
+      setQuickActionsOpen(false);
     };
 
     document.addEventListener('mousedown', handlePointerDown);
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
     };
-  }, [notificationsOpen, settingsOpen]);
+  }, [notificationsOpen, settingsOpen, searchOpen, quickActionsOpen]);
+
+  useEffect(() => {
+    const quickView = new URLSearchParams(window.location.search).get('quick');
+    if (quickView === 'tasks' || quickView === 'analysis' || quickView === 'planning') {
+      setParentWorkspaceView(quickView);
+      setUserType(UserType.Parent);
+    }
+  }, [setParentWorkspaceView, setUserType]);
 
   useEffect(() => {
     const nextCourses = normalizeCourses(courses);
@@ -1479,9 +1533,10 @@ const App: React.FC = () => {
   const apiKey = import.meta.env.VITE_GOOGLE_AI_API_KEY;
   const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
-  const addToast = (message: string, type: ToastMessage['type']) => {
+  const addToast = (message: string, type: ToastMessage['type'], action?: Pick<ToastMessage, 'actionLabel' | 'onAction'>) => {
+    if (type === 'error') playHaptic('warning');
     const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type, ...action }]);
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id));
     }, 3000);
@@ -1507,15 +1562,18 @@ const App: React.FC = () => {
 
   const handleUnlockParentDashboard = (password: string) => {
     if (password === '1234') {
+      playHaptic('success');
       setIsParentLocked(false);
       setParentWorkspaceView(rememberLastParentView ? parentWorkspaceView : parentDefaultView);
       setLoginError(null);
       return;
     }
-    setLoginError('Hatali sifre. Lutfen tekrar deneyin.');
+    playHaptic('warning');
+    setLoginError('Sifre eslesmedi. Lutfen tekrar deneyin.');
   };
 
   const handleUserTypeChange = (nextUserType: UserType) => {
+    if (nextUserType !== userType) playHaptic('selection');
     if (nextUserType === UserType.Parent) {
       setIsParentLocked(true);
       setLoginError(null);
@@ -1527,29 +1585,33 @@ const App: React.FC = () => {
     setUserType(nextUserType);
   };
 
+  const getImportPayload = (json: any) => json?.appData && typeof json.appData === 'object' ? json.appData : json;
+
   const applyImportedData = (json: any): boolean => {
-    const parsedSuccessPoints = Number(json?.successPoints);
-    if (!json || !Array.isArray(json.courses) || !Array.isArray(json.tasks) || !Array.isArray(json.rewards) || !Array.isArray(json.badges) || !Number.isFinite(parsedSuccessPoints)) {
+    const payload = getImportPayload(json);
+    const parsedSuccessPoints = Number(payload?.successPoints);
+    if (!payload || !Array.isArray(payload.courses) || !Array.isArray(payload.tasks) || !Array.isArray(payload.rewards) || !Array.isArray(payload.badges) || !Number.isFinite(parsedSuccessPoints)) {
       return false;
     }
 
-    setCourses(normalizeCourses(json.courses as Course[]));
-    setTasks(json.tasks.map(normalizeTask));
-    setPerformanceData(normalizePerformanceData(Array.isArray(json.performanceData) ? json.performanceData : []));
-    setRewards(normalizeRewards(json.rewards as Reward[]));
-    setBadges(normalizeBadges(json.badges as Badge[]));
+    const normalizedCourses = normalizeCourses(payload.courses as Course[]);
+    setCourses(normalizedCourses);
+    setTasks(payload.tasks.map(normalizeTask));
+    setPerformanceData(normalizePerformanceData(Array.isArray(payload.performanceData) ? payload.performanceData : []));
+    setRewards(normalizeRewards(payload.rewards as Reward[]));
+    setBadges(normalizeBadges(payload.badges as Badge[]));
     setSuccessPoints(parsedSuccessPoints || 0);
-    setCurriculum(normalizeCurriculum(json.curriculum));
-    setWeeklySchedule(normalizeWeeklySchedule(json.weeklySchedule || defaultWeeklySchedule));
-    setExamRecords(normalizeExamRecords(json.examRecords, normalizeCourses(json.courses as Course[])));
-    setCompositeExamResults(normalizeCompositeExamResults(json.compositeExamResults, normalizeCourses(json.courses as Course[])));
-    setExamScheduleEntries(normalizeExamScheduleEntries(json.examScheduleEntries, normalizeCourses(json.courses as Course[])));
-    setStudyPlans(normalizeStudyPlans(json.studyPlans));
+    setCurriculum(normalizeCurriculum(payload.curriculum));
+    setWeeklySchedule(normalizeWeeklySchedule(payload.weeklySchedule || defaultWeeklySchedule));
+    setExamRecords(normalizeExamRecords(payload.examRecords, normalizedCourses));
+    setCompositeExamResults(normalizeCompositeExamResults(payload.compositeExamResults, normalizedCourses));
+    setExamScheduleEntries(normalizeExamScheduleEntries(payload.examScheduleEntries, normalizedCourses));
+    setStudyPlans(normalizeStudyPlans(payload.studyPlans));
     return true;
   };
 
   const handleExportData = async (): Promise<void> => {
-    const data = {
+    const appData = {
       courses,
       tasks,
       performanceData,
@@ -1563,11 +1625,27 @@ const App: React.FC = () => {
       examScheduleEntries,
       studyPlans,
     };
+    const data = {
+      backup: {
+        app: 'Ders Rotasi',
+        schemaVersion: 2,
+        exportedAt: new Date().toISOString(),
+        summary: {
+          courses: courses.length,
+          tasks: tasks.length,
+          rewards: rewards.length,
+          badges: badges.length,
+          examRecords: examRecords.length,
+          studyPlans: studyPlans.length,
+        },
+      },
+      appData,
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `egitim-asistani-yedek-${getLocalDateString()}.json`;
+    link.download = `ders-rotasi-yedek-${getLocalDateString()}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1775,6 +1853,7 @@ const App: React.FC = () => {
     if (!courseName) return;
 
     setCurriculum((prevCurriculum) => {
+      if (!task.curriculumUnitName || !task.curriculumTopicName) return prevCurriculum;
       const nextCurriculum = JSON.parse(JSON.stringify(prevCurriculum)) as SubjectCurriculum;
       const directUnits = nextCurriculum[courseName] || [];
       const normalizedCourseName = normalizeForLookup(courseName);
@@ -1796,6 +1875,9 @@ const App: React.FC = () => {
 
   const deleteTask = (taskId: string) => {
     const taskToDelete = tasks.find((task) => task.id === taskId);
+    if (!taskToDelete) return;
+    const previousIndex = tasks.findIndex((task) => task.id === taskId);
+    const previousPlans = studyPlans;
     setTasks((prev) => prev.filter((task) => task.id !== taskId));
 
     if (taskToDelete?.planTaskId) {
@@ -1816,9 +1898,25 @@ const App: React.FC = () => {
         return changed ? pruneStudyPlanTree(nextPlans) : prevPlans;
       });
     }
+
+    addToast(`"${taskToDelete.title}" silindi.`, 'success', {
+      actionLabel: 'Geri al',
+      onAction: () => {
+        setTasks((prev) => {
+          if (prev.some((task) => task.id === taskToDelete.id)) return prev;
+          const next = [...prev];
+          next.splice(Math.max(0, previousIndex), 0, taskToDelete);
+          return next;
+        });
+        setStudyPlans(previousPlans);
+        tasksRef.current = [taskToDelete, ...tasksRef.current.filter((task) => task.id !== taskToDelete.id)];
+        playHaptic('success');
+      },
+    });
   };
 
   const startTask = (taskId: string) => {
+    playHaptic('start');
     setTasks((prevTasks) => prevTasks.map((task) => (task.id === taskId ? { ...task, startTimestamp: Date.now() } : task)));
   };
 
@@ -1923,6 +2021,7 @@ const App: React.FC = () => {
 
     if (task.planTaskId) syncStudyPlanTaskCompletion(task.planTaskId, true);
     syncCurriculumTopicCompletion(task);
+    playHaptic('success');
     } finally {
       window.setTimeout(() => completeTaskLockRef.current.delete(taskId), 350);
     }
@@ -2024,7 +2123,7 @@ const App: React.FC = () => {
       return 'Analiz verisi olustukca bugune ait oneriler burada gosterilecek.';
     }
     if (parentSummary.overdueCount > 0) {
-      return `Oncelik: geciken ${parentSummary.overdueCount} gorevi kapatip ritmi toparla.`;
+      return `Oncelik: takipteki ${parentSummary.overdueCount} gorevi tamamlayip ritmi toparla.`;
     }
     const firstWeak = parentSummary.weakTopics[0];
     if (firstWeak) {
@@ -2101,11 +2200,11 @@ const App: React.FC = () => {
       return 'Calisma verisi olustukca secili donem ozeti burada gosterilecek.';
     }
     if (parentSummary.overdueCount > 0) {
-      return `Genel tabloda ${parentSummary.overdueCount} geciken gorev var. Donemsel gelisim korunurken once bunlari temizlemek gerekir.`;
+      return `Genel tabloda ${parentSummary.overdueCount} takipteki gorev var. Donemsel gelisim korunurken once bunlari tamamlamak gerekir.`;
     }
     const firstWeak = overviewSummary.weakTopics[0];
     if (firstWeak) {
-      return `${firstWeak.courseName} / ${firstWeak.topicName} secili donemde zayif kalmis. Kisa tekrar gorevi ile desteklenmeli.`;
+      return `${firstWeak.courseName} / ${firstWeak.topicName} secili donemde destek istiyor. Kisa tekrar gorevi ile guclendirilmeli.`;
     }
     return 'Secili donemde calisma ritmi dengeli gorunuyor. Mevcut akisi koruyabilirsiniz.';
   }, [hasOverviewAnalysisData, hasParentOperationalData, parentSummary.overdueCount, overviewSummary.weakTopics]);
@@ -2187,6 +2286,111 @@ const App: React.FC = () => {
       .slice(0, 4);
   }, [overviewCompletedTasks, courses]);
 
+  const globalSearchResults = useMemo<AppSearchResult[]>(() => {
+    const courseNameById = new Map(courses.map((course) => [course.id, repairedText(course.name)]));
+    const query = normalizeForLookup(globalSearchQuery);
+    const results: AppSearchResult[] = [];
+
+    const addResult = (result: AppSearchResult, searchableText: string) => {
+      if (userType === UserType.Child && result.scope === 'exams') return;
+      if (globalSearchScope !== 'all' && result.scope !== globalSearchScope) return;
+      const normalizedText = normalizeForLookup(searchableText);
+      if (query && !normalizedText.includes(query)) return;
+      results.push(result);
+    };
+
+    courses.forEach((course) => {
+      const name = repairedText(course.name);
+      addResult({
+        id: `course:${course.id}`,
+        scope: 'courses',
+        title: name,
+        subtitle: 'Ders',
+        detail: 'Mufredat, plan ve konu baglantilari',
+        view: 'planning',
+      }, name);
+    });
+
+    tasks.forEach((task) => {
+      const courseName = courseNameById.get(task.courseId) || task.courseId;
+      const title = repairedText(task.bookTitle || task.title);
+      const unit = repairedText(task.curriculumUnitName);
+      const topic = repairedText(task.curriculumTopicName);
+      addResult({
+        id: `task:${task.id}`,
+        scope: 'tasks',
+        title,
+        subtitle: task.status === 'tamamlandı' ? 'Tamamlanan gorev' : 'Bekleyen gorev',
+        detail: [courseName, unit, topic, `${task.plannedDuration} dk`].filter(Boolean).join(' / '),
+        view: 'tasks',
+      }, [title, task.description, courseName, unit, topic, task.taskType, task.status].join(' '));
+    });
+
+    Object.entries(curriculum).forEach(([courseName, units]) => {
+      units.forEach((unit) => {
+        unit.topics.forEach((topic) => {
+          addResult({
+            id: `topic:${courseName}:${unit.name}:${topic.name}`,
+            scope: 'topics',
+            title: topic.name,
+            subtitle: 'Konu',
+            detail: `${courseName} / ${unit.name}`,
+            view: 'planning',
+          }, [courseName, unit.name, topic.name].join(' '));
+        });
+      });
+    });
+
+    examRecords.forEach((record) => {
+      addResult({
+        id: `exam:${record.id}`,
+        scope: 'exams',
+        title: record.title,
+        subtitle: 'Okul sinavi',
+        detail: `${record.courseName} / ${record.date} / ${record.score}`,
+        view: 'tasks',
+      }, [record.title, record.courseName, record.date, record.notes, record.score].join(' '));
+    });
+
+    compositeExamResults.forEach((record) => {
+      addResult({
+        id: `composite:${record.id}`,
+        scope: 'exams',
+        title: record.title,
+        subtitle: 'Genel sinav',
+        detail: `${record.date}${record.totalScore ? ` / ${record.totalScore}` : ''}`,
+        view: 'tasks',
+      }, [record.title, record.date, record.notes, record.totalScore, ...record.courses.map((course) => course.courseName)].join(' '));
+    });
+
+    rewards.forEach((reward) => {
+      addResult({
+        id: `reward:${reward.id}`,
+        scope: 'rewards',
+        title: repairedText(reward.name),
+        subtitle: 'Odul',
+        detail: `${reward.cost} BP`,
+        view: 'overview',
+      }, [reward.name, reward.cost].join(' '));
+    });
+
+    const startsWithQuery = (item: AppSearchResult) => query && normalizeForLookup(item.title).startsWith(query);
+    return results
+      .sort((left, right) => Number(startsWithQuery(right)) - Number(startsWithQuery(left)) || left.title.localeCompare(right.title, 'tr'))
+      .slice(0, 8);
+  }, [compositeExamResults, courses, curriculum, examRecords, globalSearchQuery, globalSearchScope, rewards, tasks, userType]);
+
+  const searchSuggestionTokens = useMemo(() => {
+    const suggestions = [
+      overviewSummary.weakTopics[0]?.topicName,
+      overviewSummary.lastCompletedTask?.title,
+      courses[0]?.name,
+      tasks.find((task) => task.status === 'bekliyor')?.title,
+    ].map((item) => repairedText(item)).filter(Boolean);
+
+    return [...new Set(suggestions)].slice(0, 4);
+  }, [courses, overviewSummary.lastCompletedTask, overviewSummary.weakTopics, tasks]);
+
   const handleLockParentNow = () => {
     setSettingsOpen(false);
     setIsParentLocked(true);
@@ -2218,26 +2422,77 @@ const App: React.FC = () => {
     addToast('Gorev yonetimi ekranina yonlendirildi.', 'success');
   };
 
+  const handleQuickAction = (view: ParentWorkspaceView, message: string) => {
+    playHaptic('selection');
+    setQuickActionsOpen(false);
+    setNotificationsOpen(false);
+    setSettingsOpen(false);
+    setSearchOpen(false);
+    setParentWorkspaceView(view);
+    addToast(message, 'success');
+  };
+
+  const handleOpenGlobalSearch = () => {
+    playHaptic('selection');
+    setSearchOpen(true);
+    setNotificationsOpen(false);
+    setSettingsOpen(false);
+    setQuickActionsOpen(false);
+  };
+
+  const handleToolbarKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+
+    const toolbar = topbarToolbarRef.current;
+    if (!toolbar) return;
+
+    const controls = Array.from(toolbar.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+      .filter((button) => button.offsetParent !== null);
+    if (!controls.length) return;
+
+    const currentIndex = controls.findIndex((button) => button === document.activeElement);
+    const fallbackIndex = event.key === 'End' ? controls.length - 1 : 0;
+    const nextIndex = currentIndex === -1
+      ? fallbackIndex
+      : event.key === 'ArrowRight'
+        ? Math.min(currentIndex + 1, controls.length - 1)
+        : event.key === 'ArrowLeft'
+          ? Math.max(currentIndex - 1, 0)
+          : fallbackIndex;
+
+    event.preventDefault();
+    controls[nextIndex]?.focus();
+  };
+
+  const handleSearchResultSelect = (result: AppSearchResult) => {
+    playHaptic('selection');
+    setSearchOpen(false);
+    setGlobalSearchQuery(result.title);
+    if (!isParentLocked) {
+      setParentWorkspaceView(result.view);
+    }
+  };
+
   const notificationItems = useMemo(() => {
     const items = [
       {
         key: `overdue:${parentSummary.overdueCount}`,
-        title: 'Geciken gorevler',
-        description: `${parentSummary.overdueCount} gorev gecikmis durumda`,
+        title: 'Takipteki gorevler',
+        description: `${parentSummary.overdueCount} gorev tamamlanmayi bekliyor`,
         visible: parentSummary.overdueCount > 0,
         action: () => {
           setParentWorkspaceView('tasks');
-          addToast('Geciken gorevler acildi.', 'success');
+          addToast('Takipteki gorevler acildi.', 'success');
         },
       },
       {
         key: `weak:${parentSummary.weakTopics.length}`,
-        title: 'Zayif konu alarmi',
+        title: 'Odak konusu bildirimi',
         description: `${parentSummary.weakTopics.length} konu tekrar istiyor`,
         visible: parentSummary.weakTopics.length > 0,
         action: () => {
           setParentWorkspaceView('analysis');
-          addToast('Zayif konular analizi acildi.', 'success');
+          addToast('Odak konulari analizi acildi.', 'success');
         },
       },
       {
@@ -2273,6 +2528,31 @@ const App: React.FC = () => {
     });
     addToast('Tum bildirimler okundu olarak isaretlendi.', 'success');
   };
+
+  useEffect(() => {
+    const handleKeyboardCommands = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (!notificationsOpen && !settingsOpen && !searchOpen && !quickActionsOpen && !parentMenuOpen) return;
+        event.preventDefault();
+        setNotificationsOpen(false);
+        setSettingsOpen(false);
+        setSearchOpen(false);
+        setQuickActionsOpen(false);
+        setParentMenuOpen(false);
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase('tr-TR') === 'k') {
+        const canSearch = userType === UserType.Child || (userType === UserType.Parent && !isParentLocked);
+        if (!canSearch) return;
+        event.preventDefault();
+        handleOpenGlobalSearch();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyboardCommands);
+    return () => window.removeEventListener('keydown', handleKeyboardCommands);
+  }, [notificationsOpen, settingsOpen, searchOpen, quickActionsOpen, parentMenuOpen, userType, isParentLocked]);
 
   const renderParentWorkspace = () => {
     if (parentWorkspaceView === 'planning') {
@@ -2322,11 +2602,11 @@ const App: React.FC = () => {
           <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-3xl font-black tracking-tight text-slate-900">Gorev Atama ve Takip</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">Yeni gorev olustur, bekleyenleri yonet ve gecikenleri kapat.</p>
+              <p className="mt-1 text-sm font-medium text-slate-500">Yeni gorev olustur, bekleyenleri yonet ve takipteki gorevleri tamamlat.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-700">Bekleyen {parentSummary.pendingCount}</span>
-              <span className="rounded-full bg-rose-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-rose-700">Geciken {parentSummary.overdueCount}</span>
+              <span className="rounded-full bg-rose-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-rose-700">Takipte {parentSummary.overdueCount}</span>
             </div>
           </section>
           <ParentDashboard
@@ -2365,12 +2645,12 @@ const App: React.FC = () => {
         <div className="space-y-6">
           <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-3xl font-black tracking-tight text-slate-900">Analiz ve Risk Takibi</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">Tamamlanan oturumlardan uretilen performans ve zayif konu sinyallerini incele.</p>
+              <h2 className="text-3xl font-black tracking-tight text-slate-900">Analiz ve Destek Takibi</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">Tamamlanan oturumlardan uretilen performans ve odak konusu sinyallerini incele.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-700">Analiz oturumu {analyzedSessionCount}</span>
-              <span className="rounded-full bg-amber-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-amber-700">Zayif konu {parentSummary.weakTopics.length}</span>
+              <span className="rounded-full bg-amber-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-amber-700">Odak konusu {parentSummary.weakTopics.length}</span>
             </div>
           </section>
           <ParentDashboard
@@ -2411,13 +2691,13 @@ const App: React.FC = () => {
             <h2 className="text-3xl font-black tracking-tight text-slate-900">Anlik Ogrenci Pozisyonu</h2>
             <p className="mt-1 text-sm font-medium text-slate-500">Ebeveyn paneli durum ozeti</p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl bg-slate-100 p-1">
+          <div className="ios-panel flex items-center gap-2 rounded-[20px] p-1">
             {(['month', 'quarter', 'total'] as OverviewStudyPeriod[]).map((period) => (
               <button
                 key={period}
                 type="button"
                 onClick={() => setOverviewStudyPeriod(period)}
-                className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-all ${overviewStudyPeriod === period ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}
+                className={`rounded-[16px] px-4 py-1.5 text-xs font-semibold transition-all ${overviewStudyPeriod === period ? 'ios-button-active' : 'text-slate-500 hover:bg-white/50'}`}
               >
                 {overviewPeriodMeta[period].label}
               </button>
@@ -2430,20 +2710,20 @@ const App: React.FC = () => {
             <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-400">Operasyon Ozeti</h3>
             <p className="mt-1 text-sm text-slate-500">Anlik gorev ve panel yogunlugu.</p>
           </div>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="ios-widget ios-blue rounded-[24px] p-5">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Ders</p>
             <div className="mt-2 text-3xl font-black text-slate-900">{courses.length}</div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="ios-widget ios-peach rounded-[24px] p-5">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Bekleyen</p>
             <div className="mt-2 text-3xl font-black text-slate-900">{parentSummary.pendingCount}</div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="ios-widget ios-mint rounded-[24px] p-5">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Tamamlanan</p>
             <div className="mt-2 text-3xl font-black text-emerald-600">{parentSummary.completedCount}</div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="ios-widget ios-lilac rounded-[24px] p-5">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Mevcut Puan</p>
             <div className="mt-2 text-3xl font-black text-blue-700">{successPoints}</div>
           </div>
@@ -2453,43 +2733,43 @@ const App: React.FC = () => {
         <section className="grid grid-cols-12 gap-6">
           <div className="col-span-12 flex flex-col gap-6 lg:col-span-8">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="flex min-h-[140px] flex-col justify-between rounded-xl bg-slate-100 p-4">
+              <div className="ios-widget ios-blue flex min-h-[140px] flex-col justify-between rounded-[24px] p-4">
                 <p className="text-xs font-semibold text-slate-500">Degerlendirilen Calisma</p>
                 <span className="text-2xl font-bold text-slate-900">{overviewAnalyzedSessionCount}</span>
               </div>
-              <div className="flex min-h-[140px] flex-col justify-between rounded-xl bg-slate-100 p-4">
+              <div className="ios-widget ios-mint flex min-h-[140px] flex-col justify-between rounded-[24px] p-4">
                 <p className="text-xs font-semibold text-slate-500">Derslerde Genel Durum</p>
                 <span className="text-sm font-medium text-slate-400">{hasOverviewAnalysisData ? overviewSummary.averageMastery : 'Bekleniyor'}</span>
               </div>
-              <div className="flex min-h-[140px] flex-col justify-between rounded-xl bg-slate-100 p-4">
+              <div className="ios-widget ios-lilac flex min-h-[140px] flex-col justify-between rounded-[24px] p-4">
                 <p className="text-xs font-semibold text-slate-500">Secili Donemde Dikkat</p>
                 <span className="text-sm font-medium text-slate-400">{overviewFocusAverage ?? 'Bekleniyor'}</span>
               </div>
-              <div className="flex min-h-[140px] flex-col justify-between rounded-xl bg-slate-100 p-4">
+              <div className="ios-widget ios-peach flex min-h-[140px] flex-col justify-between rounded-[24px] p-4">
                 <p className="text-xs font-semibold text-slate-500">Soru Basarisi</p>
                 <span className="text-sm font-medium text-slate-400">{overviewAccuracyTrendLabel}</span>
               </div>
-              <div className="flex min-h-[140px] flex-col justify-between rounded-xl bg-white p-4 shadow-sm">
+              <div className="ios-widget flex min-h-[140px] flex-col justify-between rounded-[24px] p-4">
                 <p className="text-xs font-semibold text-slate-500">Tamamlanan Calisma</p>
                 <span className="text-2xl font-bold text-slate-900">{overviewSummary.completedCount}</span>
               </div>
-              <div className="flex min-h-[140px] flex-col justify-between rounded-xl bg-white p-4 shadow-sm">
+              <div className="ios-widget flex min-h-[140px] flex-col justify-between rounded-[24px] p-4">
                 <p className="text-xs font-semibold text-slate-500">Toplam Calisma Suresi</p>
                 <span className="text-2xl font-bold text-slate-900">{overviewSummary.studiedMinutes} <span className="text-xs font-normal">dk</span></span>
               </div>
-              <div className="flex min-h-[140px] flex-col justify-between rounded-xl bg-white p-4 shadow-sm">
+              <div className="ios-widget flex min-h-[140px] flex-col justify-between rounded-[24px] p-4">
                 <p className="text-xs font-semibold text-slate-500">Cozulen Soru</p>
                 <span className="text-2xl font-bold text-slate-900">{overviewSummary.solvedQuestionCount}</span>
               </div>
-              <div className="flex min-h-[140px] flex-col justify-between rounded-xl bg-white p-4 shadow-sm">
+              <div className="ios-widget flex min-h-[140px] flex-col justify-between rounded-[24px] p-4">
                 <p className="text-xs font-semibold text-slate-500">Genel Total Performans</p>
                 <span className="text-sm font-medium text-slate-400">{hasOverviewAnalysisData ? overviewSummary.generalScore : 'Bekleniyor'}</span>
               </div>
             </div>
 
-            <div className="relative flex min-h-[300px] flex-col items-center justify-center overflow-hidden rounded-2xl bg-slate-100 p-8 text-center">
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-transparent" />
+            <div className="ios-card relative flex min-h-[300px] flex-col items-center justify-center overflow-hidden rounded-[32px] p-8 text-center">
+              <div className="absolute inset-0 opacity-70">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(90,167,255,0.24),transparent_34%),radial-gradient(circle_at_80%_30%,rgba(167,139,250,0.20),transparent_30%)]" />
               </div>
               {overviewSummary.allCourses.length === 0 ? (
                 <>
@@ -2506,8 +2786,8 @@ const App: React.FC = () => {
                   <div className="flex h-44 items-end justify-between gap-3 px-2">
                     {overviewSummary.allCourses.slice(0, 6).map((course) => (
                       <div key={`hero-${course.courseId}`} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                        <div className="relative h-36 w-full overflow-hidden rounded-t-lg bg-white/80">
-                          <div className="absolute bottom-0 left-0 w-full rounded-t-lg bg-blue-500/85" style={{ height: `${Math.max(10, Math.min(100, course.averageMastery))}%` }} />
+                          <div className="relative h-36 w-full overflow-hidden rounded-t-[18px] bg-white/70">
+                          <div className="absolute bottom-0 left-0 w-full rounded-t-[18px] bg-[#8AB4FF]/85" style={{ height: `${Math.max(10, Math.min(100, course.averageMastery))}%` }} />
                         </div>
                         <div className="max-w-full truncate text-[10px] font-bold text-slate-500">{course.courseName}</div>
                       </div>
@@ -2519,39 +2799,39 @@ const App: React.FC = () => {
           </div>
 
           <aside className="col-span-12 flex flex-col gap-6 lg:col-span-4">
-            <div className="group relative overflow-hidden rounded-2xl bg-blue-600 p-6 text-white shadow-lg">
+            <div className="ios-ink group relative overflow-hidden rounded-[30px] p-6 text-white">
               <div className="relative z-10">
                 <h3 className="mb-2 text-lg font-bold">Bugun ne yapalim?</h3>
                 <p className="mb-4 text-sm text-white/80">Ogrenci icin yeni bir hedef belirleyin veya son calismalari gozden gecirin.</p>
-                <button onClick={handleOverviewAssignTask} className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-blue-600 transition-all group-hover:gap-3">
+                <button onClick={handleOverviewAssignTask} className="ios-button-active flex items-center gap-2 rounded-[18px] px-4 py-2 text-sm font-bold transition-all group-hover:gap-3">
                   Gorev Listesi <span aria-hidden="true">&gt;</span>
                 </button>
               </div>
               <div className="absolute -bottom-4 -right-4 text-[110px] font-black leading-none text-white/10">+</div>
             </div>
 
-            <div className="flex items-center justify-between rounded-2xl border-l-4 border-rose-500 bg-white p-6 shadow-sm">
+            <div className="ios-widget ios-coral flex items-center justify-between rounded-[26px] p-6">
               <div className="flex items-center gap-4">
-                <div className="rounded-xl bg-rose-50 p-3 text-rose-500">
+                <div className="rounded-[18px] bg-white/65 p-3 text-rose-500">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold">Geciken Gorev</h4>
-                  <p className="text-xs text-slate-500">{parentSummary.overdueCount === 0 ? 'Mudahale gereken calisma yok' : 'Mudahale gereken calisma var'}</p>
+                  <h4 className="text-sm font-bold">Takipteki Gorev</h4>
+                  <p className="text-xs text-slate-500">{parentSummary.overdueCount === 0 ? 'Destek bekleyen calisma yok' : 'Destek bekleyen calisma var'}</p>
                 </div>
               </div>
               <span className="text-2xl font-bold text-slate-900">{parentSummary.overdueCount}</span>
             </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <div className="ios-card rounded-[30px] p-6">
               <h4 className="mb-6 text-sm font-bold">Tum Dersler Performans Durumu</h4>
               <div className="flex h-48 items-end justify-between gap-2 px-2">
                 {overviewSummary.allCourses.length === 0
                   ? Array.from({ length: 6 }).map((_, index) => (
-                      <div key={`placeholder-${index}`} className="w-full rounded-t-lg bg-slate-100 transition-all" style={{ height: `${[20, 15, 25, 10, 30, 5][index]}%` }} />
+                      <div key={`placeholder-${index}`} className="w-full rounded-t-[16px] bg-white/60 transition-all" style={{ height: `${[20, 15, 25, 10, 30, 5][index]}%` }} />
                     ))
                   : overviewSummary.allCourses.slice(0, 6).map((course) => (
-                      <div key={`side-${course.courseId}`} className="w-full rounded-t-lg bg-slate-100 transition-all hover:bg-blue-100" style={{ height: `${Math.max(8, Math.min(100, course.averageMastery))}%` }} />
+                      <div key={`side-${course.courseId}`} className="w-full rounded-t-[16px] bg-[#C4B5FD]/55 transition-all hover:bg-[#8AB4FF]/70" style={{ height: `${Math.max(8, Math.min(100, course.averageMastery))}%` }} />
                     ))}
               </div>
               <div className="mt-4 flex justify-center">
@@ -2560,7 +2840,7 @@ const App: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              <div className="rounded-2xl bg-slate-100 p-5">
+              <div className="ios-widget rounded-[26px] p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <h4 className="text-sm font-bold">Son Aktivite</h4>
                   <Clock className="h-4 w-4 text-slate-400" />
@@ -2572,9 +2852,9 @@ const App: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="rounded-2xl bg-slate-100 p-5">
+              <div className="ios-widget rounded-[26px] p-5">
                 <div className="mb-4 flex items-center justify-between">
-                  <h4 className="text-sm font-bold">Zayif Konular</h4>
+                  <h4 className="text-sm font-bold">Odak Konulari</h4>
                   <Sparkles className="h-4 w-4 text-slate-400" />
                 </div>
                 <div className="flex flex-col gap-3">
@@ -2601,17 +2881,17 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen ${themeMode === 'dark' ? 'bg-slate-950 text-white' : 'bg-[#f6f7fb] text-slate-900'}`}>
-      <header className={`fixed left-0 right-0 top-0 z-50 border-b border-slate-200/70 bg-white/90 backdrop-blur ${userType === UserType.Parent && !isParentLocked && parentSidebarOpen ? 'md:left-64' : ''}`}>
-        <div className="flex h-20 items-center justify-between gap-4 px-4 md:px-8">
+    <div className={`min-h-screen ${themeMode === 'dark' ? 'dr-theme-dark' : 'dr-theme-light'}`}>
+      <header className={`dr-topbar dr-toolbar fixed left-0 right-0 top-0 z-50 border-b ${userType === UserType.Parent && !isParentLocked && parentSidebarOpen ? 'xl:left-64' : ''}`}>
+        <div className="flex h-20 items-center justify-between gap-2 px-3 md:gap-4 md:px-8">
           <div className="flex min-w-0 items-center gap-6">
             {userType === UserType.Parent && !isParentLocked ? (
               <>
-                <div className="hidden md:block">
+                <div className="hidden xl:block">
                   <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">DersRotasi</div>
                   <div className="text-lg font-black text-slate-900">Ebeveyn Paneli</div>
                 </div>
-                <div className="hidden md:flex items-center gap-6">
+                <nav className="dr-toolbar-group hidden xl:flex" aria-label="Ebeveyn modulleri">
                   {parentTopNavItems.map((item) => {
                     const active = parentWorkspaceView === item.id;
                     return (
@@ -2619,54 +2899,157 @@ const App: React.FC = () => {
                         key={item.id}
                         type="button"
                         onClick={() => setParentWorkspaceView(item.id)}
-                        className={`h-16 text-sm transition-colors ${active ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
+                        aria-current={active ? 'page' : undefined}
+                        className={`h-10 rounded-[18px] px-4 text-sm font-semibold transition-all ${active ? 'ios-button-active text-slate-900' : 'text-slate-600 hover:bg-white/55 hover:text-slate-900'}`}
                       >
                         {item.label}
                       </button>
                     );
                   })}
-                </div>
+                </nav>
               </>
             ) : (
-              <div>
+              <div className="hidden min-w-0 sm:block">
                 <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">DersRotasi</div>
                 <div className="text-lg font-black text-slate-900">{userType === UserType.Parent ? 'Ebeveyn Paneli' : 'Cocuk Paneli'}</div>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          <div ref={topbarToolbarRef} onKeyDown={handleToolbarKeyDown} className="flex items-center gap-2 sm:gap-4" role="toolbar" aria-label="Uygulama komutlari">
             {userType === UserType.Parent && !isParentLocked && (
-              <button onClick={handleOverviewAssignTask} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-blue-700">
-                Yeni Gorev Ata
-              </button>
+              <div ref={topbarQuickActionsRef} className="relative hidden sm:block">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickActionsOpen((prev) => !prev);
+                    setNotificationsOpen(false);
+                    setSettingsOpen(false);
+                    setSearchOpen(false);
+                  }}
+                  aria-label="Hizli eylemleri ac"
+                  aria-haspopup="menu"
+                  aria-expanded={quickActionsOpen}
+                  title="Hizli eylemler"
+                  className="dr-pulldown-button h-11 px-3 text-sm font-bold sm:px-4"
+                >
+                  <PlusCircle className="h-5 w-5" />
+                  <span className="hidden whitespace-nowrap lg:inline">Hizli Eylem</span>
+                  <ChevronDown className="h-4 w-4 opacity-70" />
+                </button>
+                {quickActionsOpen && (
+                  <div className="dr-context-menu" role="menu" aria-label="Hizli eylemler">
+                    <div className="dr-context-menu-preview">En sik kullanilan islemler</div>
+                    <button type="button" role="menuitem" className="dr-context-menu-item" onClick={() => handleQuickAction('tasks', 'Gorev yonetimi acildi.')}>
+                      <ClipboardList className="h-4 w-4" />
+                      Gorev ata
+                      <span className="dr-menu-meta">Ana</span>
+                    </button>
+                    <button type="button" role="menuitem" className="dr-context-menu-item" onClick={() => handleQuickAction('planning', 'Akademik planlama acildi.')}>
+                      <Sparkles className="h-4 w-4" />
+                      Planlama ac
+                    </button>
+                    <div className="dr-menu-divider" />
+                    <button type="button" role="menuitem" className="dr-context-menu-item" onClick={() => handleQuickAction('analysis', 'Analiz ve raporlar acildi.')}>
+                      <BarChart className="h-4 w-4" />
+                      Analizleri gor
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
-            <div className="relative inline-flex rounded-full bg-slate-200 p-1">
-              <button onClick={() => handleUserTypeChange(UserType.Parent)} className={`relative z-10 flex h-8 w-24 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-300 ${userType === UserType.Parent ? 'bg-primary-600 text-white' : 'text-slate-600'}`}>
+            <div className="dr-toolbar-group relative inline-flex shrink-0 rounded-full" aria-label="Kullanici modu">
+              <button onClick={() => handleUserTypeChange(UserType.Parent)} aria-pressed={userType === UserType.Parent} title="Ebeveyn modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 sm:w-24 sm:text-sm ${userType === UserType.Parent ? 'ios-button-active text-slate-900' : 'text-slate-600 hover:bg-white/50'}`}>
                 Ebeveyn
               </button>
-              <button onClick={() => handleUserTypeChange(UserType.Child)} className={`relative z-10 flex h-8 w-24 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-300 ${userType === UserType.Child ? 'bg-primary-600 text-white' : 'text-slate-600'}`}>
+              <button onClick={() => handleUserTypeChange(UserType.Child)} aria-pressed={userType === UserType.Child} title="Cocuk modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 sm:w-24 sm:text-sm ${userType === UserType.Child ? 'ios-button-active text-slate-900' : 'text-slate-600 hover:bg-white/50'}`}>
                 Cocuk
               </button>
             </div>
+            <div className="dr-toolbar-group" aria-label="Yardimci komutlar">
+            {(userType === UserType.Child || (userType === UserType.Parent && !isParentLocked)) && <div ref={topbarSearchRef} className="relative">
+              <div className={`ios-button flex h-11 items-center gap-2 rounded-full px-3 transition-all ${searchOpen ? 'w-[22rem]' : 'w-11 justify-center'}`}>
+                <Search className="h-5 w-5 text-slate-500" />
+                {searchOpen && (
+                  <>
+                    <input
+                      value={globalSearchQuery}
+                      onChange={(event) => setGlobalSearchQuery(event.target.value)}
+                      placeholder="Gorev, ders, konu, sinav veya odul"
+                      className="min-h-0 flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+                      autoFocus
+                    />
+                    {globalSearchQuery && (
+                      <button type="button" onClick={() => setGlobalSearchQuery('')} className="flex h-8 min-h-8 w-8 items-center justify-center rounded-full text-slate-500" aria-label="Aramayi temizle">
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </>
+                )}
+                {!searchOpen && (
+                  <button type="button" onClick={handleOpenGlobalSearch} className="absolute inset-0 rounded-full" aria-label="Uygulama icinde ara" title="Ara - Ctrl veya Command K" />
+                )}
+              </div>
+              {searchOpen && (
+                <div className="ios-card absolute right-0 top-12 z-50 w-[min(34rem,calc(100vw-2rem))] rounded-[28px] p-3">
+                  <div className="mb-3 flex gap-2 overflow-x-auto">
+                    {searchScopes.map((scope) => (
+                      <button
+                        key={scope.id}
+                        type="button"
+                        onClick={() => setGlobalSearchScope(scope.id)}
+                        className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold ${globalSearchScope === scope.id ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}
+                      >
+                        {scope.label}
+                      </button>
+                    ))}
+                  </div>
+                  {!globalSearchQuery && searchSuggestionTokens.length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {searchSuggestionTokens.map((suggestion) => (
+                        <button key={suggestion} type="button" onClick={() => setGlobalSearchQuery(suggestion)} className="ios-widget rounded-full px-3 py-2 text-xs font-bold text-slate-600">
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {globalSearchResults.length === 0 ? (
+                      <div className="ios-widget rounded-[20px] px-4 py-5 text-sm text-slate-500">Sonuc bulunamadi. Daha genel bir kelime ya da farkli kapsam deneyin.</div>
+                    ) : globalSearchResults.map((result) => (
+                      <button key={result.id} type="button" onClick={() => handleSearchResultSelect(result)} className="ios-widget w-full rounded-[20px] p-3 text-left transition hover:bg-white/75">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-bold text-slate-900">{result.title}</div>
+                            <div className="mt-1 truncate text-xs text-slate-500">{result.detail}</div>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-white/65 px-2 py-1 text-[10px] font-bold text-slate-500">{result.subtitle}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 text-[11px] leading-5 text-slate-500">Arama gecmisi tutulmaz; oneriler mevcut gorev, ders ve analiz baglamindan uretilir.</div>
+                </div>
+              )}
+            </div>}
             {userType === UserType.Parent && !isParentLocked && <div ref={topbarNotificationsRef} className="relative">
-              <button onClick={() => { setNotificationsOpen((prev) => !prev); setSettingsOpen(false); }} className="relative rounded-full p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-700">
+              <button onClick={() => { setNotificationsOpen((prev) => !prev); setSettingsOpen(false); setQuickActionsOpen(false); }} aria-label="Bildirimleri ac veya kapat" aria-expanded={notificationsOpen} title="Bildirimler" className="ios-button relative rounded-full p-2 text-slate-500 transition hover:text-slate-800">
                 <Bell className="h-5 w-5" />
                 {showNotificationDot && !notificationsMuted && unreadNotificationItems.length > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />}
               </button>
               {notificationsOpen && (
-                <div className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
+                <div className="ios-card absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="text-sm font-bold text-slate-800">Bildirimler</div>
-                    <button onClick={handleMarkAllNotificationsRead} className="text-[11px] font-bold text-blue-700 hover:underline">Tumunu okundu yap</button>
+                    <button onClick={handleMarkAllNotificationsRead} className="ios-button rounded-full px-3 py-1 text-[11px] font-bold text-slate-700">Tumunu okundu yap</button>
                   </div>
                   {notificationsMuted ? (
-                    <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">Bildirimler sessizde.</div>
+                    <div className="ios-widget rounded-[18px] px-3 py-2 text-xs text-slate-500">Bildirimler sessizde.</div>
                   ) : unreadNotificationItems.length === 0 ? (
-                    <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">Yeni bildirim yok.</div>
+                    <div className="ios-widget rounded-[18px] px-3 py-2 text-xs text-slate-500">Yeni bildirim yok.</div>
                   ) : (
                     <div className="space-y-2">
                       {unreadNotificationItems.map((item) => (
-                        <button key={item.key} onClick={() => handleNotificationAction(item)} className="w-full rounded-lg bg-slate-50 px-3 py-2 text-left hover:bg-slate-100">
+                        <button key={item.key} onClick={() => handleNotificationAction(item)} className="ios-widget w-full rounded-[18px] px-3 py-2 text-left transition hover:bg-white/80">
                           <div className="text-xs font-bold text-slate-800">{item.title}</div>
                           <div className="mt-1 text-[11px] text-slate-500">{item.description}</div>
                         </button>
@@ -2677,72 +3060,110 @@ const App: React.FC = () => {
               )}
             </div>}
             {userType === UserType.Parent && !isParentLocked && <div ref={topbarSettingsRef} className="relative">
-              <button onClick={() => { setSettingsOpen((prev) => !prev); setNotificationsOpen(false); }} className="rounded-full p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-700">
+              <button onClick={() => { setSettingsOpen((prev) => !prev); setNotificationsOpen(false); setQuickActionsOpen(false); }} aria-label="Uygulama ayarlarini ac veya kapat" aria-expanded={settingsOpen} title="Uygulama ayarlari" className="ios-button rounded-full p-2 text-slate-500 transition hover:text-slate-800">
                 <Settings className="h-5 w-5" />
               </button>
               {settingsOpen && (
-                <div className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
+                <div className="ios-card absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3">
                   <div className="mb-1 text-sm font-bold text-slate-800">Uygulama Ayarlari</div>
                   <div className="mb-3 text-[11px] text-slate-500">Tercihler bu cihaza kaydedilir.</div>
                   <div className="space-y-3 text-xs">
-                    <div className="rounded-lg bg-slate-50 p-3">
+                    <div className="ios-widget rounded-[20px] p-3">
                       <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Tema</div>
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => setThemeMode('light')}
-                          className={`rounded-lg px-2 py-2 text-[11px] font-bold ${themeMode === 'light' ? 'bg-blue-700 text-white' : 'bg-white text-slate-700'}`}
+                          className={`rounded-[16px] px-2 py-2 text-[11px] font-bold ${themeMode === 'light' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
                         >
                           Acik Mod
                         </button>
                         <button
-                          onClick={() => {
-                            setThemeMode('dark');
-                            addToast('Karanlik mod tasarimi yakinda eklenecek.', 'success');
-                          }}
-                          className={`rounded-lg px-2 py-2 text-[11px] font-bold ${themeMode === 'dark' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700'}`}
+                          onClick={() => setThemeMode('dark')}
+                          className={`rounded-[16px] px-2 py-2 text-[11px] font-bold ${themeMode === 'dark' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
                         >
                           Karanlik Mod
                         </button>
                       </div>
-                      <div className="mt-2 text-[11px] text-slate-500">Karanlik mod secenegi simdilik hazirlik asamasinda.</div>
+                      <div className="mt-2 text-[11px] text-slate-500">Karanlik mod bu tablette dusuk parlaklikta da okunakli kalacak sekilde ayarlandi.</div>
                     </div>
 
-                    <div className="rounded-lg bg-slate-50 p-3">
+                    <div className="ios-widget rounded-[20px] p-3">
+                      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Acilis</div>
+                      <button onClick={() => setRememberLastParentView((prev) => !prev)} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
+                        <span>Son modulu hatirla</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${rememberLastParentView ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{rememberLastParentView ? 'Acik' : 'Kapali'}</span>
+                      </button>
+                      <div className="mt-2 text-[11px] text-slate-500">Aciksa ebeveyn paneli kilit acildiginda son kullandiginiz modulle baslar.</div>
+                      {!rememberLastParentView && (
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          {parentWorkspaceItems.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => setParentDefaultView(item.id)}
+                              className={`rounded-[16px] px-2 py-2 text-[11px] font-bold ${parentDefaultView === item.id ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="ios-widget rounded-[20px] p-3">
                       <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Bildirim</div>
-                      <button onClick={() => setNotificationsMuted((prev) => !prev)} className="flex w-full items-center justify-between rounded-lg bg-white px-3 py-2 text-left text-slate-700 hover:bg-slate-100">
+                      <button onClick={() => setNotificationsMuted((prev) => !prev)} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
                         <span>Bildirimler</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${!notificationsMuted ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>{notificationsMuted ? 'Kapali' : 'Acik'}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${!notificationsMuted ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{notificationsMuted ? 'Kapali' : 'Acik'}</span>
                       </button>
                     </div>
 
-                    <div className="rounded-lg bg-slate-50 p-3">
+                    <div className="ios-widget rounded-[20px] p-3">
+                      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Dokunsal Geri Bildirim</div>
+                      <button
+                        onClick={() => {
+                          setHapticsEnabled((prev) => {
+                            const next = !prev;
+                            if (next) playHaptic('selection');
+                            return next;
+                          });
+                        }}
+                        className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700"
+                      >
+                        <span>Hafif titresim</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${hapticsEnabled ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{hapticsEnabled ? 'Acik' : 'Kapali'}</span>
+                      </button>
+                      <div className="mt-2 text-[11px] text-slate-500">Destekleyen tabletlerde yalnizca onemli onay, hata ve secim anlarinda calisir.</div>
+                    </div>
+
+                    <div className="ios-widget rounded-[20px] p-3">
                       <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Program Ayarlari</div>
-                      <button onClick={handleOpenScheduleSettings} className="flex w-full items-center justify-between rounded-lg bg-white px-3 py-2 text-left text-slate-700 hover:bg-slate-100">
+                      <button onClick={handleOpenScheduleSettings} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
                         <span>Ders Programini Degistir</span>
-                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">Ac</span>
+                        <span className="ios-blue rounded-full px-2 py-0.5 text-[10px] font-bold text-slate-700">Ac</span>
                       </button>
                     </div>
                   </div>
                 </div>
               )}
             </div>}
-            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-slate-600">
+            </div>
+            <div className="ios-button hidden h-9 w-9 items-center justify-center overflow-hidden rounded-full text-slate-600 sm:flex">
               <User className="h-4 w-4" />
             </div>
           </div>
         </div>
       </header>
 
-      <main className={`pt-20 transition-all ${userType === UserType.Parent && !isParentLocked && parentSidebarOpen ? 'md:pl-64' : ''}`}>
+      <main className={`dr-main transition-all ${userType === UserType.Parent && !isParentLocked && parentSidebarOpen ? 'xl:pl-64' : ''}`}>
         {userType === UserType.Parent ? (
           isParentLocked ? (
             <ParentLockScreen onUnlock={handleUnlockParentDashboard} error={loginError} />
           ) : (
             <>
-              <aside className={`fixed inset-y-0 left-0 top-0 z-40 hidden h-screen w-64 flex-col gap-2 border-r-0 bg-slate-50 p-4 pt-20 transition-transform duration-300 md:flex ${parentSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                  <div className="mb-4 rounded-xl bg-white p-4 shadow-sm">
+              <aside className={`ios-panel fixed inset-y-0 left-0 top-0 z-40 hidden h-screen w-64 flex-col gap-2 rounded-r-[30px] border-r-0 p-4 pt-24 transition-transform duration-300 xl:flex ${parentSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                  <div className="ios-widget ios-blue mb-4 rounded-[26px] p-4" aria-label={`Ogrenci takibi. Tamamlanan ${parentSummary.completedCount} gorev`}>
                     <div className="mb-3 flex justify-center">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                      <div className="ios-button flex h-16 w-16 items-center justify-center rounded-full text-slate-700">
                         <User className="h-8 w-8" />
                       </div>
                     </div>
@@ -2760,7 +3181,7 @@ const App: React.FC = () => {
                           onClick={() => {
                             setParentWorkspaceView(item.id);
                           }}
-                          className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all ${active ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:translate-x-1 hover:bg-slate-100'}`}
+                          className={`flex w-full items-center gap-3 rounded-[20px] p-3 text-left transition-all ${active ? 'ios-button-active text-slate-900' : 'text-slate-500 hover:bg-white/55 hover:text-slate-800'}`}
                         >
                           <Icon className="h-5 w-5" />
                           <span className="text-sm">{item.label}</span>
@@ -2769,8 +3190,8 @@ const App: React.FC = () => {
                     })}
                   </nav>
 
-                  <div className="mt-auto border-t border-slate-200/50 p-4">
-                    <button onClick={handleLockParentNow} className="flex w-full items-center gap-3 rounded-lg p-3 text-left text-rose-600 transition-colors hover:bg-rose-50">
+                  <div className="mt-auto border-t border-white/60 p-4">
+                    <button onClick={handleLockParentNow} aria-label="Ebeveyn panelini kilitle" className="ios-coral flex w-full items-center gap-3 rounded-[20px] p-3 text-left text-rose-700 transition-colors">
                       <Lock className="h-5 w-5" />
                       <span className="text-sm font-medium">Paneli Kilitle</span>
                     </button>
@@ -2779,31 +3200,31 @@ const App: React.FC = () => {
 
               <button
                 onClick={() => setParentSidebarOpen((prev) => !prev)}
-                className={`fixed top-24 z-[55] hidden h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-lg transition-all hover:bg-slate-100 md:flex ${parentSidebarOpen ? 'left-[15rem]' : 'left-4'}`}
+                className={`dr-ornament fixed top-[calc(6rem+env(safe-area-inset-top))] z-[55] hidden h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-all xl:flex ${parentSidebarOpen ? 'left-[15rem]' : 'left-4'}`}
                 aria-label={parentSidebarOpen ? 'Sol menuyu kapat' : 'Sol menuyu ac'}
               >
                 {parentSidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </button>
 
-              <div className="px-4 py-4 lg:px-8">
+              <div className="dr-content-pad">
                 <div className="mx-auto max-w-7xl">
                   <div className="min-w-0 space-y-4">
-                    <div className="flex items-center justify-between md:hidden">
-                      <button onClick={() => setParentMenuOpen((prev) => !prev)} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm md:hidden">
+                    <div className="flex items-center justify-between xl:hidden">
+                      <button onClick={() => setParentMenuOpen((prev) => !prev)} className="ios-button inline-flex items-center gap-2 rounded-[20px] px-4 py-3 text-sm font-semibold text-slate-700 xl:hidden">
                         {parentMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />} Moduller
                       </button>
                       <div className="text-sm font-semibold text-slate-500">{parentWorkspaceItems.find((item) => item.id === parentWorkspaceView)?.label}</div>
                     </div>
 
                     {parentMenuOpen && (
-                      <div className="fixed inset-0 z-50 md:hidden">
+                      <div className="fixed inset-0 z-50 xl:hidden">
                         <button
                           type="button"
                           aria-label="Modul menusunu kapat"
                           onClick={() => setParentMenuOpen(false)}
-                          className="absolute inset-0 bg-black/35"
+                          className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm"
                         />
-                        <div className="absolute left-3 right-3 top-20 max-h-[calc(100vh-96px)] overflow-y-auto rounded-[24px] border border-slate-200 bg-white p-3 shadow-2xl">
+                        <div className="ios-card absolute left-3 right-3 top-[calc(5rem+env(safe-area-inset-top))] max-h-[calc(100vh-6rem-env(safe-area-inset-bottom))] overflow-y-auto rounded-[28px] p-3">
                           <div className="space-y-4">
                             <div>
                               <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Kritik moduller</div>
@@ -2818,13 +3239,13 @@ const App: React.FC = () => {
                                     setParentWorkspaceView(item.id);
                                     setParentMenuOpen(false);
                                   }}
-                                  className={`rounded-[20px] px-4 py-4 text-left ${active ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-700'}`}
+                                  className={`rounded-[22px] px-4 py-4 text-left transition ${active ? 'ios-button-active text-slate-900' : 'ios-widget text-slate-700'}`}
                                 >
                                   <div className="flex items-center gap-3">
                                     <Icon className="h-5 w-5" />
                                     <div>
                                       <div className="font-bold">{item.label}</div>
-                                      <div className={`text-xs ${active ? 'text-slate-300' : 'text-slate-500'}`}>{item.description}</div>
+                                      <div className="text-xs text-slate-500">{item.description}</div>
                                     </div>
                                   </div>
                                 </button>
@@ -2847,11 +3268,11 @@ const App: React.FC = () => {
                   <p className="text-slate-700">
                     '{courseToDelete?.name}' dersini ve ilgili gorevleri ile analizleri silmek istediginize emin misiniz?
                   </p>
-                  <div className="flex justify-end space-x-3">
-                    <button className="rounded-lg bg-slate-200 px-4 py-2" onClick={() => setShowDeleteCourseModal(false)}>
+                  <div className="dr-button-row">
+                    <button className="ios-button rounded-[16px] px-4 py-2 font-semibold text-slate-700" onClick={() => setShowDeleteCourseModal(false)}>
                       Vazgec
                     </button>
-                    <button className="rounded-lg bg-red-600 px-4 py-2 text-white" onClick={confirmDeleteCourse}>
+                    <button className="dr-destructive-button px-4 py-2 font-semibold" onClick={confirmDeleteCourse}>
                       Evet, Sil
                     </button>
                   </div>
@@ -2877,6 +3298,25 @@ const App: React.FC = () => {
           />
         )}
       </main>
+      <div className="pointer-events-none fixed bottom-6 left-0 right-0 z-[80] flex flex-col items-center gap-2 px-4">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`pointer-events-auto flex max-w-[min(36rem,100%)] items-center gap-3 rounded-full px-5 py-3 text-sm font-bold shadow-2xl ${toast.type === 'success' ? 'ios-mint text-emerald-950' : 'ios-coral text-rose-950'}`}>
+            <span className="min-w-0 truncate">{toast.message}</span>
+            {toast.actionLabel && toast.onAction && (
+              <button
+                type="button"
+                onClick={() => {
+                  toast.onAction?.();
+                  setToasts((prev) => prev.filter((item) => item.id !== toast.id));
+                }}
+                className="ios-button shrink-0 rounded-full px-3 py-1 text-xs font-black text-slate-800"
+              >
+                {toast.actionLabel}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
