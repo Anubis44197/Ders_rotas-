@@ -117,6 +117,23 @@ textarea:focus-visible {
   outline-offset: 3px;
 }
 
+.dr-settings-popover {
+  top: clamp(5.25rem, 9vh, 6.5rem);
+  right: max(1rem, env(safe-area-inset-right));
+  max-height: calc(100dvh - clamp(6.5rem, 11vh, 8rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  .dr-settings-popover {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+  }
+}
+
 #root {
   min-height: 100vh;
 }

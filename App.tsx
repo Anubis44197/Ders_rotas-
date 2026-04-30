@@ -3083,7 +3083,7 @@ const App: React.FC = () => {
                 <Settings className="h-5 w-5" />
               </button>
               {settingsOpen && (
-                <div className="ios-card absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3">
+                <div className="ios-card dr-settings-popover fixed z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3">
                   <div className="mb-1 text-sm font-bold text-slate-800">Uygulama Ayarlari</div>
                   <div className="mb-3 text-[11px] text-slate-500">Tercihler bu cihaza kaydedilir.</div>
                   <div className="space-y-3 text-xs">
