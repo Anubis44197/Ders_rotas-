@@ -1388,8 +1388,12 @@ const App: React.FC = () => {
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
   const topbarSearchRef = useRef<HTMLDivElement | null>(null);
   const topbarQuickActionsRef = useRef<HTMLDivElement | null>(null);
+  const settingsPopoverRef = useRef<HTMLDivElement | null>(null);
+  const parentControlButtonRef = useRef<HTMLDivElement | null>(null);
+  const parentControlCenterRef = useRef<HTMLDivElement | null>(null);
   const topbarToolbarRef = useRef<HTMLDivElement | null>(null);
   const [parentMenuOpen, setParentMenuOpen] = useState(false);
+  const [parentControlCenterOpen, setParentControlCenterOpen] = useState(false);
   const [parentSidebarOpen, setParentSidebarOpen] = useStickyState<boolean>(true, 'parentSidebarOpen');
   const [notificationsMuted, setNotificationsMuted] = useStickyState<boolean>(false, 'notificationsMuted');
   const [hapticsEnabled, setHapticsEnabled] = useStickyState<boolean>(true, 'hapticsEnabled');
@@ -1422,25 +1426,41 @@ const App: React.FC = () => {
   }, [parentWorkspaceView, setParentWorkspaceView]);
 
   useEffect(() => {
-    if (!notificationsOpen && !settingsOpen && !searchOpen && !quickActionsOpen) return;
+    if (!notificationsOpen && !settingsOpen && !searchOpen && !quickActionsOpen && !parentControlCenterOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (topbarNotificationsRef.current?.contains(target)) return;
       if (topbarSettingsRef.current?.contains(target)) return;
+      if (settingsPopoverRef.current?.contains(target)) return;
       if (topbarSearchRef.current?.contains(target)) return;
       if (topbarQuickActionsRef.current?.contains(target)) return;
+      if (parentControlButtonRef.current?.contains(target)) return;
+      if (parentControlCenterRef.current?.contains(target)) return;
       setNotificationsOpen(false);
       setSettingsOpen(false);
       setSearchOpen(false);
       setQuickActionsOpen(false);
+      setParentControlCenterOpen(false);
     };
 
     document.addEventListener('mousedown', handlePointerDown);
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
     };
-  }, [notificationsOpen, settingsOpen, searchOpen, quickActionsOpen]);
+  }, [notificationsOpen, settingsOpen, searchOpen, quickActionsOpen, parentControlCenterOpen]);
+
+  useEffect(() => {
+    if (!settingsOpen && !parentControlCenterOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+    };
+  }, [settingsOpen, parentControlCenterOpen]);
 
   useEffect(() => {
     const quickView = new URLSearchParams(window.location.search).get('quick');
@@ -2392,6 +2412,7 @@ const App: React.FC = () => {
   }, [courses, overviewSummary.lastCompletedTask, overviewSummary.weakTopics, tasks]);
 
   const handleLockParentNow = () => {
+    setParentControlCenterOpen(false);
     setSettingsOpen(false);
     setIsParentLocked(true);
     addToast('Ebeveyn paneli kilitlendi.', 'success');
@@ -2417,9 +2438,11 @@ const App: React.FC = () => {
     setSettingsOpen(false);
     setQuickActionsOpen(false);
     setSearchOpen(false);
+    setParentControlCenterOpen(false);
   };
 
   const handleOpenScheduleSettings = () => {
+    setParentControlCenterOpen(false);
     setSettingsOpen(false);
     setParentWorkspaceView('planning');
     addToast('Ders programi duzenleme ekranina yonlendirildi.', 'success');
@@ -2436,6 +2459,7 @@ const App: React.FC = () => {
     setNotificationsOpen(false);
     setSettingsOpen(false);
     setSearchOpen(false);
+    setParentControlCenterOpen(false);
     setParentWorkspaceView(view);
     addToast(message, 'success');
   };
@@ -2446,6 +2470,7 @@ const App: React.FC = () => {
     setNotificationsOpen(false);
     setSettingsOpen(false);
     setQuickActionsOpen(false);
+    setParentControlCenterOpen(false);
   };
 
   const handleToolbarKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -2924,6 +2949,8 @@ const App: React.FC = () => {
             )}
           </div>
           <div ref={topbarToolbarRef} onKeyDown={handleToolbarKeyDown} className="flex items-center gap-2 sm:gap-4" role="toolbar" aria-label="Uygulama komutlari">
+            {!(userType === UserType.Parent && !isParentLocked) && (
+              <>
             {userType === UserType.Parent && !isParentLocked && (
               <div ref={topbarQuickActionsRef} className="relative hidden sm:block">
                 <button
@@ -3082,93 +3109,13 @@ const App: React.FC = () => {
               <button onClick={() => { setSettingsOpen((prev) => !prev); setNotificationsOpen(false); setQuickActionsOpen(false); }} aria-label="Uygulama ayarlarini ac veya kapat" aria-expanded={settingsOpen} title="Uygulama ayarlari" className="ios-button rounded-full p-2 text-slate-500 transition hover:text-slate-800">
                 <Settings className="h-5 w-5" />
               </button>
-              {settingsOpen && (
-                <div className="ios-card dr-settings-popover fixed z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3">
-                  <div className="mb-1 text-sm font-bold text-slate-800">Uygulama Ayarlari</div>
-                  <div className="mb-3 text-[11px] text-slate-500">Tercihler bu cihaza kaydedilir.</div>
-                  <div className="space-y-3 text-xs">
-                    <div className="ios-widget rounded-[20px] p-3">
-                      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Tema</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => setThemeMode('light')}
-                          className={`rounded-[16px] px-2 py-2 text-[11px] font-bold ${themeMode === 'light' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
-                        >
-                          Acik Mod
-                        </button>
-                        <button
-                          onClick={() => setThemeMode('dark')}
-                          className={`rounded-[16px] px-2 py-2 text-[11px] font-bold ${themeMode === 'dark' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
-                        >
-                          Karanlik Mod
-                        </button>
-                      </div>
-                      <div className="mt-2 text-[11px] text-slate-500">Karanlik mod bu tablette dusuk parlaklikta da okunakli kalacak sekilde ayarlandi.</div>
-                    </div>
-
-                    <div className="ios-widget rounded-[20px] p-3">
-                      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Acilis</div>
-                      <button onClick={() => setRememberLastParentView((prev) => !prev)} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
-                        <span>Son modulu hatirla</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${rememberLastParentView ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{rememberLastParentView ? 'Acik' : 'Kapali'}</span>
-                      </button>
-                      <div className="mt-2 text-[11px] text-slate-500">Aciksa ebeveyn paneli kilit acildiginda son kullandiginiz modulle baslar.</div>
-                      {!rememberLastParentView && (
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          {parentWorkspaceItems.map((item) => (
-                            <button
-                              key={item.id}
-                              onClick={() => setParentDefaultView(item.id)}
-                              className={`rounded-[16px] px-2 py-2 text-[11px] font-bold ${parentDefaultView === item.id ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
-                            >
-                              {item.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="ios-widget rounded-[20px] p-3">
-                      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Bildirim</div>
-                      <button onClick={() => setNotificationsMuted((prev) => !prev)} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
-                        <span>Bildirimler</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${!notificationsMuted ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{notificationsMuted ? 'Kapali' : 'Acik'}</span>
-                      </button>
-                    </div>
-
-                    <div className="ios-widget rounded-[20px] p-3">
-                      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Dokunsal Geri Bildirim</div>
-                      <button
-                        onClick={() => {
-                          setHapticsEnabled((prev) => {
-                            const next = !prev;
-                            if (next) playHaptic('selection');
-                            return next;
-                          });
-                        }}
-                        className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700"
-                      >
-                        <span>Hafif titresim</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${hapticsEnabled ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{hapticsEnabled ? 'Acik' : 'Kapali'}</span>
-                      </button>
-                      <div className="mt-2 text-[11px] text-slate-500">Destekleyen tabletlerde yalnizca onemli onay, hata ve secim anlarinda calisir.</div>
-                    </div>
-
-                    <div className="ios-widget rounded-[20px] p-3">
-                      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Program Ayarlari</div>
-                      <button onClick={handleOpenScheduleSettings} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
-                        <span>Ders Programini Degistir</span>
-                        <span className="ios-blue rounded-full px-2 py-0.5 text-[10px] font-bold text-slate-700">Ac</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>}
             </div>
             <div className="ios-button hidden h-9 w-9 items-center justify-center overflow-hidden rounded-full text-slate-600 sm:flex">
               <User className="h-4 w-4" />
             </div>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -3228,11 +3175,28 @@ const App: React.FC = () => {
               <div className="dr-content-pad">
                 <div className="mx-auto max-w-7xl">
                   <div className="min-w-0 space-y-4">
-                    <div className="flex items-center justify-between xl:hidden">
+                    <div className="relative flex items-center justify-between xl:hidden">
                       <button onClick={() => setParentMenuOpen((prev) => !prev)} className="ios-button inline-flex items-center gap-2 rounded-[20px] px-4 py-3 text-sm font-semibold text-slate-700 xl:hidden">
                         {parentMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />} Moduller
                       </button>
-                      <div className="text-sm font-semibold text-slate-500">{parentWorkspaceItems.find((item) => item.id === parentWorkspaceView)?.label}</div>
+                      <div ref={parentControlButtonRef} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setParentControlCenterOpen((prev) => !prev);
+                            setParentMenuOpen(false);
+                            setNotificationsOpen(false);
+                            setSettingsOpen(false);
+                            setQuickActionsOpen(false);
+                            setSearchOpen(false);
+                          }}
+                          aria-label="Kontrol merkezini ac veya kapat"
+                          aria-expanded={parentControlCenterOpen}
+                          className="ios-button-active flex h-12 w-12 items-center justify-center rounded-full text-slate-900 shadow-lg"
+                        >
+                          <Settings className="h-5 w-5" />
+                        </button>
+                      </div>
                     </div>
 
                     {parentMenuOpen && (
@@ -3317,6 +3281,156 @@ const App: React.FC = () => {
           />
         )}
       </main>
+      {settingsOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/45 p-4 backdrop-blur-sm" role="presentation">
+          <div ref={settingsPopoverRef} className="ios-card flex max-h-[min(42rem,calc(100dvh-2rem))] w-[min(30rem,100%)] flex-col overflow-hidden rounded-[28px] p-4" role="dialog" aria-modal="true" aria-label="Uygulama ayarlari">
+            <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
+              <div>
+                <div className="text-base font-black text-slate-900">Uygulama Ayarlari</div>
+                <div className="mt-1 text-xs text-slate-500">Tercihler bu cihaza kaydedilir.</div>
+              </div>
+              <button type="button" onClick={() => setSettingsOpen(false)} className="ios-button flex h-10 w-10 items-center justify-center rounded-full text-slate-600" aria-label="Ayarlari kapat">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="dr-modal-scroll min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1 text-xs">
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Tema</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setThemeMode('light')} className={`rounded-[16px] px-2 py-2 text-[11px] font-bold ${themeMode === 'light' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>
+                    Acik Mod
+                  </button>
+                  <button onClick={() => setThemeMode('dark')} className={`rounded-[16px] px-2 py-2 text-[11px] font-bold ${themeMode === 'dark' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>
+                    Karanlik Mod
+                  </button>
+                </div>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Acilis</div>
+                <button onClick={() => setRememberLastParentView((prev) => !prev)} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
+                  <span>Son modulu hatirla</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${rememberLastParentView ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{rememberLastParentView ? 'Acik' : 'Kapali'}</span>
+                </button>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Bildirim</div>
+                <button onClick={() => setNotificationsMuted((prev) => !prev)} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
+                  <span>Bildirimler</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${!notificationsMuted ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{notificationsMuted ? 'Kapali' : 'Acik'}</span>
+                </button>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Dokunsal Geri Bildirim</div>
+                <button
+                  onClick={() => {
+                    setHapticsEnabled((prev) => {
+                      const next = !prev;
+                      if (next) playHaptic('selection');
+                      return next;
+                    });
+                  }}
+                  className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700"
+                >
+                  <span>Hafif titresim</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${hapticsEnabled ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{hapticsEnabled ? 'Acik' : 'Kapali'}</span>
+                </button>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Program Ayarlari</div>
+                <button onClick={handleOpenScheduleSettings} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
+                  <span>Ders Programini Degistir</span>
+                  <span className="ios-blue rounded-full px-2 py-0.5 text-[10px] font-bold text-slate-700">Ac</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {parentControlCenterOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/45 p-4 backdrop-blur-sm" role="presentation">
+          <div ref={parentControlCenterRef} className="ios-card flex max-h-[min(43rem,calc(100dvh-2rem))] w-[min(32rem,100%)] flex-col overflow-hidden rounded-[28px] p-4" role="dialog" aria-modal="true" aria-label="Kontrol merkezi">
+            <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
+              <div>
+                <div className="text-base font-black text-slate-900">Kontrol Merkezi</div>
+                <div className="mt-1 text-xs text-slate-500">{parentWorkspaceItems.find((item) => item.id === parentWorkspaceView)?.label}</div>
+              </div>
+              <button type="button" onClick={() => setParentControlCenterOpen(false)} className="ios-button flex h-10 w-10 items-center justify-center rounded-full text-slate-600" aria-label="Kontrol merkezini kapat">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="dr-modal-scroll min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1 text-xs">
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Kullanici</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => { handleUserTypeChange(UserType.Parent); setParentControlCenterOpen(false); }} className="ios-button-active rounded-[16px] px-2 py-2 font-bold text-slate-900">Ebeveyn</button>
+                  <button type="button" onClick={() => { handleUserTypeChange(UserType.Child); setParentControlCenterOpen(false); }} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Cocuk</button>
+                </div>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Tema</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setThemeMode('light')} className={`rounded-[16px] px-2 py-2 font-bold ${themeMode === 'light' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Acik</button>
+                  <button type="button" onClick={() => setThemeMode('dark')} className={`rounded-[16px] px-2 py-2 font-bold ${themeMode === 'dark' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Koyu</button>
+                </div>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Hizli Gecis</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => handleQuickAction('tasks', 'Gorev yonetimi acildi.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Gorevler</button>
+                  <button type="button" onClick={() => handleQuickAction('planning', 'Akademik planlama acildi.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Planlama</button>
+                  <button type="button" onClick={() => handleQuickAction('analysis', 'Analiz ve raporlar acildi.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Analiz</button>
+                  <button type="button" onClick={() => handleQuickAction('overview', 'Genel bakis acildi.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Ozet</button>
+                </div>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Arama</div>
+                <input
+                  value={globalSearchQuery}
+                  onChange={(event) => setGlobalSearchQuery(event.target.value)}
+                  placeholder="Gorev, ders, konu veya odul"
+                  className="ios-button w-full rounded-[16px] px-3 py-2 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+                />
+                {globalSearchQuery && (
+                  <div className="dr-modal-scroll mt-2 max-h-44 space-y-2 overflow-y-auto">
+                    {globalSearchResults.length === 0 ? (
+                      <div className="text-[11px] text-slate-500">Sonuc bulunamadi.</div>
+                    ) : globalSearchResults.slice(0, 4).map((result) => (
+                      <button key={result.id} type="button" onClick={() => { handleSearchResultSelect(result); setParentControlCenterOpen(false); }} className="ios-button w-full rounded-[14px] px-3 py-2 text-left text-slate-700">
+                        <span className="block truncate text-xs font-black">{result.title}</span>
+                        <span className="block truncate text-[11px] text-slate-500">{result.subtitle}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setNotificationsMuted((prev) => !prev)} className="ios-button rounded-[18px] px-3 py-3 text-left text-slate-700">
+                  <span className="block text-[11px] font-bold uppercase text-slate-500">Bildirim</span>
+                  <span className="text-sm font-black">{notificationsMuted ? 'Sessiz' : 'Acik'}</span>
+                </button>
+                <button type="button" onClick={() => { setSettingsOpen(true); setParentControlCenterOpen(false); }} className="ios-button rounded-[18px] px-3 py-3 text-left text-slate-700">
+                  <span className="block text-[11px] font-bold uppercase text-slate-500">Ayarlar</span>
+                  <span className="text-sm font-black">Ac</span>
+                </button>
+              </div>
+
+              <button type="button" onClick={handleLockParentNow} className="ios-coral flex w-full items-center justify-between rounded-[20px] px-4 py-3 text-left font-black text-rose-950">
+                <span>Paneli Kilitle</span>
+                <Lock className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="pointer-events-none fixed bottom-6 left-0 right-0 z-[80] flex flex-col items-center gap-2 px-4">
         {toasts.map((toast) => (
           <div key={toast.id} className={`pointer-events-auto flex max-w-[min(36rem,100%)] items-center gap-3 rounded-full px-5 py-3 text-sm font-bold shadow-2xl ${toast.type === 'success' ? 'ios-mint text-emerald-950' : 'ios-coral text-rose-950'}`}>
