@@ -46,8 +46,29 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
 
   const weakTopic = analysis.topics.find((topic) => topic.needsRevision);
   const bestCourse = [...analysis.courses].sort((left, right) => right.averageMastery - left.averageMastery)[0];
-  const status = getStatus(analysis.overall.generalScore, analysis.overall.averageRisk);
+  const hasAnalysisData = analysis.sessions.length > 0 && analysis.overall.completedTasks > 0;
+  const status = hasAnalysisData
+    ? getStatus(analysis.overall.generalScore, analysis.overall.averageRisk)
+    : {
+        label: 'Veri bekleniyor',
+        tone: 'dr-status-pill',
+        accent: 'bg-[#8AB4FF]',
+        icon: TrendingUp,
+      };
   const StatusIcon = status.icon;
+  const metricItems = hasAnalysisData
+    ? [
+        { label: 'Genel Skor', value: analysis.overall.generalScore, hint: '0-100' },
+        { label: 'Tamamlanan', value: analysis.overall.completedTasks, hint: 'oturum' },
+        { label: 'Odak', value: analysis.overall.averageFocus, hint: 'ortalama' },
+        { label: 'Hakimiyet', value: analysis.overall.averageMastery, hint: 'ortalama' },
+      ]
+    : [
+        { label: 'Genel Skor', value: '-', hint: 'veri yok' },
+        { label: 'Tamamlanan', value: '-', hint: 'oturum yok' },
+        { label: 'Odak', value: '-', hint: 'veri yok' },
+        { label: 'Hakimiyet', value: '-', hint: 'veri yok' },
+      ];
 
   return (
     <section className="ios-card overflow-hidden rounded-[32px]">
@@ -73,12 +94,7 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-            {[
-              { label: 'Genel Skor', value: analysis.overall.generalScore, hint: '0-100' },
-              { label: 'Tamamlanan', value: analysis.overall.completedTasks, hint: 'oturum' },
-              { label: 'Odak', value: analysis.overall.averageFocus, hint: 'ortalama' },
-              { label: 'Hakimiyet', value: analysis.overall.averageMastery, hint: 'ortalama' },
-            ].map((item) => (
+            {metricItems.map((item) => (
               <div key={item.label} className="ios-widget dr-briefing-score-card rounded-[24px] px-4 py-4">
                 <div className="dr-card-kicker text-xs font-bold uppercase tracking-[0.14em]">{item.label}</div>
                 <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{item.value}</div>
@@ -104,7 +120,7 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
                 : 'Görev tamamlandıkça analiz güveni artar.'}
           </p>
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/20">
-            <div className={`h-full ${status.accent}`} style={{ width: `${Math.max(6, Math.min(100, analysis.overall.generalScore))}%` }} />
+            <div className={`h-full ${status.accent}`} style={{ width: hasAnalysisData ? `${Math.max(6, Math.min(100, analysis.overall.generalScore))}%` : '0%' }} />
           </div>
         </aside>
       </div>

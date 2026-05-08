@@ -1,4 +1,5 @@
 ﻿import { CompositeExamResult, Course, ExamRecord, PeriodCoursePerformance, StoredStudyPlan, Task } from '../types';
+import { isCompletedTask } from './taskStatus';
 import { getTodayString } from './dateUtils';
 import { DEFAULT_METRIC_CONFIG, getTaskMetricProfile } from './metricConfig';
 
@@ -153,6 +154,38 @@ const getAlignmentStatus = (gap: number | null): PeriodCoursePerformance['alignm
   if (absGap <= 8) return 'uyumlu';
   if (absGap <= 18) return 'sapma-var';
   return 'kritik-sapma';
+};
+
+const getAlignmentDirection = (gap: number | null): PeriodCoursePerformance['alignmentDirection'] => {
+  if (gap === null || !Number.isFinite(gap)) return 'unknown';
+  if (Math.abs(gap) <= 8) return 'expected';
+  return gap > 0 ? 'school-below-expected' : 'school-above-expected';
+};
+
+const getAlignmentComment = (
+  courseName: string,
+  schoolScore: number | null,
+  predictedSchoolScore: number | null,
+  gap: number | null,
+): string => {
+  if (schoolScore === null || predictedSchoolScore === null || gap === null || !Number.isFinite(gap)) {
+    return `${courseName} icin okul sonucu geldikce ev calismasi ile okul notu birlikte yorumlanacak.`;
+  }
+
+  const absGap = Math.abs(gap);
+  if (absGap <= 8) {
+    return `${courseName} icin ev calismasi ile okul sonucu uyumlu. Mevcut ritim korunabilir.`;
+  }
+  if (gap > 18) {
+    return `${courseName} calismasi guclu gorunuyor ancak okul sonucu beklenenin belirgin altinda. Sinav formati, stres veya konu transferi incelenmeli.`;
+  }
+  if (gap > 8) {
+    return `${courseName} okul sonucu beklenenden dusuk. Kisa tekrar ve sinav tipi soru pratigi eklenmeli.`;
+  }
+  if (gap < -18) {
+    return `${courseName} okul sonucu beklenenden cok iyi. Bu seviye kalici olsun diye mevcut calisma duzeni korunmali.`;
+  }
+  return `${courseName} okul sonucu beklenenden iyi. Calisma ritmi dusurulmeden devam edilmeli.`;
 };
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -325,7 +358,7 @@ export const deriveAnalysisSnapshot = (
   compositeExamResults: CompositeExamResult[] = [],
 ): AnalysisSnapshot => {
   const courseMap = new Map(courses.map((course) => [course.id, course.name]));
-  const completedTasks = tasks.filter((task) => task.status === 'tamamlandı' && task.completionDate);
+  const completedTasks = tasks.filter((task) => isCompletedTask(task) && task.completionDate);
 
   const sessions: SessionMetrics[] = completedTasks.map((task) => {
     const focusNorm = getFocusNorm(task);
@@ -583,10 +616,10 @@ export const deriveAnalysisSnapshot = (
 
   const today = getTodayString();
   const assignedTasks = tasks.filter((task) => !task.isSelfAssigned);
-  const completedAssignedTasks = assignedTasks.filter((task) => task.status === 'tamamlandı').length;
-  const overdueAssignedTasks = assignedTasks.filter((task) => task.status !== 'tamamlandı' && task.dueDate < today).length;
+  const completedAssignedTasks = assignedTasks.filter((task) => isCompletedTask(task)).length;
+  const overdueAssignedTasks = assignedTasks.filter((task) => !isCompletedTask(task) && task.dueDate < today).length;
   const selfAssignedTasks = tasks.filter((task) => task.isSelfAssigned).length;
-  const completedAllTasks = tasks.filter((task) => task.status === 'tamamlandı').length;
+  const completedAllTasks = tasks.filter((task) => isCompletedTask(task)).length;
   const planTaskTotals = countPlannedTopicTasks(studyPlans);
 
   const rawAdherence = tasks.length > 0 ? (completedAllTasks / tasks.length) * 100 : 0;
@@ -610,18 +643,18 @@ export const deriveAnalysisSnapshot = (
     const revisionBucket = revisionBuckets.get(task.courseId) || { total: 0, completed: 0 };
     if (task.taskGoalType === 'konu-tekrari') {
       revisionBucket.total += 1;
-      if (task.status === 'tamamlandı') revisionBucket.completed += 1;
+      if (isCompletedTask(task)) revisionBucket.completed += 1;
       revisionBuckets.set(task.courseId, revisionBucket);
     }
 
     const disciplineBucket = disciplineBuckets.get(task.courseId) || { total: 0, onTimeCompleted: 0 };
     disciplineBucket.total += 1;
-    if (task.status === 'tamamlandı' && task.completionDate && task.completionDate <= task.dueDate) {
+    if (isCompletedTask(task) && task.completionDate && task.completionDate <= task.dueDate) {
       disciplineBucket.onTimeCompleted += 1;
     }
     disciplineBuckets.set(task.courseId, disciplineBucket);
 
-    if (task.status === 'tamamlandı' && (task.taskGoalType === 'sinav-hazirlik' || task.taskGoalType === 'olcme-degerlendirme')) {
+    if (isCompletedTask(task) && (task.taskGoalType === 'sinav-hazirlik' || task.taskGoalType === 'olcme-degerlendirme')) {
       const readinessBucket = examReadinessBuckets.get(task.courseId) || [];
       const readinessScore = typeof task.successScore === 'number'
         ? task.successScore
@@ -634,7 +667,7 @@ export const deriveAnalysisSnapshot = (
       }
     }
 
-    if (task.status === 'tamamlandı' && task.taskType === 'soru çözme') {
+    if (isCompletedTask(task) && task.taskType === 'soru çözme') {
       const accuracyBucket = recentAccuracyBuckets.get(task.courseId) || [];
       const accuracyScore = typeof task.correctCount === 'number' && (task.questionCount || 0) > 0
         ? Math.round((task.correctCount / Math.max(1, task.questionCount || 1)) * 100)
@@ -683,6 +716,8 @@ export const deriveAnalysisSnapshot = (
       predictedSchoolScore,
       alignmentGap,
       alignmentStatus: getAlignmentStatus(alignmentGap),
+      alignmentDirection: getAlignmentDirection(alignmentGap),
+      alignmentComment: getAlignmentComment(course.name, schoolScore, predictedSchoolScore, alignmentGap),
       trend: (courseMetrics?.weakTopicCount ? (courseMetrics.weakTopicCount >= 2 ? 'down' : 'flat') : 'flat') as PeriodCoursePerformance['trend'],
       riskLevel: getRiskLevelLabel(courseMetrics ? 100 - courseMetrics.averageMastery : 0),
     };

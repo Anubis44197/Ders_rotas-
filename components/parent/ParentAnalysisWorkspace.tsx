@@ -5,6 +5,7 @@ import AnalysisGraphCenter from './AnalysisGraphCenter';
 import { alignmentLabelMap, alignmentToneMap, examTypeLabelMap } from './parentDashboardShared';
 import { AlertTriangle, BarChart, BookOpen, CheckCircle, ClipboardList, FileText, Target, TrendingUp } from '../icons';
 import ContextHelp from '../shared/ContextHelp';
+import { isCompletedTask } from '../../utils/taskStatus';
 
 const surface = 'ios-card rounded-[30px] p-5';
 const subtleSurface = 'ios-widget rounded-[24px] p-4';
@@ -27,7 +28,7 @@ interface ParentAnalysisWorkspaceProps {
 
 const analysisWorkspaceTabs: Array<{ id: AnalysisWorkspaceTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview', label: 'Performans', icon: Target },
-  { id: 'insights', label: 'Odak Alanlari', icon: AlertTriangle },
+  { id: 'insights', label: 'Odak Alanları', icon: AlertTriangle },
   { id: 'alignment', label: 'Okul Uyumu', icon: ClipboardList },
   { id: 'reports', label: 'Raporlar', icon: BarChart },
 ];
@@ -70,7 +71,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   const [report, setReport] = useState<ReportData | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-  const completedTasksForMetrics = useMemo(() => tasks.filter((task) => task.status === 'tamamlandı'), [tasks]);
+  const completedTasksForMetrics = useMemo(() => tasks.filter(isCompletedTask), [tasks]);
   const weakTopics = useMemo(() => analysis.topics.filter((topic) => topic.needsRevision).slice(0, 6), [analysis.topics]);
   const improvingTopics = useMemo(
     () => [...analysis.topics].filter((topic) => topic.trend === 'up').sort((a, b) => b.masteryScore - a.masteryScore).slice(0, 5),
@@ -147,7 +148,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <div className="mt-2 flex items-start gap-2">
                   <h3 className="text-2xl font-black text-slate-950">Karar paneli</h3>
                   <ContextHelp title="Skorlar nasil okunur" tone="blue">
-                    Panel son tamamlanan oturumlari birlestirir. Risk yukseldikce tekrar, odak ve sure dengesi once incelenir.
+                    Panel son tamamlanan oturumları birleştirir. Risk yükseldikçe tekrar, odak ve süre dengesi önce incelenir.
                   </ContextHelp>
                 </div>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
@@ -218,7 +219,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             <div className="ios-ink rounded-[30px] p-6 text-white">
               <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Sonraki adım</div>
               <div className="mt-3 text-xl font-black leading-7">
-                {riskiestTopic ? 'Odak konusuna kisa tekrar' : analysis.overall.completedTasks > 0 ? 'Ritmi koru' : 'Ilk olcumlu gorev'}
+                {riskiestTopic ? 'Odak konusuna kısa tekrar' : analysis.overall.completedTasks > 0 ? 'Ritmi koru' : 'İlk ölçümlü görev'}
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-300">
                 {riskiestTopic
@@ -319,6 +320,28 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               <div className={subtleSurface}><div className="text-xs font-bold uppercase text-slate-400">Son genel</div><div className="mt-2 text-base font-black">{latestStateExam?.title || 'Kayıt yok'}</div></div>
             </div>
 
+            {latestStateExam && (
+              <div className="mt-4 rounded-[24px] border border-white/65 bg-white/55 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="text-xs font-black uppercase text-slate-400">Son deneme risk özeti</div>
+                    <div className="mt-1 text-sm font-bold text-slate-700">{latestStateExam.title} / {latestStateExam.date}</div>
+                  </div>
+                  {typeof latestStateExam.totalScore === 'number' && (
+                    <div className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-slate-700">Toplam {latestStateExam.totalScore}</div>
+                  )}
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {latestStateExam.riskCourses.map((course) => (
+                    <div key={`${latestStateExam.date}-${course.courseName}`} className="rounded-[18px] bg-white/70 px-3 py-2">
+                      <div className="text-sm font-black text-slate-800">{course.courseName}</div>
+                      <div className="mt-1 text-xs font-semibold text-slate-500">Risk puanı {course.score}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="mt-5 space-y-3">
               {schoolPerformance.length === 0 && <div className="ios-widget rounded-[24px] p-5 text-sm text-slate-500">Okul notu geldikçe uyum analizi oluşur.</div>}
               {schoolPerformance.map((item) => (
@@ -330,10 +353,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                         <span className="rounded-full bg-white/65 px-2 py-1">Ev {item.studyScore}</span>
                         <span className="rounded-full bg-white/65 px-2 py-1">Okul {item.schoolScore ?? '-'}</span>
                         <span className="rounded-full bg-white/65 px-2 py-1">Beklenen {item.predictedSchoolScore ?? '-'}</span>
+                        {item.alignmentGap !== null && <span className="rounded-full bg-white/65 px-2 py-1">Fark {item.alignmentGap > 0 ? '+' : ''}{item.alignmentGap}</span>}
                       </div>
                     </div>
                     <span className={`rounded-full border px-3 py-1 text-xs font-black ${alignmentToneMap[item.alignmentStatus]}`}>{alignmentLabelMap[item.alignmentStatus]}</span>
                   </div>
+                  <div className="mt-3 rounded-[18px] bg-white/60 px-3 py-2 text-sm font-semibold text-slate-600">{item.alignmentComment}</div>
                   <div className="mt-4 grid gap-2">
                     <ProgressBar value={item.studyScore} tone="bg-[#8AB4FF]" />
                     {item.schoolScore !== null && <ProgressBar value={item.schoolScore} tone="bg-[#C4B5FD]" />}
@@ -348,8 +373,8 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             <div className="mt-4 space-y-3">
               {recentExamRecords.map((record) => (
                 <div key={record.id} className="ios-widget rounded-[22px] p-3 text-sm">
-                  <div className="font-bold text-slate-900">{record.courseName} · {record.title}</div>
-                  <div className="mt-1 text-slate-500">{examTypeLabelMap[record.examType]} · {record.date} · Puan {record.score}</div>
+                  <div className="font-bold text-slate-900">{record.courseName} / {record.title}</div>
+                  <div className="mt-1 text-slate-500">{examTypeLabelMap[record.examType]} / {record.date} / Puan {record.score}</div>
                 </div>
               ))}
               {recentExamRecords.length === 0 && <div className="ios-widget rounded-[22px] p-4 text-sm text-slate-500">Sınav kaydı yok.</div>}
@@ -369,8 +394,8 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                   <FileText className="h-5 w-5 text-slate-700" />
                   <h3 className="text-xl font-black text-slate-950">Rapor</h3>
                 </div>
-                <ContextHelp title="Rapor secimi" tone="peach">
-                  Once donemi sec, sonra rapor uret. Rapor; guclu alan, odak alani ve sonraki calisma onerisine indirgenir.
+                <ContextHelp title="Rapor seçimi" tone="peach">
+                  Önce dönemi seç, sonra rapor üret. Rapor; güçlü alan, odak alanı ve sonraki çalışma önerisine indirgenir.
                 </ContextHelp>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">

@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
+import { isCompletedTask } from '../../utils/taskStatus';
 import { Task } from '../../types';
 import { Brain, Zap, Target, Lightbulb, TrendingUp, TrendingDown, BookOpen, Calendar, Info } from '../icons';
 
@@ -50,7 +51,7 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
   const [suggestedPlan, setSuggestedPlan] = useState<StudyPlan | null>(null);
   const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
 
-  const completedTasks = useMemo(() => tasks.filter((task) => task.status === 'tamamland\u0131'), [tasks]);
+  const completedTasks = useMemo(() => tasks.filter((task) => isCompletedTask(task)), [tasks]);
 
   useEffect(() => {
     const nextInsights: LearningInsight[] = [];
@@ -58,20 +59,20 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
     if (userPerformance.strongSubjects.length > 0) {
       nextInsights.push({
         type: 'strength',
-        title: 'Guclu Alanlar',
-        description: `${userPerformance.strongSubjects.join(', ')} alanlarinda istikrarli performans var.`,
+        title: 'Güçlü Alanlar',
+        description: `${userPerformance.strongSubjects.join(', ')} alanlarında istikrarlı performans var.`,
         actionable: true,
-        suggestion: 'Guclu oldugun dersleri odak isteyen konulari tekrar etmek icin kaldirac olarak kullan.',
+        suggestion: 'Güçlü olduğun dersleri odak isteyen konuları tekrar etmek için kaldıraç olarak kullan.',
       });
     }
 
     if (userPerformance.weakSubjects.length > 0) {
       nextInsights.push({
         type: 'weakness',
-        title: 'Gelisim Gereken Alanlar',
-        description: `${userPerformance.weakSubjects.join(', ')} icin daha sik tekrar ve soru cozum akisi gerekli.`,
+        title: 'Gelişim Gereken Alanlar',
+        description: `${userPerformance.weakSubjects.join(', ')} için daha sık tekrar ve soru çözüm akışı gerekli.`,
         actionable: true,
-        suggestion: 'Bu konulari kisa ama duzenli oturumlarla calis ve ilerlemeyi haftalik kontrol et.',
+        suggestion: 'Bu konuları kısa ama düzenli oturumlarla çalış ve ilerlemeyi haftalık kontrol et.',
       });
     }
 
@@ -79,16 +80,16 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
       nextInsights.push({
         type: 'opportunity',
         title: 'Veri Birikiyor',
-        description: 'Yeterli oturum verisi olustukca konu bazli analiz daha isabetli hale gelir.',
+        description: 'Yeterli oturum verisi oluştukça konu bazlı analiz daha isabetli hale gelir.',
         actionable: true,
-        suggestion: 'Her gorevde sure, odak ve dogruluk alanlarini duzenli doldur.',
+        suggestion: 'Her görevde süre, odak ve doğruluk alanlarını düzenli doldur.',
       });
     }
 
     nextInsights.push({
       type: 'warning',
-      title: ai ? 'AI Hazir' : 'AI Opsiyonel',
-      description: ai ? 'Yapay zeka servisi etkin. Oneriler zamanla daha dinamik uretilebilir.' : 'AI bagli degil. Uygulama yine de yerel analiz ve plan uretimi ile calisir.',
+      title: ai ? 'AI Hazır' : 'AI Opsiyonel',
+      description: ai ? 'Yapay zeka servisi etkin. Öneriler zamanla daha dinamik üretilebilir.' : 'AI bağlı değil. Uygulama yine de yerel analiz ve plan üretimi ile çalışır.',
       actionable: false,
     });
 
@@ -99,7 +100,7 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
     const focus = userPerformance.weakSubjects.slice(0, 2);
     const plan: StudyPlan = {
       id: `plan_${Date.now()}`,
-      title: 'Kisisellestirilmis Calisma Plani',
+      title: 'Kişiselleştirilmiş Çalışma Planı',
       duration: 60,
       difficulty: userPerformance.averageScore >= 80 ? 'orta' : 'kolay',
       focus,
@@ -108,27 +109,27 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
           type: 'review',
           subject: focus[0] || userPerformance.strongSubjects[0] || 'Genel Tekrar',
           duration: 20,
-          description: 'Temel kavramlari gozden gecir ve kisa notlar cikar.',
-          resources: ['Defter', 'Konu ozeti'],
+          description: 'Temel kavramları gözden geçir ve kısa notlar çıkar.',
+          resources: ['Defter', 'Konu özeti'],
         },
         {
           type: 'break',
           subject: 'Mola',
           duration: 10,
-          description: 'Kisa mola ver ve dikkatini tazele.',
+          description: 'Kısa mola ver ve dikkatini tazele.',
         },
         {
           type: 'practice',
-          subject: focus[1] || focus[0] || 'Soru Cozumu',
+          subject: focus[1] || focus[0] || 'Soru Çözümü',
           duration: 25,
-          description: 'Hedef konu uzerinden soru cozerek eksikleri bul.',
-          resources: ['Soru bankasi', 'Deneme notlari'],
+          description: 'Hedef konu üzerinden soru çözerek eksikleri bul.',
+          resources: ['Soru bankası', 'Deneme notları'],
         },
         {
           type: 'new_concept',
-          subject: userPerformance.strongSubjects[0] || 'Genel Baglanti',
+          subject: userPerformance.strongSubjects[0] || 'Genel Bağlantı',
           duration: 5,
-          description: 'Guclu oldugun bilgi ile bugunku hedef konuyu bagla.',
+          description: 'Güçlü olduğun bilgi ile bugünkü hedef konuyu bağla.',
         },
       ],
     };
@@ -173,12 +174,12 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
         <div className="flex items-center">
           <h3 className="flex items-center text-2xl font-bold text-slate-800">
             <Brain className="mr-3 h-7 w-7 text-primary-600" />
-            Ogrenme Asistani
+            Öğrenme Asistanı
           </h3>
           <div className="group relative ml-2">
             <Info className="h-4 w-4 cursor-help text-slate-400" />
             <div className="absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-              Yerel analiz verilerine gore kisa oneriler sunar.
+              Yerel analiz verilerine göre kısa öneriler sunar.
             </div>
           </div>
         </div>
@@ -186,13 +187,13 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
           onClick={() => setShowDetailedAnalysis((value) => !value)}
           className="rounded-lg bg-primary-100 px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-200"
         >
-          {showDetailedAnalysis ? 'Ozet Gorunum' : 'Detayli Analiz'}
+          {showDetailedAnalysis ? 'Özet Görünüm' : 'Detaylı Analiz'}
         </button>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 p-4">
-          <p className="text-sm font-semibold text-blue-600">Tamamlama Orani</p>
+          <p className="text-sm font-semibold text-blue-600">Tamamlama Oranı</p>
           <p className="text-2xl font-bold text-blue-800">%{userPerformance.completionRate}</p>
         </div>
         <div className="rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-green-100 p-4">
@@ -200,13 +201,13 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
           <p className="text-2xl font-bold text-green-800">{userPerformance.averageScore}</p>
         </div>
         <div className="rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 p-4">
-          <p className="text-sm font-semibold text-purple-600">Ogrenme Stili</p>
+          <p className="text-sm font-semibold text-purple-600">Öğrenme Stili</p>
           <p className="text-sm font-bold capitalize text-purple-800">{userPerformance.learningStyle}</p>
         </div>
       </div>
 
       <div className="mb-6">
-        <h4 className="mb-4 font-bold text-slate-700">Akilli Oneriler</h4>
+        <h4 className="mb-4 font-bold text-slate-700">Akıllı Öneriler</h4>
         <div className="space-y-3">
           {insights.map((insight, index) => (
             <div key={index} className={`rounded-lg border p-4 ${getInsightColor(insight.type)}`}>
@@ -218,7 +219,7 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
                   {insight.suggestion && (
                     <div className="rounded border border-current border-opacity-20 bg-white/50 p-2">
                       <p className="text-xs text-slate-700">
-                        <strong>Oneri:</strong> {insight.suggestion}
+                        <strong>Öneri:</strong> {insight.suggestion}
                       </p>
                     </div>
                   )}
@@ -233,13 +234,13 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
         <div className="mb-4 flex items-center justify-between">
           <h4 className="flex items-center font-bold text-slate-700">
             <Calendar className="mr-2 h-5 w-5 text-primary-600" />
-            Onerilen Calisma Plani
+            Önerilen Çalışma Planı
           </h4>
           <button
             onClick={generatePersonalizedStudyPlan}
             className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
           >
-            Yeni Plan Olustur
+            Yeni Plan Oluştur
           </button>
         </div>
 
@@ -280,17 +281,17 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
         ) : (
           <div className="rounded-lg border border-slate-200 bg-slate-50 py-8 text-center">
             <Brain className="mx-auto mb-3 h-12 w-12 text-slate-400" />
-            <p className="text-sm text-slate-500">Yukaridaki buton ile kisa bir calisma plani uretebilirsin.</p>
+            <p className="text-sm text-slate-500">Yukarıdaki buton ile kısa bir çalışma planı üretebilirsin.</p>
           </div>
         )}
       </div>
 
       {showDetailedAnalysis && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
-          <h4 className="mb-4 font-bold text-slate-700">Detayli Performans Analizi</h4>
+          <h4 className="mb-4 font-bold text-slate-700">Detaylı Performans Analizi</h4>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <h5 className="mb-3 font-semibold text-slate-600">Guclu Alanlar</h5>
+              <h5 className="mb-3 font-semibold text-slate-600">Güçlü Alanlar</h5>
               {userPerformance.strongSubjects.length > 0 ? (
                 <ul className="space-y-1">
                   {userPerformance.strongSubjects.map((subject, index) => (
@@ -301,11 +302,11 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-500">Henuz belirgin guclu alan yok.</p>
+                <p className="text-sm text-slate-500">Henüz belirgin güçlü alan yok.</p>
               )}
             </div>
             <div>
-              <h5 className="mb-3 font-semibold text-slate-600">Gelisim Alanlari</h5>
+              <h5 className="mb-3 font-semibold text-slate-600">Gelişim Alanları</h5>
               {userPerformance.weakSubjects.length > 0 ? (
                 <ul className="space-y-1">
                   {userPerformance.weakSubjects.map((subject, index) => (
@@ -316,7 +317,7 @@ const PersonalizedLearningAssistant: React.FC<LearningAssistantProps> = ({
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-500">Performans dengeli gorunuyor.</p>
+                <p className="text-sm text-slate-500">Performans dengeli görünüyor.</p>
               )}
             </div>
           </div>

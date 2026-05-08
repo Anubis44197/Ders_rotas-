@@ -15,10 +15,10 @@ interface Props {
 
 const chartOptions = [
   { key: 'trend', label: 'Performans trendi' },
-  { key: 'taskType', label: 'Gorev turu' },
+  { key: 'taskType', label: 'Görev türü' },
   { key: 'bestPeriod', label: 'Verimli zaman' },
-  { key: 'completionSpeed', label: 'Tamamlanma hizi' },
-  { key: 'courseTime', label: 'Ders bazli sure' },
+  { key: 'completionSpeed', label: 'Tamamlanma hızı' },
+  { key: 'courseTime', label: 'Ders bazlı süre' },
 ] as const;
 
 type ChartKey = typeof chartOptions[number]['key'];
@@ -36,7 +36,7 @@ const CustomReportModal: React.FC<Props> = ({ tasks, courses, performanceData, s
       const key = item.courseName || item.courseId || `ders-${index}`;
       const current = byCourse.get(key) || [];
       current.push({
-        period: `Kayit ${current.length + 1}`,
+        period: `Kayıt ${current.length + 1}`,
         successScore: item.correct || 0,
         focusScore: item.incorrect || 0,
         courseName: item.courseName,

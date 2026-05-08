@@ -1,9 +1,10 @@
-﻿import React, { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Task } from '../../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Brush } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
 import { Zap, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
-import { ChartTooltip, chartAxisProps, chartBrushProps, chartGridProps, chartLegendProps, chartPalette } from '../shared/chartDesign';
+import { ChartTooltip, chartAxisProps, chartBrushProps, chartGridProps, chartPalette } from '../shared/chartDesign';
+import { isCompletedTask } from '../../utils/taskStatus';
 
 interface CompletionSpeedAnalysisProps {
   tasks: Task[];
@@ -14,7 +15,7 @@ interface CompletionSpeedAnalysisProps {
 const LoadingSpinner: React.FC = () => (
   <div className="flex h-48 items-center justify-center">
     <Loader className="h-8 w-8 animate-spin text-primary-600" />
-    <span className="ml-2 text-slate-600">Veriler yukleniyor...</span>
+    <span className="ml-2 text-slate-600">Veriler yükleniyor...</span>
   </div>
 );
 
@@ -23,14 +24,14 @@ const ErrorState: React.FC<{ error: string }> = ({ error }) => (
     <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
       <span className="text-xl text-red-500">!</span>
     </div>
-    <p className="mb-2 text-slate-600">Veriler yuklenirken bir sorun olustu.</p>
+    <p className="mb-2 text-slate-600">Veriler yüklenirken bir sorun oluştu.</p>
     <p className="text-sm text-slate-500">{error}</p>
   </div>
 );
 
 const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks, loading = false, error = null }) => {
   const completed = useMemo(
-    () => tasks.filter((task) => task.status === 'tamamland\u0131' && typeof task.plannedDuration === 'number' && typeof task.actualDuration === 'number'),
+    () => tasks.filter((task) => isCompletedTask(task) && typeof task.plannedDuration === 'number' && typeof task.actualDuration === 'number'),
     [tasks],
   );
 
@@ -56,7 +57,7 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
   if (loading) {
     return (
       <div className="ios-card rounded-[28px] p-6">
-        <h3 className="mb-4 flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hizi</h3>
+        <h3 className="mb-4 flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hızı</h3>
         <LoadingSpinner />
       </div>
     );
@@ -65,26 +66,26 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
   if (error) {
     return (
       <div className="ios-card rounded-[28px] p-6">
-        <h3 className="mb-4 flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hizi</h3>
+        <h3 className="mb-4 flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hızı</h3>
         <ErrorState error={error} />
       </div>
     );
   }
 
   if (!completed.length) {
-    return <EmptyState icon={<Zap className="h-8 w-8 text-slate-400" />} title="Tamamlanma hizi analizi icin veri yok" message="Planlanan ve gercek sure karsilastirmasi tamamlanan gorevler geldikce burada gorunecek." />;
+    return <EmptyState icon={<Zap className="h-8 w-8 text-slate-400" />} title="Tamamlanma hızı analizi için veri yok" message="Planlanan ve gerçek süre karşılaştırması tamamlanan görevler geldikçe burada görünecek." />;
   }
 
   return (
     <div className="ios-card rounded-[28px] p-6">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hizi</h3>
-          <p className="text-sm text-slate-500">Son 20 tamamlanan gorevde planlanan sure ile gercek sure farki.</p>
+          <h3 className="flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hızı</h3>
+          <p className="text-sm text-slate-500">Son 20 tamamlanan görevde planlanan süre ile gerçek süre farkı.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
           <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Ort. plan: <strong>{averagePlanned} dk</strong></div>
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Ort. gercek: <strong>{averageActual} dk</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Ort. gerçek: <strong>{averageActual} dk</strong></div>
           <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Verim: <strong>{averageEfficiency}</strong></div>
         </div>
       </div>
@@ -95,9 +96,8 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
           <XAxis dataKey="title" interval={0} angle={-20} textAnchor="end" height={60} {...chartAxisProps} />
           <YAxis label={{ value: 'dk', angle: -90, position: 'insideLeft', offset: 10 }} {...chartAxisProps} />
           <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} dk`} />} />
-          <Legend {...chartLegendProps} />
-          <Bar dataKey="planned" name="Planlanan sure" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
-          <Bar dataKey="actual" name="Gercek sure" fill={chartPalette.peach} radius={[10, 10, 0, 0]} />
+          <Bar legendType="none" dataKey="planned" name="Planlanan süre" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
+          <Bar legendType="none" dataKey="actual" name="Gerçek süre" fill={chartPalette.peach} radius={[10, 10, 0, 0]} />
           {data.length > 8 && <Brush dataKey="title" {...chartBrushProps} />}
         </BarChart>
       </ResponsiveContainer>

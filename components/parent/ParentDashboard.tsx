@@ -6,7 +6,11 @@ import ParentAnalysisWorkspace from './ParentAnalysisWorkspace';
 import ParentRewardWorkspace from './ParentRewardWorkspace';
 import ParentBriefingWorkspace from './ParentBriefingWorkspace';
 
-const ParentDashboard: React.FC<ParentDashboardProps> = ({
+type ParentDashboardInternalProps = ParentDashboardProps & {
+  analysisSnapshot?: ReturnType<typeof deriveAnalysisSnapshot>;
+};
+
+const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
   courses,
   tasks,
   rewards,
@@ -28,16 +32,19 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({
   loading,
   error,
   viewMode = 'all',
+  analysisSnapshot,
 }) => {
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const analysis = useMemo(
-    () => deriveAnalysisSnapshot(tasks, courses, studyPlans, examRecords, compositeExamResults),
-    [tasks, courses, studyPlans, examRecords, compositeExamResults],
+    () => analysisSnapshot || deriveAnalysisSnapshot(tasks, courses, studyPlans, examRecords, compositeExamResults),
+    [analysisSnapshot, tasks, courses, studyPlans, examRecords, compositeExamResults],
   );
 
-  const showTasks = viewMode === 'all' || viewMode === 'tasks';
+  const showTasks = viewMode === 'all' || viewMode === 'assignment' || viewMode === 'tasks' || viewMode === 'exams' || viewMode === 'data';
   const showRewards = viewMode === 'all';
+  const showBriefing = viewMode === 'all' || viewMode === 'analysis';
+  const showAnalysis = viewMode === 'all' || viewMode === 'analysis';
   const containerClassName = viewMode === 'all' ? 'space-y-6 px-4 pb-8' : 'space-y-6 pb-8';
 
   const showActionMessage = (type: 'success' | 'error', text: string) => {
@@ -55,7 +62,7 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({
         </div>
       )}
 
-      <ParentBriefingWorkspace analysis={analysis} loading={loading} error={error} />
+      {showBriefing && <ParentBriefingWorkspace analysis={analysis} loading={loading} error={error} />}
 
       {showRewards && (
         <ParentRewardWorkspace
@@ -67,18 +74,20 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({
         />
       )}
 
-      <ParentAnalysisWorkspace
-        tasks={tasks}
-        courses={courses}
-        curriculum={curriculum}
-        analysis={analysis}
-        examRecords={examRecords}
-        compositeExamResults={compositeExamResults}
-        generateReport={generateReport}
-        loading={loading}
-        error={error}
-        viewMode={viewMode}
-      />
+      {showAnalysis && (
+        <ParentAnalysisWorkspace
+          tasks={tasks}
+          courses={courses}
+          curriculum={curriculum}
+          analysis={analysis}
+          examRecords={examRecords}
+          compositeExamResults={compositeExamResults}
+          generateReport={generateReport}
+          loading={loading}
+          error={error}
+          viewMode={viewMode}
+        />
+      )}
 
       {showTasks && (
         <ParentTaskWorkspace

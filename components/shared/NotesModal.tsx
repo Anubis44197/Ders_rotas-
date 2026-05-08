@@ -46,13 +46,13 @@ const NotesModal: React.FC<NotesModalProps> = ({
         <div className="space-y-4">
           <div>
             <label htmlFor="session-note" className="mb-2 block text-sm font-semibold text-slate-700">
-              <span className="font-bold text-slate-900">{taskName}</span> gorevi icin not
+              <span className="font-bold text-slate-900">{taskName}</span> görevi için not
             </label>
             <textarea
               id="session-note"
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Nerede kaldigini, neyi hatirlamak istedigini veya sonraki adimi yaz..."
+              placeholder="Nerede kaldığını, neyi hatırlamak istediğini veya sonraki adımı yaz..."
               className="dr-text-view"
               maxLength={500}
               rows={5}

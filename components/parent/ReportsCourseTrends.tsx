@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import CoursePerformanceTrendChart from './CoursePerformanceTrendChart';
 import { Task, Course } from '../../types';
 import { type TimeFilterValue } from '../shared/TimeRangeFilter';
+import { isCompletedTask } from '../../utils/taskStatus';
 
 interface Props {
   tasks: Task[];
@@ -14,7 +15,7 @@ function aggregateCoursePerformance(tasks: Task[], courses: Course[], timeFilter
   const { startDate, endDate } = timeFilter;
 
   const completed = tasks.filter((task) => {
-    if (task.status !== 'tamamland\u0131' || !(task.completionDate || task.dueDate)) return false;
+    if (!isCompletedTask(task) || !(task.completionDate || task.dueDate)) return false;
     const analysisDate = new Date(task.completionDate || task.dueDate!);
     if (startDate && analysisDate < new Date(startDate)) return false;
     if (endDate && analysisDate > new Date(endDate)) return false;

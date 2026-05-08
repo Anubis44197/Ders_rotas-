@@ -125,9 +125,9 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="ios-card w-full max-w-sm rounded-[28px] p-6 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100"><Trash2 className="h-6 w-6 text-red-600" /></div>
-            <h3 className="mb-2 text-xl font-black">Gorev silindi</h3>
-            <p className="mb-6 text-sm leading-6 text-slate-600">Bu okuma gorevi ebeveyn tarafindan silindigi icin seans devam ettirilemez.</p>
-            <button onClick={onFinishSession} className="ios-button-active w-full rounded-[18px] px-4 py-3 text-sm font-bold">Anladim</button>
+            <h3 className="mb-2 text-xl font-black">Görev silindi</h3>
+            <p className="mb-6 text-sm leading-6 text-slate-600">Bu okuma görevi ebeveyn tarafından silindiği için seans devam ettirilemez.</p>
+            <button onClick={onFinishSession} className="ios-button-active w-full rounded-[18px] px-4 py-3 text-sm font-bold">Anladım</button>
           </div>
         </div>
       )}
@@ -135,18 +135,18 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
       {showCompleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
           <div className="ios-card w-full max-w-md rounded-[28px] p-6">
-            <h3 className="text-2xl font-black text-slate-900">Okuma seansini tamamla</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Bu seansta kac sayfa okudugunu gir.</p>
-            <input type="number" value={pagesRead} onChange={(e) => setPagesRead(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Orn: 25" min="1" autoFocus className="ios-button mt-5 w-full rounded-[24px] px-4 py-4 text-center text-3xl font-black text-slate-900 focus:outline-none" />
+            <h3 className="text-2xl font-black text-slate-900">Okuma seansını tamamla</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Bu seansta kaç sayfa okuduğunu gir.</p>
+            <input type="number" value={pagesRead} onChange={(e) => setPagesRead(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Örn: 25" min="1" autoFocus className="ios-button mt-5 w-full rounded-[24px] px-4 py-4 text-center text-3xl font-black text-slate-900 focus:outline-none" />
             {completionError && <div className="ios-coral mt-3 rounded-[18px] px-4 py-3 text-sm font-semibold text-rose-950">{completionError}</div>}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button onClick={() => { setShowCompleteModal(false); setStatus('running'); }} className="ios-button rounded-[18px] px-5 py-3 text-sm font-bold text-slate-700">Geri don</button>
+              <button onClick={() => { setShowCompleteModal(false); setStatus('running'); }} className="ios-button rounded-[18px] px-5 py-3 text-sm font-bold text-slate-700">Geri dön</button>
               <button
                 onClick={handleConfirmCompletion}
                 disabled={isCompleting}
                 className={`rounded-[18px] px-5 py-3 text-sm font-bold ${isCompleting ? 'ios-button cursor-not-allowed text-slate-500 opacity-60' : 'ios-mint text-emerald-950'}`}
               >
-                {isCompleting ? 'Tamamlaniyor...' : 'Tamamla'}
+                {isCompleting ? 'Tamamlanıyor...' : 'Tamamla'}
               </button>
             </div>
           </div>
@@ -188,16 +188,16 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
 
             <section className="ios-card rounded-[36px] p-6">
               <div className="mb-5 flex items-center justify-between">
-                <div><div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Canli akis</div><h2 className="mt-1 text-2xl font-black text-slate-900">Okuma gostergesi</h2></div>
-                <div className={`rounded-full px-4 py-2 text-sm font-bold ${status === 'break' ? 'bg-amber-100 text-amber-700' : status === 'paused' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>{status === 'break' ? 'Molada' : status === 'paused' ? 'Durakladi' : 'Okuyor'}</div>
+                <div><div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Canlı akış</div><h2 className="mt-1 text-2xl font-black text-slate-900">Okuma göstergesi</h2></div>
+                <div className={`rounded-full px-4 py-2 text-sm font-bold ${status === 'break' ? 'bg-amber-100 text-amber-700' : status === 'paused' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>{status === 'break' ? 'Molada' : status === 'paused' ? 'Durakladı' : 'Okuyor'}</div>
               </div>
               <div className="flex min-h-[420px] flex-col items-center justify-center">
                 <div className="rounded-full bg-teal-100 px-10 py-10 shadow-inner"><p className="tabular-nums text-8xl font-black text-teal-600">{formatTime(mainTime)}</p></div>
-                <p className="mt-5 text-sm font-bold uppercase tracking-[0.18em] text-slate-400">Toplam okuma suresi</p>
+                <p className="mt-5 text-sm font-bold uppercase tracking-[0.18em] text-slate-400">Toplam okuma süresi</p>
                 <div className="mt-8 grid w-full max-w-2xl gap-3 md:grid-cols-3">
                   <div className="ios-widget ios-blue rounded-[22px] p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Plan</div><div className="mt-2 text-2xl font-black text-slate-900">{task.plannedDuration} dk</div></div>
                   <div className="ios-widget ios-yellow rounded-[22px] p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Mola</div><div className="mt-2 text-2xl font-black text-slate-900">{formatTime(breakTime)}</div></div>
-                  <div className="ios-widget ios-mint rounded-[22px] p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Durum</div><div className="mt-2 text-2xl font-black text-slate-900">{status === 'running' ? 'Akis' : status === 'break' ? 'Mola' : 'Bekle'}</div></div>
+                  <div className="ios-widget ios-mint rounded-[22px] p-4 text-center"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Durum</div><div className="mt-2 text-2xl font-black text-slate-900">{status === 'running' ? 'Akış' : status === 'break' ? 'Mola' : 'Bekle'}</div></div>
                 </div>
               </div>
             </section>

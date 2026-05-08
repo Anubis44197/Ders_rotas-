@@ -1,5 +1,6 @@
 ﻿import { useMemo, useCallback, useState, useEffect } from 'react';
 import { Task, Course } from '../types';
+import { isCompletedTask } from './taskStatus';
 import { getLocalDateString } from './dateUtils';
 
 export const useOptimizedTaskFilter = (
@@ -64,7 +65,7 @@ export const useOptimizedTaskFilter = (
 export const useOptimizedCoursePerformance = (tasks: Task[], courses: Course[]) => {
   return useMemo(() => {
     const courseMap = new Map(courses.map((course) => [course.id, course]));
-    const completedTasks = tasks.filter((task) => task.status === 'tamamland\u0131' && typeof task.successScore === 'number');
+    const completedTasks = tasks.filter((task) => isCompletedTask(task) && typeof task.successScore === 'number');
 
     const performanceData = new Map<string, {
       totalScore: number;
@@ -132,7 +133,7 @@ export const usePaginatedData = <T,>(data: T[], pageSize = 20) => {
 
 export const useOptimizedDataAggregation = (tasks: Task[]) => {
   return useMemo(() => {
-    const completedTasks = tasks.filter((task) => task.status === 'tamamland\u0131');
+    const completedTasks = tasks.filter((task) => isCompletedTask(task));
     const dailySuccess = new Map<string, { totalScore: number; count: number }>();
     const weeklyProductivity = new Map<number, { totalTasks: number; totalScore: number }>();
     const taskTypeAnalysis = new Map<string, { count: number; avgScore: number; totalScore: number }>();

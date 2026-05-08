@@ -1,6 +1,7 @@
 import { deriveAnalysisSnapshot } from '../utils/analysisEngine';
+import { createWeeklyPlanDraft } from '../utils/planEngine';
 import { calculateTaskPoints } from '../utils/scoringAlgorithm';
-import type { Course, Reward, Task, TaskCompletionData } from '../types';
+import type { Course, ExamScheduleEntry, PlanningEngineSnapshot, Reward, StoredStudyPlan, StudyPlan, Task, TaskCompletionData, WeeklySchedule } from '../types';
 
 const today = new Date();
 const iso = (date: Date) => date.toISOString().slice(0, 10);
@@ -17,8 +18,8 @@ const assert = (condition: boolean, message: string) => {
 };
 
 const courses: Course[] = [
-  { id: 'c1', name: 'Matematik', icon: 'BookOpen' },
-  { id: 'c2', name: 'Fen', icon: 'BookOpen' },
+  { id: 'c1', name: 'Matematik', active: true, order: 0, icon: 'BookOpen' },
+  { id: 'c2', name: 'Fen', active: true, order: 1, icon: 'BookOpen' },
 ];
 
 const baseTask = (partial: Partial<Task>): Task => ({
@@ -152,12 +153,163 @@ const runDataVolumeScenarios = () => {
   assert(highData.taskTypes.length >= 2, 'Cok veri senaryosunda en az iki gorev tipi olusmali.');
 };
 
+const runAcademicPlanningEndToEndFlow = () => {
+  const weeklySchedule: WeeklySchedule = {
+    Pazartesi: {
+      slots: [{ id: 'school_math_1', courseName: 'Matematik', startTime: '09:00', endTime: '10:00' }],
+      availableWindows: [{ startTime: '16:00', endTime: '17:30', quality: 'deep' }],
+      confirmed: true,
+    },
+    Sali: { slots: [], availableWindows: [], confirmed: true },
+    Carsamba: { slots: [], availableWindows: [], confirmed: true },
+    Persembe: { slots: [], availableWindows: [], confirmed: true },
+    Cuma: { slots: [], availableWindows: [], confirmed: true },
+    Cumartesi: { slots: [], availableWindows: [], confirmed: true },
+    Pazar: { slots: [], availableWindows: [], confirmed: true },
+  };
+
+  const examSchedules: ExamScheduleEntry[] = [{
+    id: 'exam_schedule_math_1',
+    courseId: 'c1',
+    courseName: 'Matematik',
+    examName: 'Matematik yazılısı',
+    date: iso(new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)),
+  }];
+
+  const snapshot: PlanningEngineSnapshot = {
+    scheduleDays: [{
+      dayName: 'Pazartesi',
+      schoolBlocks: [{ id: 'school_math_1', courseId: 'c1', courseName: 'Matematik', startTime: '09:00', endTime: '10:00' }],
+      availableWindows: [{ startTime: '16:00', endTime: '17:30', quality: 'deep' }],
+      confirmed: true,
+    }],
+    curriculumTopics: [{
+      id: 'topic_math_ratio',
+      courseId: 'c1',
+      courseName: 'Matematik',
+      unitName: 'Oran Orantı',
+      topicName: 'Oran problemleri',
+      sequenceOrder: 1,
+      isRequired: true,
+    }],
+    examSchedules,
+    topicStatuses: [{
+      topicId: 'topic_math_ratio',
+      status: 'new',
+      nextRecommendedAction: 'learn',
+    }],
+    studyPlanRecords: [],
+    planBlockRecords: [],
+    studySessions: [],
+    assessmentResults: [],
+    replanTriggers: [],
+  };
+
+  const drafts = createWeeklyPlanDraft({
+    mode: 'ai_normal',
+    tempo: 'Orta',
+    candidateTopics: [{
+      subject: 'Matematik',
+      unitName: 'Oran Orantı',
+      topicName: 'Oran problemleri',
+      completed: false,
+    }],
+    snapshot,
+    weeklySchedule,
+  });
+
+  assert(drafts.length > 0, 'Haftalik plan en az bir calisma blogu uretmeli.');
+  assert(drafts[0].day === 'Pazartesi', 'Plan okul programiyla uyumlu gun secmeli.');
+  assert(drafts[0].startTime >= '16:00' && drafts[0].endTime <= '17:30', 'Plan ev calisma penceresi icinde saatlenmeli.');
+
+  const planTask = {
+    id: drafts[0].id,
+    day: drafts[0].day,
+    startTime: drafts[0].startTime,
+    endTime: drafts[0].endTime,
+    type: drafts[0].blockType,
+    duration: drafts[0].duration,
+    questionCount: drafts[0].questionCount,
+    source: drafts[0].source,
+    completed: false,
+  };
+
+  const studyPlan: StudyPlan = {
+    Matematik: {
+      units: [{
+        name: 'Oran Orantı',
+        topics: [{
+          name: 'Oran problemleri',
+          tasks: [planTask],
+        }],
+      }],
+    },
+  };
+
+  const storedPlan: StoredStudyPlan = {
+    id: 'study_plan_week_1_v1_smoke',
+    week: 1,
+    version: 1,
+    status: 'active',
+    reason: 'initial-plan',
+    generatedAt: today.toISOString(),
+    approvedAt: today.toISOString(),
+    approvedBy: 'parent',
+    type: 'normal',
+    schedule: weeklySchedule,
+    plan: studyPlan,
+  };
+
+  const childTask = baseTask({
+    id: 'task_from_weekly_plan_1',
+    title: 'Matematik - Oran problemleri',
+    courseId: 'c1',
+    planTaskId: planTask.id,
+    planWeek: 1,
+    planSource: 'weekly-plan',
+    planLabel: planTask.source,
+    curriculumUnitName: 'Oran Orantı',
+    curriculumTopicName: 'Oran problemleri',
+    taskType: 'ders çalışma',
+    plannedDuration: planTask.duration || 40,
+    status: 'bekliyor',
+    completionDate: undefined,
+    completionTimestamp: undefined,
+  });
+
+  assert(childTask.planTaskId === planTask.id, 'Plan blogu cocuk gorevine baglanmali.');
+  assert(childTask.planSource === 'weekly-plan', 'Cocuk gorevi haftalik plan kaynagini tasimali.');
+
+  const beforeCompletion = deriveAnalysisSnapshot([childTask], courses, [storedPlan]);
+  assert(beforeCompletion.sessions.length === 0, 'Tamamlanmamis plan gorevi analiz sessionina donusmemeli.');
+  assert(beforeCompletion.plan.totalPlannedTopicTasks === 1, 'Analiz planlanan haftalik plan gorevini saymali.');
+  assert(beforeCompletion.plan.completedPlannedTopicTasks === 0, 'Tamamlanmamis plan gorevi tamamlanmis sayilmamali.');
+
+  planTask.completed = true;
+  const completedTask: Task = {
+    ...childTask,
+    status: 'tamamlandı',
+    actualDuration: 2400,
+    focusScore: 82,
+    successScore: 86,
+    completionDate: iso(today),
+    completionTimestamp: new Date(`${iso(today)}T16:45:00`).getTime(),
+  };
+
+  const afterCompletion = deriveAnalysisSnapshot([completedTask], courses, [storedPlan]);
+  assert(afterCompletion.sessions.length === 1, 'Tamamlanan cocuk gorevi analiz sessionina donusmeli.');
+  assert(afterCompletion.topics.some((topic) => topic.topicName === 'Oran problemleri'), 'Analiz konu bazli plan gorevini yansitmali.');
+  assert(afterCompletion.plan.completedPlannedTopicTasks === 1, 'Tamamlanan plan gorevi analiz plan metrigine yansimali.');
+  assert(afterCompletion.overall.completedTasks === 1, 'Tamamlanan gorev genel analiz sayacina yansimali.');
+};
+
 const main = () => {
   runAssignmentCompletionRewardFlow();
   runTaskTypeCoverage();
   runExportImportConsistency();
   runDeterminismCheck();
   runDataVolumeScenarios();
+  runAcademicPlanningEndToEndFlow();
   console.log('SMOKE_TESTS_OK');
 };
 

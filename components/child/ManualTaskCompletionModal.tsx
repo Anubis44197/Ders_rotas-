@@ -75,9 +75,9 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
       <form className="ios-card w-full max-w-xl rounded-[28px] p-6" onSubmit={handleSubmit}>
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Gecmis kayit</div>
-            <h3 className="mt-1 text-2xl font-black text-slate-900">Gorevi manuel tamamla</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Bu gorev gecmis tarihte yapildiysa sure ve sonuc bilgisini buradan gir.</p>
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Geçmiş kayıt</div>
+            <h3 className="mt-1 text-2xl font-black text-slate-900">Görevi manuel tamamla</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Bu görev geçmiş tarihte yapıldıysa süre ve sonuç bilgisini buradan gir.</p>
           </div>
           <button type="button" onClick={onClose} className="ios-button rounded-full px-3 py-2 text-sm font-bold text-slate-500">Kapat</button>
         </div>
@@ -88,28 +88,28 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
             <span className="rounded-full bg-white px-3 py-1">{task.dueDate}</span>
             <span className="rounded-full bg-white px-3 py-1">{task.plannedDuration} dk plan</span>
             {task.questionCount ? <span className="rounded-full bg-white px-3 py-1">{task.questionCount} soru</span> : null}
-            {task.curriculumUnitName ? <span className="rounded-full bg-white px-3 py-1">Unite: {task.curriculumUnitName}</span> : null}
+            {task.curriculumUnitName ? <span className="rounded-full bg-white px-3 py-1">Ünite: {task.curriculumUnitName}</span> : null}
             {task.curriculumTopicName ? <span className="rounded-full bg-white px-3 py-1">Konu: {task.curriculumTopicName}</span> : null}
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1fr]">
           <section className="ios-widget ios-blue rounded-[24px] p-4">
-            <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Sure bilgisi</div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Süre bilgisi</div>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm font-semibold text-slate-700">
-                Baslama
+                Başlama
                 <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="ios-button mt-1 w-full rounded-[18px] px-3 py-3" required />
               </label>
               <label className="text-sm font-semibold text-slate-700">
-                Bitis
+                Bitiş
                 <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="ios-button mt-1 w-full rounded-[18px] px-3 py-3" required />
               </label>
             </div>
           </section>
 
           <section className="ios-widget ios-mint rounded-[24px] p-4">
-            <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Sonuc bilgisi</div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Sonuç bilgisi</div>
             <div className="space-y-3">
               {task.taskType === 'kitap okuma' && (
                 <label className="text-sm font-semibold text-slate-700">
@@ -136,11 +136,11 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
                 </div>
               )}
 
-              {task.taskType === 'ders çalışma' && <div className="ios-widget rounded-[18px] px-3 py-3 text-sm text-slate-600">Bu gorevde sure bilgisi yeterli. Odak ve verim sonraki analizde hesaplanir.</div>}
+              {task.taskType === 'ders çalışma' && <div className="ios-widget rounded-[18px] px-3 py-3 text-sm text-slate-600">Bu görevde süre bilgisi yeterli. Odak ve verim sonraki analizde hesaplanır.</div>}
 
               {task.taskType !== 'kitap okuma' && (
                 <label className="text-sm font-semibold text-slate-700">
-                  Baslamadan once bu konuda kendine kac puan verirdin? (0-100)
+                  Başlamadan önce bu konuda kendine kaç puan verirdin? (0-100)
                   <input
                     type="number"
                     min="0"
