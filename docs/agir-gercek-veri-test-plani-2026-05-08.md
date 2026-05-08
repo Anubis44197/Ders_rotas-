@@ -96,3 +96,29 @@ Uygulamayı gerçekçi ve yoğun veriyle uçtan uca test etmek. Hedef yalnızca 
 - UI üzerinden aynı gün iki aynı ev çalışma penceresi ekle/sil testi.
 - 100+ görevle mobil viewport görsel taşma testi.
 - Analiz grafiklerinde her grafik tipi için dolu veri senaryosu.
+
+## 2026-05-08 İkinci Ağır Test Turu
+
+### Eklenen Sözleşme Testleri
+- `npm run test:heavy` kapsamı genişletildi.
+- Büyük yedek veri senaryosu eklendi: 140+ görev, dersler, müfredat, performans, ödül, rozet, okul programı, ev çalışma pencereleri, sınav kayıtları, genel deneme sonucu ve haftalık plan JSON round-trip sonrası tekrar analiz ediliyor.
+- Grafik merkezi veri aileleri için sözleşme testi eklendi: genel skor/EMA, ders performansı, risk grafiği, müfredat kapsama, kalıcılık eğrisi, doğruluk/süre, en verimli zaman, öğrenme verimi, derin çalışma oranı, görev türü analizi ve okuma analitiği veri kaynağı boş kalmamalı.
+- Aynı saat ve kaliteye sahip iki ev çalışma penceresi için tekil silme sözleşmesi eklendi; seçilen pencere silinirken eş pencereler korunmalı.
+
+### Kapatılan Ek Bulgu
+- P2: İçe aktarma hata toast metinlerinde `Gecersiz`, `dosyasi`, `formati` gibi kullanıcıya görünen ASCII Türkçe vardı. Mesajlar doğru Türkçe karakterlerle güncellendi.
+
+### Doğrulama Kanıtı
+- `npm run typecheck`: geçti.
+- `npm run test:heavy`: izinli ortamda `HEAVY_REAL_DATA_TESTS_OK`.
+- `npm run build`: izinli ortamda geçti.
+- `npm run smoke`: izinli ortamda `SMOKE_TESTS_OK`.
+- `git diff --check`: geçti; yalnızca LF/CRLF uyarıları var.
+- Browser QA `http://127.0.0.1:3003/`:
+  - `quick=overview`, `quick=planning`, `quick=analysis`: görünür, console error yok.
+  - eski `quick=tasks` ve `quick=exams`: ayrı görev/sınav veri giriş sayfası gibi açılmadı, Planlama yüzeyine düştü.
+  - Analiz > Raporlar > Grafik Merkezi: açıldı; boş veri durumunda sahte skor üretmeden yeterli veri yok mesajı gösterdi.
+  - Görünür taramada `Ders gir`, mojibake, eski import hata metni ve belirgin ASCII Türkçe regresyonu görülmedi.
+
+### Kalan Risk
+- UI üzerinden dosya seçme/import ve aynı saatli çalışma penceresi ekle/sil akışı otomatik tarayıcıda dosya seçici kısıtı nedeniyle sözleşme testiyle doğrulandı. Bu iki davranış için ileride Playwright tam tarayıcı koşucusu veya özel test harness'i eklenirse daha iyi uçtan uca kanıt alınabilir.
