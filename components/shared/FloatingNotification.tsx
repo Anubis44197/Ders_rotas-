@@ -1,4 +1,5 @@
 ﻿import React, { useMemo, useState, useEffect } from 'react';
+import { isCompletedTask } from '../../utils/taskStatus';
 import { Task } from '../../types';
 import { Bell, X, Clock, Calendar, AlertTriangle, CheckCircle } from '../icons';
 import { getLocalDateString, parseDate } from '../../utils/dateUtils';
@@ -39,7 +40,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
             const newNotifications: NotificationItem[] = [];
 
             const missingTasks = tasks.filter(t =>
-                t.status !== 'tamamland\u0131' &&
+                !isCompletedTask(t) &&
                 parseDate(t.dueDate) < now &&
                 !t.postponed
             );
@@ -52,8 +53,8 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                     newNotifications.push({
                         id: `missing_${nowDateStr}`,
                         type: 'missing_task',
-                        title: 'Eksik Gorev Uyarisi',
-                        message: `Tamamlanmamis ${missingTasks.length} gorev var. Hemen aksiyon al.`,
+                        title: 'Eksik Görev Uyarısı',
+                        message: `Tamamlanmamış ${missingTasks.length} görev var. Hemen aksiyon al.`,
                         timestamp: now,
                         isRead: false,
                         priority: 'high'
@@ -72,8 +73,8 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                         newNotifications.push({
                             id: `due_${task.id}`,
                             type: 'due_soon',
-                            title: 'Gorev Hatirlatma',
-                            message: `"${task.title}" gorevi yaklasiyor.`,
+                            title: 'Görev Hatırlatma',
+                            message: `"${task.title}" görevi yaklaşıyor.`,
                             timestamp: now,
                             isRead: false,
                             priority: hoursUntilDue <= 6 ? 'high' : 'medium',
@@ -84,7 +85,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
             });
 
             const today = getLocalDateString(now);
-            const todayCompletedTasks = tasks.filter(t => t.status === 'tamamland\u0131' && t.completionDate === today);
+            const todayCompletedTasks = tasks.filter(t => isCompletedTask(t) && t.completionDate === today);
 
             if (todayCompletedTasks.length > 0) {
                 const existingTodayNotification = notifications.find(n => n.id === `completed_${today}` && n.type === 'completed_task');
@@ -93,7 +94,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                         id: `completed_${today}`,
                         type: 'completed_task',
                         title: 'Tebrikler',
-                        message: `Bugun ${todayCompletedTasks.length} gorev tamamladin.`,
+                        message: `Bugün ${todayCompletedTasks.length} görev tamamladın.`,
                         timestamp: now,
                         isRead: false,
                         priority: 'medium'
@@ -106,8 +107,8 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                 newNotifications.push({
                     id: `daily_goal_${today}`,
                     type: 'daily_goal',
-                    title: 'Gunluk Hedef',
-                    message: 'Bugun henuz gorev tamamlamadin. Kucuk bir adim at.',
+                    title: 'Günlük Hedef',
+                    message: 'Bugün henüz görev tamamlamadın. Küçük bir adım at.',
                     timestamp: now,
                     isRead: false,
                     priority: 'low'
@@ -126,7 +127,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
     }, [tasks, hasInitialized, notifications, lastCheck]);
 
     useEffect(() => {
-        const completedTaskIds = tasks.filter(t => t.status === 'tamamland\u0131').map(t => t.id);
+        const completedTaskIds = tasks.filter(t => isCompletedTask(t)).map(t => t.id);
         setNotifications(prev => prev.filter(notification => !(notification.taskId && completedTaskIds.includes(notification.taskId))));
     }, [tasks]);
 
@@ -178,7 +179,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
             <div className="fixed bottom-6 right-6 z-50" aria-live="polite">
                 <button
                     onClick={() => setShowPanel(!showPanel)}
-                    aria-label={`Bildirimler. ${unreadCount} okunmamis bildirim`}
+                    aria-label={`Bildirimler. ${unreadCount} okunmamış bildirim`}
                     aria-expanded={showPanel}
                     className="ios-button-active relative rounded-full p-4 transition-all duration-200 hover:scale-105"
                 >
@@ -196,12 +197,12 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                     <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
                         <div>
                             <h3 className="font-bold text-lg text-slate-800">Bildirimler</h3>
-                            <p className="text-sm text-slate-500">{unreadCount} okunmamis bildirim</p>
+                            <p className="text-sm text-slate-500">{unreadCount} okunmamış bildirim</p>
                         </div>
                         <div className="flex items-center gap-2">
                             {unreadCount > 0 && (
                                 <button onClick={markAllAsRead} className="text-xs text-primary-600 hover:text-primary-700 font-medium">
-                                    Tumunu oku
+                                    Tümünü oku
                                 </button>
                             )}
                             <button onClick={() => setShowPanel(false)} className="ios-button rounded-full p-1 transition-colors" aria-label="Bildirim panelini kapat">
@@ -234,12 +235,12 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                                         <div className="flex items-center gap-2 mt-3">
                                             {!notification.isRead && (
                                                 <button onClick={() => markAsRead(notification.id)} className="text-xs bg-white bg-opacity-80 hover:bg-opacity-100 text-slate-600 px-3 py-1 rounded-full transition-colors">
-                                                    Okundu isaretle
+                                                    Okundu işaretle
                                                 </button>
                                             )}
                                             {notification.taskId && onContinueTask && (
                                                 <button onClick={() => { onContinueTask(notification.taskId!); markAsRead(notification.id); }} className="text-xs bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded-full transition-colors">
-                                                    Goreve Git
+                                                    Göreve Git
                                                 </button>
                                             )}
                                         </div>
@@ -252,7 +253,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                     {notifications.length > 0 && (
                         <div className="p-3 border-t border-slate-200 bg-slate-50">
                             <button onClick={clearAll} className="w-full text-sm text-slate-600 hover:text-slate-800 py-2 transition-colors">
-                                Tum bildirimleri temizle
+                                Tüm bildirimleri temizle
                             </button>
                         </div>
                     )}

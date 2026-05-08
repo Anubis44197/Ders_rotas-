@@ -19,6 +19,8 @@ export enum UserType {
 export interface Course {
   id: string;
   name: string;
+  active: boolean;
+  order: number;
   icon: React.ComponentType<{ className?: string }> | string; // String for Firebase compatibility
 }
 
@@ -130,6 +132,8 @@ export interface PeriodCoursePerformance {
   predictedSchoolScore: number | null;
   alignmentGap: number | null;
   alignmentStatus: 'uyumlu' | 'sapma-var' | 'kritik-sapma' | 'veri-yetersiz';
+  alignmentDirection: 'expected' | 'school-below-expected' | 'school-above-expected' | 'unknown';
+  alignmentComment: string;
   trend: 'up' | 'down' | 'flat';
   riskLevel: 'dusuk' | 'orta' | 'yuksek';
 }
@@ -196,7 +200,7 @@ export interface ParentDashboardProps {
   timeFilter?: TimeFilterValue;
   loading?: boolean;
   error?: string | null;
-  viewMode?: 'all' | 'tasks' | 'analysis';
+  viewMode?: 'all' | 'assignment' | 'tasks' | 'exams' | 'data' | 'analysis';
 }
 
 export interface TaskCompletionData {
@@ -269,6 +273,7 @@ export interface WeeklyScheduleSlot {
 
 export interface WeeklyScheduleDay {
   slots: WeeklyScheduleSlot[];
+  availableWindows?: ScheduleDayWindow[];
   confirmed: boolean;
 }
 

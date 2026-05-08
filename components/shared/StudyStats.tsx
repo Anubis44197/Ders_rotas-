@@ -1,17 +1,18 @@
-﻿import React from 'react';
+import React from 'react';
+import { isCompletedTask } from '../../utils/taskStatus';
 import { Task } from '../../types';
-import { BarChart, Bar, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, Clock, Target, Trophy, Calendar, BarChart as BarChartIcon, Info } from '../icons';
 import '../child/progress-bar.css';
 import { getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
-import { ChartTooltip, chartAxisProps, chartGridProps, chartLegendProps, chartPalette, chartSeries } from './chartDesign';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries } from './chartDesign';
 
 interface StudyStatsProps {
   tasks: Task[];
 }
 
 const StudyStats: React.FC<StudyStatsProps> = ({ tasks }) => {
-  const completedTasks = tasks.filter((task) => task.status === 'tamamland\u0131');
+  const completedTasks = tasks.filter((task) => isCompletedTask(task));
 
   const weeklyData = React.useMemo(() => {
     return Array.from({ length: 7 }, (_, index) => {
@@ -50,28 +51,27 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks }) => {
   return (
     <div className="ios-card rounded-[28px] p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h3 className="flex items-center text-xl font-bold text-slate-800"><BarChartIcon className="mr-3 h-6 w-6 text-primary-600" />Gelismis Istatistikler</h3>
+        <h3 className="flex items-center text-xl font-bold text-slate-800"><BarChartIcon className="mr-3 h-6 w-6 text-primary-600" />Gelişmiş İstatistikler</h3>
       </div>
 
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 p-4"><div className="flex items-center justify-between"><div><div className="flex items-center gap-2"><p className="text-xs font-semibold text-blue-600">Toplam Gorev</p><Info className="h-3 w-3 text-blue-400" /></div><p className="text-xl font-bold text-blue-800">{stats.totalTasks}</p></div><Target className="h-6 w-6 text-blue-500" /></div></div>
-        <div className="rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-green-100 p-4"><div className="flex items-center justify-between"><div><div className="flex items-center gap-2"><p className="text-xs font-semibold text-green-600">Calisma Suresi</p><Info className="h-3 w-3 text-green-400" /></div><p className="text-xl font-bold text-green-800">{stats.totalTime}dk</p></div><Clock className="h-6 w-6 text-green-500" /></div></div>
+        <div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 p-4"><div className="flex items-center justify-between"><div><div className="flex items-center gap-2"><p className="text-xs font-semibold text-blue-600">Toplam Görev</p><Info className="h-3 w-3 text-blue-400" /></div><p className="text-xl font-bold text-blue-800">{stats.totalTasks}</p></div><Target className="h-6 w-6 text-blue-500" /></div></div>
+        <div className="rounded-lg border border-green-200 bg-gradient-to-r from-green-50 to-green-100 p-4"><div className="flex items-center justify-between"><div><div className="flex items-center gap-2"><p className="text-xs font-semibold text-green-600">Çalışma Süresi</p><Info className="h-3 w-3 text-green-400" /></div><p className="text-xl font-bold text-green-800">{stats.totalTime}dk</p></div><Clock className="h-6 w-6 text-green-500" /></div></div>
         <div className="rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 p-4"><div className="flex items-center justify-between"><div><div className="flex items-center gap-2"><p className="text-xs font-semibold text-purple-600">Ortalama Puan</p><Info className="h-3 w-3 text-purple-400" /></div><p className="text-xl font-bold text-purple-800">{stats.avgScore}</p></div><Trophy className="h-6 w-6 text-purple-500" /></div></div>
-        <div className="rounded-lg border border-orange-200 bg-gradient-to-r from-orange-50 to-orange-100 p-4"><div className="flex items-center justify-between"><div><div className="flex items-center gap-2"><p className="text-xs font-semibold text-orange-600">Haftalik Ortalama</p><Info className="h-3 w-3 text-orange-400" /></div><p className="text-xl font-bold text-orange-800">{stats.dailyAverage}</p></div><Calendar className="h-6 w-6 text-orange-500" /></div></div>
+        <div className="rounded-lg border border-orange-200 bg-gradient-to-r from-orange-50 to-orange-100 p-4"><div className="flex items-center justify-between"><div><div className="flex items-center gap-2"><p className="text-xs font-semibold text-orange-600">Haftalık Ortalama</p><Info className="h-3 w-3 text-orange-400" /></div><p className="text-xl font-bold text-orange-800">{stats.dailyAverage}</p></div><Calendar className="h-6 w-6 text-orange-500" /></div></div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="ios-widget rounded-[24px] p-4">
-          <div className="mb-4 flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary-600" /><h4 className="font-bold text-slate-700">7 Gunluk Performans</h4></div>
+          <div className="mb-4 flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary-600" /><h4 className="font-bold text-slate-700">7 Günlük Performans</h4></div>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={weeklyData}>
               <CartesianGrid {...chartGridProps} />
               <XAxis dataKey="day" {...chartAxisProps} />
               <YAxis {...chartAxisProps} />
-              <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name.includes('Puan') ? `${value} puan` : `${value} gorev`} />} />
-              <Legend {...chartLegendProps} />
-              <Line type="monotone" dataKey="tasks" name="Gorev sayisi" stroke={chartPalette.blue} strokeWidth={3} dot={{ r: 4, fill: chartPalette.blue, strokeWidth: 0 }} activeDot={{ r: 7 }} />
-              <Line type="monotone" dataKey="score" name="Ortalama puan" stroke={chartPalette.mint} strokeWidth={3} dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} activeDot={{ r: 7 }} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name.includes('Puan') ? `${value} puan` : `${value} görev`} />} />
+              <Line legendType="none" type="monotone" dataKey="tasks" name="Görev sayısı" stroke={chartPalette.blue} strokeWidth={3} dot={{ r: 4, fill: chartPalette.blue, strokeWidth: 0 }} activeDot={{ r: 7 }} />
+              <Line legendType="none" type="monotone" dataKey="score" name="Ortalama puan" stroke={chartPalette.mint} strokeWidth={3} dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} activeDot={{ r: 7 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -80,24 +80,24 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks }) => {
           <div className="mb-4 flex items-center gap-2"><BarChartIcon className="h-5 w-5 text-primary-600" /><h4 className="font-bold text-slate-700">Ders Dagilimi</h4></div>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
-              <Pie data={subjectData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }: any) => `${name} %${(percent * 100).toFixed(0)}`}>
+              <Pie legendType="none" data={subjectData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }: any) => `${name} %${(percent * 100).toFixed(0)}`}>
                 {subjectData.map((_, index) => <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />)}
               </Pie>
-              <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} gorev`} />} />
+              <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} görev`} />} />
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="ios-widget mt-6 rounded-[24px] p-4">
-        <h4 className="mb-4 flex items-center font-bold text-slate-700"><Clock className="mr-2 h-5 w-5 text-primary-600" />Gunluk Calisma Sureleri (dk)</h4>
+        <h4 className="mb-4 flex items-center font-bold text-slate-700"><Clock className="mr-2 h-5 w-5 text-primary-600" />Günlük Çalışma Süreleri (dk)</h4>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={weeklyData}>
             <CartesianGrid {...chartGridProps} />
             <XAxis dataKey="day" {...chartAxisProps} />
             <YAxis {...chartAxisProps} />
             <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} dakika`} />} />
-            <Bar dataKey="time" name="Calisma suresi" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
+            <Bar legendType="none" dataKey="time" name="Çalışma süresi" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

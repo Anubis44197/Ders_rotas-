@@ -1,5 +1,6 @@
+import { isCompletedTask } from '../../utils/taskStatus';
 import React, { useMemo, useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ScatterChart, Scatter, ZAxis } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { AnalysisSnapshot, SessionMetrics } from '../../utils/analysisEngine';
 import { Course, SubjectCurriculum, Task } from '../../types';
 import { ChartAccessibilitySummary, ChartTooltip, chartPalette } from '../shared/chartDesign';
@@ -51,24 +52,24 @@ interface GraphOption {
 }
 
 const GRAPH_OPTIONS: GraphOption[] = [
-  { key: 'general-score-trend', category: 'ust', label: 'Genel skor trendi', description: 'Gunluk ozet skorun zamani nasil takip ettigini gosterir.' },
-  { key: 'course-performance', category: 'ust', label: 'Ders bazli performans', description: 'Ders hakimiyeti ve verim puanini birlikte sunar.' },
-  { key: 'risk-graph', category: 'ust', label: 'Odak grafigi', description: 'Konu bazli destek ihtiyacini oncelik sirasiyla gosterir.' },
-  { key: 'curriculum-coverage', category: 'ust', label: 'Mufredat kapsama', description: 'Mastery esigini gecen konu oranini ders bazli verir.' },
-  { key: 'retention-curve', category: 'analiz', label: 'Retention egrisi', description: '1g / 7g / 30g retention ortalamalarini gosterir.' },
-  { key: 'accuracy-vs-time', category: 'analiz', label: 'Accuracy vs Time', description: 'Soru oturumlarinda sure ile dogruluk iliskisini gosterir.' },
-  { key: 'best-time-window', category: 'analiz', label: 'En verimli zaman', description: 'Saat pencerelerine gore odak ve dogruluk dagilimi.' },
-  { key: 'learning-efficiency', category: 'analiz', label: 'Learning efficiency', description: 'Sure basina ogrenme katkisini takip eder.' },
-  { key: 'deep-work-ratio', category: 'davranis', label: 'Deep work orani', description: '25+ dakika kesintisiz bloklarin toplam calismaya orani.' },
-  { key: 'daily-ema-trend', category: 'davranis', label: 'Gunluk trend (EMA)', description: 'Gunluk skorun yumusatilmiz trendi.' },
-  { key: 'task-type-analysis', category: 'destek', label: 'Gorev turu analizi', description: 'Gorev tiplerine gore ortalama basari ve verim.' },
-  { key: 'reading-analytics', category: 'destek', label: 'Okuma analitigi', description: 'Aylik sayfa ve comprehension proxy takibi.' },
+  { key: 'general-score-trend', category: 'ust', label: 'Genel skor trendi', description: 'Günlük özet skorun zaman içinde nasıl değiştiğini gösterir.' },
+  { key: 'course-performance', category: 'ust', label: 'Ders bazlı performans', description: 'Ders hâkimiyeti ve verim puanını birlikte sunar.' },
+  { key: 'risk-graph', category: 'ust', label: 'Odak grafiği', description: 'Konu bazlı destek ihtiyacını öncelik sırasıyla gösterir.' },
+  { key: 'curriculum-coverage', category: 'ust', label: 'Müfredat kapsama', description: 'Hâkimiyet eşiğini geçen konu oranını ders bazlı verir.' },
+  { key: 'retention-curve', category: 'analiz', label: 'Kalıcılık eğrisi', description: '1 gün, 7 gün ve 30 gün kalıcılık ortalamalarını gösterir.' },
+  { key: 'accuracy-vs-time', category: 'analiz', label: 'Doğruluk / süre ilişkisi', description: 'Soru oturumlarında süre ile doğruluk ilişkisini gösterir.' },
+  { key: 'best-time-window', category: 'analiz', label: 'En verimli zaman', description: 'Saat pencerelerine göre odak ve doğruluk dağılımı.' },
+  { key: 'learning-efficiency', category: 'analiz', label: 'Öğrenme verimi', description: 'Süre başına öğrenme katkısını takip eder.' },
+  { key: 'deep-work-ratio', category: 'davranis', label: 'Derin çalışma oranı', description: '25+ dakika kesintisiz blokların toplam çalışmaya oranı.' },
+  { key: 'daily-ema-trend', category: 'davranis', label: 'Günlük trend (EMA)', description: 'Günlük skorun yumuşatılmış trendi.' },
+  { key: 'task-type-analysis', category: 'destek', label: 'Görev türü analizi', description: 'Görev tiplerine göre ortalama başarı ve verim.' },
+  { key: 'reading-analytics', category: 'destek', label: 'Okuma analitiği', description: 'Aylık sayfa ve anlama göstergesi takibi.' },
 ];
 
 const CATEGORY_LABELS: Record<GraphCategory, string> = {
-  ust: 'Ust Panel',
+  ust: 'Üst Panel',
   analiz: 'Analiz',
-  davranis: 'Davranis',
+  davranis: 'Davranış',
   destek: 'Destek',
 };
 
@@ -104,9 +105,10 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
     () => GRAPH_OPTIONS.find((option) => option.key === selectedGraph) || GRAPH_OPTIONS[0],
     [selectedGraph],
   );
-  const selectedChartSummary = `${selectedOption.description} Grafik ${CATEGORY_LABELS[selectedOption.category]} kategorisinde yer alir. Kritik bilgi aciklama ve tooltip ile de sunulur; renk tek basina anlam tasimaz.`;
+  const selectedChartSummary = `${selectedOption.description} Grafik ${CATEGORY_LABELS[selectedOption.category]} kategorisinde yer alır. Kritik bilgi açıklama ve tooltip ile de sunulur; renk tek başına anlam taşımaz.`;
 
   const generalScoreTrendData = useMemo(() => {
+    if (selectedGraph !== 'general-score-trend' && selectedGraph !== 'daily-ema-trend') return [] as Array<{ date: string; score: number }>;
     const bucket = new Map<string, number[]>();
     analysis.sessions.forEach((session) => {
       const current = bucket.get(session.completionDate) || [];
@@ -118,17 +120,19 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
     return Array.from(bucket.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, values]) => ({ date, score: Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) }));
-  }, [analysis.sessions]);
+  }, [analysis.sessions, selectedGraph]);
 
   const coursePerformanceData = useMemo(() => {
+    if (selectedGraph !== 'course-performance') return [] as Array<{ courseName: string; mastery: number; efficiency: number }>;
     return analysis.courses.map((course) => ({
       courseName: course.courseName,
       mastery: course.averageMastery,
       efficiency: course.averageEfficiency,
     }));
-  }, [analysis.courses]);
+  }, [analysis.courses, selectedGraph]);
 
   const riskData = useMemo(() => {
+    if (selectedGraph !== 'risk-graph') return [] as Array<{ topic: string; risk: number; mastery: number }>;
     return [...analysis.topics]
       .sort((a, b) => b.riskScore - a.riskScore)
       .slice(0, 8)
@@ -137,9 +141,10 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         risk: topic.riskScore,
         mastery: topic.masteryScore,
       }));
-  }, [analysis.topics]);
+  }, [analysis.topics, selectedGraph]);
 
   const coverageData = useMemo(() => {
+    if (selectedGraph !== 'curriculum-coverage') return [] as Array<{ courseName: string; coverage: number; totalTopics: number }>;
     if (!curriculum) return [] as Array<{ courseName: string; coverage: number; totalTopics: number }>;
 
     const masteryThreshold = 70;
@@ -154,9 +159,10 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
       const coverage = totalTopics > 0 ? Math.round((masteredTopics / totalTopics) * 100) : 0;
       return { courseName: course.name, coverage, totalTopics };
     });
-  }, [analysis.topics, courses, curriculum]);
+  }, [analysis.topics, courses, curriculum, selectedGraph]);
 
   const retentionData = useMemo(() => {
+    if (selectedGraph !== 'retention-curve') return [] as Array<{ day: string; retention: number }>;
     const revisionSessionCount = analysis.sessions.filter((session) => session.taskGoalType === 'konu-tekrari').length;
     if (!analysis.topics.length || revisionSessionCount < 2) {
       return [] as Array<{ day: string; retention: number }>;
@@ -169,9 +175,15 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
       { day: '7g', retention: seven },
       { day: '30g', retention: thirty },
     ];
-  }, [analysis.sessions, analysis.topics]);
+  }, [analysis.sessions, analysis.topics, selectedGraph]);
 
   const qualityInsights = useMemo(() => {
+    if (selectedGraph !== 'general-score-trend') {
+      return {
+        firstAttemptAverage: null as number | null,
+        errorDistribution: [] as Array<{ name: string; value: number }>,
+      };
+    }
     const firstAttemptValues = analysis.topics
       .map((topic) => topic.firstAttemptScore)
       .filter((value): value is number => typeof value === 'number');
@@ -222,9 +234,10 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         { name: 'Dikkat', value: normalize(attentionAverage) },
       ],
     };
-  }, [analysis.topics]);
+  }, [analysis.topics, selectedGraph]);
 
   const accuracyVsTimeData = useMemo(() => {
+    if (selectedGraph !== 'accuracy-vs-time' && selectedGraph !== 'general-score-trend') return [] as Array<{ duration: number; accuracy: number; z: number }>;
     return analysis.sessions
       .filter((session) => session.taskType === 'soru çözme' && typeof session.accuracyScore === 'number')
       .map((session) => {
@@ -236,17 +249,19 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
           z: 8,
         };
       });
-  }, [analysis.sessions, tasksById]);
+  }, [analysis.sessions, tasksById, selectedGraph]);
 
   const bestTimeWindowData = useMemo(() => {
+    if (selectedGraph !== 'best-time-window' && selectedGraph !== 'general-score-trend') return [] as Array<{ window: string; focus: number; accuracy: number }>;
     return analysis.studyWindows.map((window) => ({
       window: window.label,
       focus: window.averageFocus,
       accuracy: window.averageAccuracy ?? 0,
     }));
-  }, [analysis.studyWindows]);
+  }, [analysis.studyWindows, selectedGraph]);
 
   const learningEfficiencyData = useMemo(() => {
+    if (selectedGraph !== 'learning-efficiency') return [] as Array<{ label: string; efficiency: number }>;
     const sortedSessions = [...analysis.sessions].sort((a, b) => a.completionDate.localeCompare(b.completionDate));
     const toEntry = (session: SessionMetrics) => {
       const task = tasksById.get(session.taskId);
@@ -257,10 +272,11 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
       };
     };
     return sortedSessions.slice(-20).map(toEntry);
-  }, [analysis.sessions, tasksById]);
+  }, [analysis.sessions, tasksById, selectedGraph]);
 
   const deepWorkData = useMemo(() => {
-    const completed = tasks.filter((task) => task.status === 'tamamlandı');
+    if (selectedGraph !== 'deep-work-ratio') return [] as Array<{ name: string; value: number }>;
+    const completed = tasks.filter((task) => isCompletedTask(task));
     const totals = completed.reduce(
       (acc, task) => {
         const duration = Math.max(0, task.actualDuration || 0);
@@ -283,7 +299,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
       { name: 'Deep Work', value: deepRatio },
       { name: 'Diger', value: 100 - deepRatio },
     ];
-  }, [tasks]);
+  }, [tasks, selectedGraph]);
 
   const goldenHourInsight = useMemo(() => {
     if (!bestTimeWindowData.length) {
@@ -323,8 +339,8 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
 
     const correlation = denX > 0 && denY > 0 ? num / Math.sqrt(denX * denY) : 0;
     let profile = 'Dengeli';
-    if (correlation <= -0.2) profile = 'Hizlandikca hata artiyor';
-    if (correlation >= 0.2) profile = 'Sure arttikca dogruluk artiyor';
+    if (correlation <= -0.2) profile = 'Hızlandıkça hata artıyor';
+    if (correlation >= 0.2) profile = 'Süre arttıkça doğruluk artıyor';
 
     return {
       correlation: Math.round(correlation * 100) / 100,
@@ -333,6 +349,12 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
   }, [accuracyVsTimeData]);
 
   const confidenceInsight = useMemo(() => {
+    if (selectedGraph !== 'general-score-trend') {
+      return {
+        averageGap: null as number | null,
+        calibrationScore: null as number | null,
+      };
+    }
     const calibratedSessions = analysis.sessions.filter(
       (session) => typeof session.selfAssessmentScore === 'number' && typeof session.confidenceGap === 'number',
     );
@@ -352,9 +374,15 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
       averageGap: Math.round(avgGap),
       calibrationScore,
     };
-  }, [analysis.sessions]);
+  }, [analysis.sessions, selectedGraph]);
 
   const fatigueInsight = useMemo(() => {
+    if (selectedGraph !== 'general-score-trend') {
+      return {
+        fatiguePerHour: null as number | null,
+        level: '-',
+      };
+    }
     const points = analysis.sessions
       .map((session) => {
         const task = tasksById.get(session.taskId);
@@ -392,15 +420,16 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
 
     const slope = denominator > 0 ? numerator / denominator : 0;
     const fatiguePerHour = Math.max(0, Math.round((-slope) * 10) / 10);
-    const level = fatiguePerHour >= 6 ? 'Yuksek' : fatiguePerHour >= 3 ? 'Orta' : 'Dusuk';
+    const level = fatiguePerHour >= 6 ? 'Yüksek' : fatiguePerHour >= 3 ? 'Orta' : 'Düşük';
 
     return {
       fatiguePerHour,
       level,
     };
-  }, [analysis.sessions, tasksById]);
+  }, [analysis.sessions, tasksById, selectedGraph]);
 
   const emaTrendData = useMemo(() => {
+    if (selectedGraph !== 'daily-ema-trend') return [] as Array<{ date: string; raw: number; ema: number }>;
     const alpha = 0.35;
     const source = generalScoreTrendData;
     let ema = source[0]?.score || 0;
@@ -412,20 +441,22 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         ema,
       };
     });
-  }, [generalScoreTrendData]);
+  }, [generalScoreTrendData, selectedGraph]);
 
   const taskTypeData = useMemo(() => {
+    if (selectedGraph !== 'task-type-analysis') return [] as Array<{ taskType: string; mastery: number; efficiency: number }>;
     return analysis.taskTypes.map((item) => ({
       taskType: item.label,
       mastery: item.averageMastery,
       efficiency: item.averageEfficiency,
     }));
-  }, [analysis.taskTypes]);
+  }, [analysis.taskTypes, selectedGraph]);
 
   const readingData = useMemo(() => {
+    if (selectedGraph !== 'reading-analytics') return [] as Array<{ month: string; pages: number; comprehension: number }>;
     const bucket = new Map<string, { pages: number; comp: number; count: number }>();
     tasks
-      .filter((task) => task.status === 'tamamlandı' && task.taskType === 'kitap okuma' && task.completionDate)
+      .filter((task) => isCompletedTask(task) && task.taskType === 'kitap okuma' && task.completionDate)
       .forEach((task) => {
         const month = task.completionDate!.slice(0, 7);
         const current = bucket.get(month) || { pages: 0, comp: 0, count: 0 };
@@ -443,7 +474,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
         pages: value.pages,
         comprehension: value.count > 0 ? Math.round(value.comp / value.count) : 0,
       }));
-  }, [tasks]);
+  }, [tasks, selectedGraph]);
 
   const ensureGraphInCategory = (nextCategory: GraphCategory) => {
     const first = GRAPH_OPTIONS.find((option) => option.category === nextCategory);
@@ -455,12 +486,12 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
   );
 
   const renderGraph = () => {
-    if (loading) return renderEmpty('Grafik verisi yukleniyor...');
+    if (loading) return renderEmpty('Grafik verisi yükleniyor...');
     if (error) return renderEmpty(error);
 
     switch (selectedGraph) {
       case 'general-score-trend':
-        if (!generalScoreTrendData.length) return renderEmpty('Genel skor trendi icin yeterli veri yok.');
+        if (!generalScoreTrendData.length) return renderEmpty('Genel skor trendi için yeterli veri yok.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={generalScoreTrendData}>
@@ -468,14 +499,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="date" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Line type="monotone" dataKey="score" stroke={chartBlue} strokeWidth={4} name="Genel skor" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
+              <Line legendType="none" type="monotone" dataKey="score" stroke={chartBlue} strokeWidth={4} name="Genel skor" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
 
       case 'course-performance':
-        if (!coursePerformanceData.length) return renderEmpty('Ders performansi icin veri yok.');
+        if (!coursePerformanceData.length) return renderEmpty('Ders performansı için veri yok.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={coursePerformanceData}>
@@ -483,15 +513,14 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="courseName" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Bar dataKey="mastery" fill={chartMint} name="Hakimiyet" radius={[12, 12, 0, 0]} />
-              <Bar dataKey="efficiency" fill={chartBlue} name="Verim" radius={[12, 12, 0, 0]} />
+              <Bar legendType="none" dataKey="mastery" fill={chartMint} name="Hakimiyet" radius={[12, 12, 0, 0]} />
+              <Bar legendType="none" dataKey="efficiency" fill={chartBlue} name="Verim" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
 
       case 'risk-graph':
-        if (!riskData.length) return renderEmpty('Odak verisi olusmadi.');
+        if (!riskData.length) return renderEmpty('Odak verisi oluşmadı.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={riskData} layout="vertical" margin={{ left: 20, right: 20 }}>
@@ -499,14 +528,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis type="number" domain={[0, 100]} tickLine={false} axisLine={false} />
               <YAxis type="category" dataKey="topic" width={180} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Bar dataKey="risk" fill={chartCoral} name="Takip" radius={[0, 12, 12, 0]} />
+              <Bar legendType="none" dataKey="risk" fill={chartCoral} name="Takip" radius={[0, 12, 12, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
 
       case 'curriculum-coverage':
-        if (!coverageData.length) return renderEmpty('Mufredat kapsama verisi icin ders/mufredat kaydi gerekli.');
+        if (!coverageData.length) return renderEmpty('Müfredat kapsama verisi için ders/müfredat kaydı gerekli.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={coverageData}>
@@ -514,14 +542,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="courseName" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Bar dataKey="coverage" fill={chartMint} name="Kapsama %" radius={[12, 12, 0, 0]} />
+              <Bar legendType="none" dataKey="coverage" fill={chartMint} name="Kapsama %" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
 
       case 'retention-curve':
-        if (!retentionData.length) return renderEmpty('Retention egrisi icin en az 2 tekrar oturumu gerekli.');
+        if (!retentionData.length) return renderEmpty('Kalıcılık eğrisi için en az 2 tekrar oturumu gerekli.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={retentionData}>
@@ -529,30 +556,28 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="day" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Line type="monotone" dataKey="retention" stroke={chartLilac} strokeWidth={4} name="Retention" dot={{ fill: chartLilac, strokeWidth: 0, r: 4 }} />
+              <Line legendType="none" type="monotone" dataKey="retention" stroke={chartLilac} strokeWidth={4} name="Retention" dot={{ fill: chartLilac, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
 
       case 'accuracy-vs-time':
-        if (!accuracyVsTimeData.length) return renderEmpty('Accuracy vs Time grafigi icin soru oturumu gerekli.');
+        if (!accuracyVsTimeData.length) return renderEmpty('Doğruluk / süre ilişkisi için soru oturumu gerekli.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-              <XAxis type="number" dataKey="duration" name="Sure" unit=" dk" tickLine={false} axisLine={false} />
-              <YAxis type="number" dataKey="accuracy" name="Dogruluk" unit="%" domain={[0, 100]} tickLine={false} axisLine={false} />
+              <XAxis type="number" dataKey="duration" name="Süre" unit=" dk" tickLine={false} axisLine={false} />
+              <YAxis type="number" dataKey="accuracy" name="Doğruluk" unit="%" domain={[0, 100]} tickLine={false} axisLine={false} />
               <ZAxis type="number" dataKey="z" range={[60, 120]} />
               <Tooltip content={<ChartTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-              <Legend />
-              <Scatter name="Oturum" data={accuracyVsTimeData} fill={chartBlue} />
+              <Scatter legendType="none" name="Oturum" data={accuracyVsTimeData} fill={chartBlue} />
             </ScatterChart>
           </ResponsiveContainer>
         );
 
       case 'best-time-window':
-        if (!bestTimeWindowData.length) return renderEmpty('Saat penceresi verisi olusmadi.');
+        if (!bestTimeWindowData.length) return renderEmpty('Saat penceresi verisi oluşmadı.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={bestTimeWindowData}>
@@ -560,15 +585,14 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="window" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Bar dataKey="focus" fill={chartMint} name="Odak" radius={[12, 12, 0, 0]} />
-              <Bar dataKey="accuracy" fill={chartPeach} name="Dogruluk" radius={[12, 12, 0, 0]} />
+              <Bar legendType="none" dataKey="focus" fill={chartMint} name="Odak" radius={[12, 12, 0, 0]} />
+              <Bar legendType="none" dataKey="accuracy" fill={chartPeach} name="Doğruluk" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
 
       case 'learning-efficiency':
-        if (!learningEfficiencyData.length) return renderEmpty('Learning efficiency icin veri yok.');
+        if (!learningEfficiencyData.length) return renderEmpty('Öğrenme verimi için veri yok.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={learningEfficiencyData}>
@@ -576,14 +600,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="label" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Line type="monotone" dataKey="efficiency" stroke={chartBlue} strokeWidth={4} name="Mastery / dk" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
+              <Line legendType="none" type="monotone" dataKey="efficiency" stroke={chartBlue} strokeWidth={4} name="Mastery / dk" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
 
       case 'deep-work-ratio':
-        if (!deepWorkData.length) return renderEmpty('Deep work orani icin tamamlanan oturum verisi yok.');
+        if (!deepWorkData.length) return renderEmpty('Derin çalışma oranı için tamamlanan oturum verisi yok.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={deepWorkData}>
@@ -591,14 +614,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="name" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Bar dataKey="value" fill={chartLilac} name="Oran %" radius={[12, 12, 0, 0]} />
+              <Bar legendType="none" dataKey="value" fill={chartLilac} name="Oran %" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
 
       case 'daily-ema-trend':
-        if (!emaTrendData.length) return renderEmpty('EMA trendi icin gunluk veri yok.');
+        if (!emaTrendData.length) return renderEmpty('EMA trendi için günlük veri yok.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={emaTrendData}>
@@ -606,15 +628,14 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="date" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Line type="monotone" dataKey="raw" stroke="#a9b7cd" strokeWidth={2} name="Ham" dot={false} />
-              <Line type="monotone" dataKey="ema" stroke={chartBlue} strokeWidth={4} name="EMA" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
+              <Line legendType="none" type="monotone" dataKey="raw" stroke="#a9b7cd" strokeWidth={2} name="Ham" dot={false} />
+              <Line legendType="none" type="monotone" dataKey="ema" stroke={chartBlue} strokeWidth={4} name="EMA" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
 
       case 'task-type-analysis':
-        if (!taskTypeData.length) return renderEmpty('Gorev tipi analizi icin veri yok.');
+        if (!taskTypeData.length) return renderEmpty('Görev tipi analizi için veri yok.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={taskTypeData}>
@@ -622,15 +643,14 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="taskType" tickLine={false} axisLine={false} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Bar dataKey="mastery" fill={chartMint} name="Hakimiyet" radius={[12, 12, 0, 0]} />
-              <Bar dataKey="efficiency" fill={chartBlue} name="Verim" radius={[12, 12, 0, 0]} />
+              <Bar legendType="none" dataKey="mastery" fill={chartMint} name="Hakimiyet" radius={[12, 12, 0, 0]} />
+              <Bar legendType="none" dataKey="efficiency" fill={chartBlue} name="Verim" radius={[12, 12, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
 
       case 'reading-analytics':
-        if (!readingData.length) return renderEmpty('Okuma analitigi icin tamamlanan kitap okuma kaydi yok.');
+        if (!readingData.length) return renderEmpty('Okuma analitiği için tamamlanan kitap okuma kaydı yok.');
         return (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={readingData}>
@@ -638,15 +658,14 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <XAxis dataKey="month" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
               <Tooltip content={<ChartTooltip />} />
-              <Legend />
-              <Line type="monotone" dataKey="pages" stroke={chartMint} strokeWidth={4} name="Sayfa" dot={{ fill: chartMint, strokeWidth: 0, r: 4 }} />
-              <Line type="monotone" dataKey="comprehension" stroke={chartPeach} strokeWidth={4} name="Comprehension" dot={{ fill: chartPeach, strokeWidth: 0, r: 4 }} />
+              <Line legendType="none" type="monotone" dataKey="pages" stroke={chartMint} strokeWidth={4} name="Sayfa" dot={{ fill: chartMint, strokeWidth: 0, r: 4 }} />
+              <Line legendType="none" type="monotone" dataKey="comprehension" stroke={chartPeach} strokeWidth={4} name="Anlama" dot={{ fill: chartPeach, strokeWidth: 0, r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         );
 
       default:
-        return renderEmpty('Grafik secimi gecersiz.');
+        return renderEmpty('Grafik seçimi geçersiz.');
     }
   };
 
@@ -654,8 +673,8 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
     <section className="space-y-5">
       <div className={card}>
         <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Grafik merkezi</div>
-        <h3 className="text-2xl font-black text-slate-900">Tekil analiz gorunumu</h3>
-        <p className="mt-2 text-sm text-slate-500">Ayni anda sadece bir grafik acik olur. Kategori ve grafik secimini degistirerek odakli inceleme yapabilirsiniz.</p>
+        <h3 className="text-2xl font-black text-slate-900">Tekil analiz görünümü</h3>
+        <p className="mt-2 text-sm text-slate-500">Aynı anda sadece bir grafik açık olur. Kategori ve grafik seçimini değiştirerek odaklı inceleme yapabilirsiniz.</p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="space-y-4">
@@ -727,7 +746,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
             </div>
           </aside>
 
-          <div className="ios-chart-surface rounded-[26px] p-4">
+          <div className="ios-chart-surface rounded-[26px] p-5">
             <div className="mb-4">
               <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{CATEGORY_LABELS[selectedOption.category]}</div>
               <h4 className="mt-1 text-xl font-black text-slate-900">{selectedOption.label}</h4>
@@ -740,13 +759,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
 
             {selectedGraph === 'general-score-trend' && (
               <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <div className="ios-widget ios-blue rounded-[22px] p-4">
+                <div className="ios-widget rounded-[22px] border-l-4 border-l-[#8AB4FF] p-4">
                   <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">İlk Deneme Doğruluğu</div>
                   <div className="mt-2 text-3xl font-black text-slate-900">{qualityInsights.firstAttemptAverage ?? '-'}</div>
                   <p className="mt-1 text-xs text-slate-500">Konu bazında ilk deneme doğruluk ortalaması</p>
                 </div>
 
-                <div className="ios-widget ios-mint rounded-[22px] p-4">
+                <div className="ios-widget rounded-[22px] border-l-4 border-l-[#7EE7C7] p-4">
                   <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Altın Saat</div>
                   <div className="mt-2 text-3xl font-black text-slate-900">{goldenHourInsight.label}</div>
                   <p className="mt-1 text-xs text-slate-500">
@@ -754,7 +773,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
                   </p>
                 </div>
 
-                <div className="ios-widget ios-peach rounded-[22px] p-4">
+                <div className="ios-widget rounded-[22px] border-l-4 border-l-[#FFC68B] p-4">
                   <div className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Hata Tipi Dağılımı</div>
                   {qualityInsights.errorDistribution.length === 0 ? (
                     <div className="ios-widget rounded-[18px] px-4 py-6 text-center text-sm text-slate-500">
@@ -767,26 +786,25 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
                         <XAxis dataKey="name" tickLine={false} axisLine={false} />
                         <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Legend />
-                        <Bar dataKey="value" fill={chartPeach} name="Oran %" radius={[12, 12, 0, 0]} />
+                        <Bar legendType="none" dataKey="value" fill={chartPeach} name="Oran %" radius={[12, 12, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
                 </div>
 
-                <div className="ios-widget ios-lilac rounded-[22px] p-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Verimlilik (Throughput)</div>
+                <div className="ios-widget rounded-[22px] border-l-4 border-l-[#C4B5FD] p-4">
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Verimlilik</div>
                   <div className="mt-2 text-3xl font-black text-slate-900">{throughputInsight.correlation ?? '-'}</div>
                   <p className="mt-1 text-xs text-slate-500">Süre-doğruluk ilişkisi: {throughputInsight.profile}</p>
                 </div>
 
-                <div className="ios-widget ios-coral rounded-[22px] p-4">
+                <div className="ios-widget rounded-[22px] border-l-4 border-l-[#FF9AA2] p-4">
                   <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Akademik Özgüven</div>
                   <div className="mt-2 text-3xl font-black text-slate-900">{confidenceInsight.calibrationScore ?? '-'}</div>
                   <p className="mt-1 text-xs text-slate-500">Kalibrasyon skoru / Ortalama fark: {confidenceInsight.averageGap ?? '-'}</p>
                 </div>
 
-                <div className="ios-widget ios-yellow rounded-[22px] p-4">
+                <div className="ios-widget rounded-[22px] border-l-4 border-l-[#FFE08A] p-4">
                   <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Yorgunluk Endeksi</div>
                   <div className="mt-2 text-3xl font-black text-slate-900">{fatigueInsight.fatiguePerHour ?? '-'}</div>
                   <p className="mt-1 text-xs text-slate-500">Saat başına odak düşüşü / Seviye: {fatigueInsight.level}</p>

@@ -1,28 +1,29 @@
 import { ExamType, Task } from '../../types';
+import { isCompletedTask } from '../../utils/taskStatus';
 
 export const taskGoalLabelMap: Record<string, string> = {
-  'test-cozme': 'Test cozme',
+  'test-cozme': 'Test çözme',
   'olcme-degerlendirme': 'Olcme degerlendirme',
-  'sinav-hazirlik': 'Sinav hazirligi',
+  'sinav-hazirlik': 'Sınav hazırlığı',
   'konu-tekrari': 'Konu tekrari',
   'eksik-konu-tamamlama': 'Eksik konu tamamlama',
-  'ders calisma': 'Ders calismasi',
-  'ders çalışma': 'Ders calismasi',
+  'ders calisma': 'Ders çalışması',
+  'ders çalışma': 'Ders çalışması',
 };
 
 export const planSourceLabelMap: Record<string, string> = {
   manual: 'Elle atandi',
-  'weekly-plan': 'Haftalik plan',
+  'weekly-plan': 'Haftalık plan',
   'ai-plan': 'Akilli plan',
-  'free-study': 'Serbest calisma',
+  'free-study': 'Serbest çalışma',
 };
 
 export const examTypeLabelMap: Record<ExamType, string> = {
   'school-written': 'Yazili',
-  'school-quiz': 'Kisa sinav',
+  'school-quiz': 'Kısa sınav',
   'school-oral': 'Sozlu',
   'mock-exam': 'Deneme',
-  'state-exam': 'Genel sinav',
+  'state-exam': 'Genel sınav',
   'report-card': 'Karne',
 };
 
@@ -57,7 +58,7 @@ export const getTaskDateKey = (value?: string) => {
 
 export const getParentTaskPriority = (task: Task, today: string) => {
   const dueDate = getTaskDateKey(task.dueDate);
-  if (task.status === 'tamamlandı') return 5;
+  if (isCompletedTask(task)) return 5;
   if (dueDate < today) return 0;
   if (dueDate === today && !task.isSelfAssigned) return 1;
   if (dueDate === today) return 2;
@@ -91,11 +92,11 @@ export const resolveTaskTypeKey = (value: string): TaskTypeKey => {
 export const taskTypeKeyToTaskType = (value: TaskTypeKey): 'soru çözme' | 'ders çalışma' => (value === 'question' ? 'soru çözme' : 'ders çalışma');
 
 export const ASSIGNMENT_METRIC_OPTIONS = [
-  { key: 'accuracy', label: 'Dogruluk', hint: 'Dogru cevap oranini takip eder.' },
+  { key: 'accuracy', label: 'Doğruluk', hint: 'Doğru cevap oranını takip eder.' },
   { key: 'focus', label: 'Odak', hint: 'Dikkat dagilmasini ve molayi takip eder.' },
-  { key: 'duration', label: 'Sureye uyum', hint: 'Planlanan sureye uyumu takip eder.' },
-  { key: 'revision', label: 'Ders tekrari', hint: 'Tekrar gorevlerinin devamini takip eder.' },
-  { key: 'completion', label: 'Tamamlama', hint: 'Gorevleri zamaninda bitirme durumunu takip eder.' },
+  { key: 'duration', label: 'Süreye uyum', hint: 'Planlanan süreye uyumu takip eder.' },
+  { key: 'revision', label: 'Ders tekrarı', hint: 'Tekrar görevlerinin devamını takip eder.' },
+  { key: 'completion', label: 'Tamamlama', hint: 'Görevleri zamanında bitirme durumunu takip eder.' },
 ] as const;
 
 export type AssignmentMetricKey = (typeof ASSIGNMENT_METRIC_OPTIONS)[number]['key'];
@@ -118,8 +119,8 @@ export const legacyMetricMap: Array<{ field: 'targetAccuracy' | 'targetFocus' | 
 ];
 
 export const taskWorkspaceTabs: Array<{ id: TaskWorkspaceTab; label: string; description: string }> = [
-  { id: 'assignment', label: 'Gorev Ata', description: 'Yeni gorev olustur' },
-  { id: 'list', label: 'Gorevler', description: 'Bekleyen ve tamamlananlar' },
-  { id: 'exams', label: 'Sinav Merkezi', description: 'Ders ve genel sinav girisi' },
+  { id: 'assignment', label: 'Görev Ata', description: 'Yeni görev oluştur' },
+  { id: 'list', label: 'Görevler', description: 'Bekleyen ve tamamlananlar' },
+  { id: 'exams', label: 'Sınav Merkezi', description: 'Ders ve genel sınav girişi' },
   { id: 'data', label: 'Veri', description: 'Ice aktar / disa aktar' },
 ];

@@ -58,14 +58,14 @@ const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({ onFilterChange }) => 
           Bu Ay
         </button>
         <button onClick={() => handleFilterClick('year')} className={buttonClass('year')}>
-          Bu Yil
+          Bu Yıl
         </button>
         <button onClick={() => handleFilterClick('all')} className={buttonClass('all')}>
-          Tum Zamanlar
+          Tüm Zamanlar
         </button>
         <button onClick={() => handleFilterClick('custom')} className={buttonClass('custom')}>
           <Calendar className="w-4 h-4 mr-1.5 inline-block" />
-          Ozel
+          Özel
         </button>
       </div>
       {showCustom && (

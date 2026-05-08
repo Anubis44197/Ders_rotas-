@@ -47,12 +47,12 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
     const nextRewardName = rewardName.trim();
     const nextRewardCost = Number(rewardCost);
     if (!nextRewardName || !rewardCost) {
-      showActionMessage('error', 'Odul adi ve puan alani zorunludur.');
+      showActionMessage('error', 'Ödül adı ve puan alanı zorunludur.');
       return;
     }
 
     if (!Number.isFinite(nextRewardCost) || nextRewardCost <= 0) {
-      showActionMessage('error', 'Odul puani sifirdan buyuk bir sayi olmali.');
+      showActionMessage('error', 'Ödül puanı sıfırdan büyük bir sayı olmalı.');
       return;
     }
 
@@ -60,7 +60,7 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
       (reward) => reward.name.toLocaleLowerCase('tr-TR') === nextRewardName.toLocaleLowerCase('tr-TR') && reward.cost === nextRewardCost,
     );
     if (hasDuplicateReward) {
-      showActionMessage('error', 'Ayni ad ve puandaki odul zaten tanimli.');
+      showActionMessage('error', 'Aynı ad ve puandaki ödül zaten tanımlı.');
       return;
     }
 
@@ -69,7 +69,7 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
       addReward({ name: nextRewardName, cost: nextRewardCost, icon: 'Gift' });
       setRewardName('');
       setRewardCost('100');
-      showActionMessage('success', `'${nextRewardName}' odulu eklendi.`);
+      showActionMessage('success', `'${nextRewardName}' ödülü eklendi.`);
     } finally {
       window.setTimeout(() => setIsAddingReward(false), 250);
     }
@@ -85,13 +85,13 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Ebeveyn kontrol merkezi</div>
-          <h3 className="mt-1 text-xl font-black text-slate-900">Odul Tanimla</h3>
+          <h3 className="mt-1 text-xl font-black text-slate-900">Ödül Tanımla</h3>
         </div>
         <form onSubmit={handleAddReward} className="grid w-full grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_100px_auto] lg:max-w-2xl">
-          <input value={rewardName} onChange={(e) => setRewardName(e.target.value)} placeholder="Odul adi" className="ios-button rounded-[18px] px-3 py-2 text-sm" />
+          <input value={rewardName} onChange={(e) => setRewardName(e.target.value)} placeholder="Ödül adı" className="ios-button rounded-[18px] px-3 py-2 text-sm" />
           <input value={rewardCost} onChange={(e) => setRewardCost(e.target.value)} placeholder="Puan" type="number" min="1" className="ios-button rounded-[18px] px-3 py-2 text-sm" />
           <button type="submit" disabled={isAddingReward} className={`rounded-[18px] px-3 py-2 text-sm font-bold transition ${isAddingReward ? 'cursor-not-allowed opacity-50' : rewardButtonTone}`}>
-            <span className="block">{isAddingReward ? 'Ekleniyor...' : 'Odulu Ata'}</span>
+            <span className="block">{isAddingReward ? 'Ekleniyor...' : 'Ödülü Ata'}</span>
             <span className="mt-0.5 block text-[11px] font-semibold opacity-80">Mevcut: {availablePoints} BP</span>
           </button>
         </form>
@@ -104,16 +104,16 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
               <span className="font-semibold">{reward.name}</span>
               <span>{reward.cost} BP</span>
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${reward.cost <= availablePoints ? 'ios-mint text-emerald-800' : 'ios-yellow text-amber-800'}`}>
-                {reward.cost <= availablePoints ? 'Ulasilabilir' : 'Birikiyor'}
+                {reward.cost <= availablePoints ? 'Ulaşılabilir' : 'Birikiyor'}
               </span>
-              <button onClick={() => deleteReward(reward.id)} className="text-rose-600" type="button" aria-label={`${reward.name} odulunu sil`}>
+              <button onClick={() => deleteReward(reward.id)} className="text-rose-600" type="button" aria-label={`${reward.name} ödülünü sil`}>
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
           {rewards.length > 8 && (
             <button type="button" onClick={() => setShowAllRewards((prev) => !prev)} className="ios-button rounded-full px-3 py-1 text-xs font-bold text-slate-700">
-              {showAllRewards ? 'Daha az goster' : `Tumunu goster (${rewards.length})`}
+              {showAllRewards ? 'Daha az göster' : `Tümünü göster (${rewards.length})`}
             </button>
           )}
         </div>
