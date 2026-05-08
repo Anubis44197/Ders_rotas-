@@ -92,11 +92,11 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-3xl font-black tracking-tight text-slate-900">Akademik Planlama</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">Kayitli akademik yapilari ozetle, gerektiginde duzenleme ekranlarini ac.</p>
+          <p className="mt-1 text-sm font-medium text-slate-500">Kayıtlı akademik yapıları özetle, gerektiğinde düzenleme ekranlarını aç.</p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-sm text-slate-600">
           <div className="ios-widget rounded-2xl px-4 py-3"><span className="block text-xs font-bold uppercase text-slate-500">Aktif ders</span><span className="text-xl font-black text-slate-900">{activeCourses.length}</span></div>
-          <div className="ios-widget rounded-2xl px-4 py-3"><span className="block text-xs font-bold uppercase text-slate-500">Unite</span><span className="text-xl font-black text-slate-900">{safeCurriculumSummary.unitCount}</span></div>
+          <div className="ios-widget rounded-2xl px-4 py-3"><span className="block text-xs font-bold uppercase text-slate-500">Ünite</span><span className="text-xl font-black text-slate-900">{safeCurriculumSummary.unitCount}</span></div>
           <div className="ios-widget rounded-2xl px-4 py-3"><span className="block text-xs font-bold uppercase text-slate-500">Konu</span><span className="text-xl font-black text-slate-900">{safeCurriculumSummary.topicCount}</span></div>
         </div>
       </section>
@@ -146,7 +146,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
             <div className="mt-2 text-2xl font-black text-slate-900">{activeCourses.length}</div>
           </div>
           <div className="ios-widget ios-lilac rounded-[22px] p-4">
-            <div className="text-xs font-bold uppercase text-slate-500">Unite</div>
+            <div className="text-xs font-bold uppercase text-slate-500">Ünite</div>
             <div className="mt-2 text-2xl font-black text-slate-900">{safeCurriculumSummary.unitCount}</div>
           </div>
           <div className="ios-widget ios-mint rounded-[22px] p-4">

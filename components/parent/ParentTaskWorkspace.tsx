@@ -526,9 +526,9 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
             className={`dr-path-segment truncate ${selectedUnitName ? '' : 'dr-path-segment-muted'}`}
             onClick={() => setSelectedTopicName('')}
             disabled={!selectedUnitName}
-            title="Unite secimini koru, konuyu temizle"
+            title="Ünite seçimini koru, konuyu temizle"
           >
-            {selectedUnitName || 'Unite'}
+            {selectedUnitName || 'Ünite'}
           </button>
           <span className="dr-path-separator" aria-hidden="true">/</span>
           <span className={`dr-path-segment truncate ${selectedTopicName ? '' : 'dr-path-segment-muted'}`}>
@@ -546,9 +546,9 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Unite</span>
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Ünite</span>
                 <select value={selectedUnitName} onChange={(e) => { setSelectedUnitName(e.target.value); setSelectedTopicName(''); }} className="dr-form-field w-full rounded-[20px] px-3 py-3 text-sm font-semibold outline-none">
-                  <option value="">Unite sec</option>
+                  <option value="">Ünite seç</option>
                   {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
                 </select>
               </label>
@@ -968,7 +968,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                       <input value={examWeight} onChange={(event) => setExamWeight(event.target.value)} type="number" min="1" placeholder="Agirlik" className="dr-form-field w-full rounded-[20px] px-3 py-3 text-sm font-semibold outline-none" />
                       <select value={examScopeType} onChange={(event) => setExamScopeType(event.target.value as 'topic' | 'unit' | 'course' | 'multi-course')} className="dr-form-field w-full rounded-[20px] px-3 py-3 text-sm font-semibold outline-none">
                         <option value="topic">Konu</option>
-                        <option value="unit">Unite</option>
+                        <option value="unit">Ünite</option>
                         <option value="course">Ders</option>
                         <option value="multi-course">Coklu ders</option>
                       </select>

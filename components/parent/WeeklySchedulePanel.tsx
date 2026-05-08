@@ -34,7 +34,8 @@ const resolveScheduleDay = (value: WeeklySchedule[string] | string | undefined) 
 };
 
 const createSlotId = () => `slot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-const createWindowId = (window: ScheduleDayWindow) => `${window.startTime}_${window.endTime}_${window.quality}`;
+const createStudyWindowId = () => `window_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+const createWindowKey = (window: ScheduleDayWindow, index: number) => window.id || `${window.startTime}_${window.endTime}_${window.quality}_${index}`;
 
 const sortSlots = (slots: WeeklyScheduleSlot[]) => [...slots].sort((left, right) => left.startTime.localeCompare(right.startTime));
 const sortWindows = (windows: ScheduleDayWindow[]) => [...windows].sort((left, right) => left.startTime.localeCompare(right.startTime));
@@ -162,6 +163,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
     }
 
     const nextWindow: ScheduleDayWindow = {
+      id: createStudyWindowId(),
       startTime: studyStartTime,
       endTime: studyEndTime,
       quality: studyQuality,
@@ -187,7 +189,15 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
   const handleRemoveWindow = (day: string, windowToRemove: ScheduleDayWindow) => {
     updateDay(day, (currentDay) => ({
       ...currentDay,
-      availableWindows: currentDay.availableWindows.filter((window) => createWindowId(window) !== createWindowId(windowToRemove)),
+      availableWindows: currentDay.availableWindows.filter(((removed) => (window) => {
+        if (windowToRemove.id) return window.id !== windowToRemove.id;
+        const isMatch = window.startTime === windowToRemove.startTime && window.endTime === windowToRemove.endTime && window.quality === windowToRemove.quality;
+        if (isMatch && !removed.value) {
+          removed.value = true;
+          return false;
+        }
+        return true;
+      })({ value: false })),
       confirmed: false,
     }));
   };
@@ -317,8 +327,8 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                         {slot.note && <div className="mt-1 text-xs text-slate-500">{slot.note}</div>}
                       </div>
                     ))}
-                    {sortWindows(dayState.availableWindows).map((window) => (
-                      <div key={createWindowId(window)} className={`rounded-2xl border-l-4 bg-white/10 px-3 py-3 ${QUALITY_META[window.quality].tone}`}>
+                    {sortWindows(dayState.availableWindows).map((window, index) => (
+                      <div key={createWindowKey(window, index)} className={`rounded-2xl border-l-4 bg-white/10 px-3 py-3 ${QUALITY_META[window.quality].tone}`}>
                         <div className="text-[10px] font-bold uppercase tracking-wide">{window.startTime} - {window.endTime}</div>
                         <div className="mt-1 text-sm font-bold text-slate-900">{QUALITY_META[window.quality].label}</div>
                       </div>
@@ -464,8 +474,8 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                       {activeDaySchedule.availableWindows.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-white/20 px-4 py-3 text-sm text-slate-500">Plan motorunun kullanacağı çalışma zamanı eklenmedi.</div>
                       ) : (
-                        sortWindows(activeDaySchedule.availableWindows).map((window) => (
-                          <div key={`detail-${createWindowId(window)}`} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                        sortWindows(activeDaySchedule.availableWindows).map((window, index) => (
+                          <div key={`detail-${createWindowKey(window, index)}`} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                             <div className="min-w-0">
                               <div className="text-sm font-bold text-slate-900">{QUALITY_META[window.quality].label}</div>
                               <div className="mt-1 text-xs text-slate-500">{window.startTime} - {window.endTime}</div>

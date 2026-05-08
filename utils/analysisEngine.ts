@@ -169,15 +169,15 @@ const getAlignmentComment = (
   gap: number | null,
 ): string => {
   if (schoolScore === null || predictedSchoolScore === null || gap === null || !Number.isFinite(gap)) {
-    return `${courseName} icin okul sonucu geldikce ev calismasi ile okul notu birlikte yorumlanacak.`;
+    return `${courseName} için okul sonucu geldikçe ev çalışması ile okul notu birlikte yorumlanacak.`;
   }
 
   const absGap = Math.abs(gap);
   if (absGap <= 8) {
-    return `${courseName} icin ev calismasi ile okul sonucu uyumlu. Mevcut ritim korunabilir.`;
+    return `${courseName} için ev çalışması ile okul sonucu uyumlu. Mevcut ritim korunabilir.`;
   }
   if (gap > 18) {
-    return `${courseName} calismasi guclu gorunuyor ancak okul sonucu beklenenin belirgin altinda. Sinav formati, stres veya konu transferi incelenmeli.`;
+    return `${courseName} çalışması güçlü görünüyor ancak okul sonucu beklenenin belirgin altında. Sınav formatı, stres veya konu transferi incelenmeli.`;
   }
   if (gap > 8) {
     return `${courseName} okul sonucu beklenenden dusuk. Kisa tekrar ve sinav tipi soru pratigi eklenmeli.`;
@@ -190,7 +190,7 @@ const getAlignmentComment = (
 
 const TASK_TYPE_LABELS: Record<string, string> = {
   question: 'Soru cozme',
-  study: 'Ders calismasi',
+  study: 'Ders çalışması',
   revision: 'Ders tekrari',
   reading: 'Kitap okuma',
 };
@@ -321,9 +321,14 @@ const getTrend = (values: number[]): 'up' | 'down' | 'flat' => {
   return 'flat';
 };
 
-const countPlannedTopicTasks = (studyPlans: StoredStudyPlan[]): { total: number; completed: number } => {
+const countPlannedTopicTasks = (studyPlans: StoredStudyPlan[], tasks: Task[]): { total: number; completed: number } => {
   let total = 0;
   let completed = 0;
+  const completedPlanTaskIds = new Set(
+    tasks
+      .filter((task) => task.planTaskId && isCompletedTask(task))
+      .map((task) => task.planTaskId as string),
+  );
 
   studyPlans.forEach((storedPlan) => {
     Object.values(storedPlan.plan).forEach((subjectPlan) => {
@@ -331,7 +336,7 @@ const countPlannedTopicTasks = (studyPlans: StoredStudyPlan[]): { total: number;
         unit.topics.forEach((topic) => {
           topic.tasks.forEach((task) => {
             total += 1;
-            if (task.completed) completed += 1;
+            if (task.completed || completedPlanTaskIds.has(task.id)) completed += 1;
           });
         });
       });
@@ -620,7 +625,7 @@ export const deriveAnalysisSnapshot = (
   const overdueAssignedTasks = assignedTasks.filter((task) => !isCompletedTask(task) && task.dueDate < today).length;
   const selfAssignedTasks = tasks.filter((task) => task.isSelfAssigned).length;
   const completedAllTasks = tasks.filter((task) => isCompletedTask(task)).length;
-  const planTaskTotals = countPlannedTopicTasks(studyPlans);
+  const planTaskTotals = countPlannedTopicTasks(studyPlans, tasks);
 
   const rawAdherence = tasks.length > 0 ? (completedAllTasks / tasks.length) * 100 : 0;
 

@@ -3,25 +3,25 @@ import { isCompletedTask } from '../../utils/taskStatus';
 
 export const taskGoalLabelMap: Record<string, string> = {
   'test-cozme': 'Test çözme',
-  'olcme-degerlendirme': 'Olcme degerlendirme',
+  'olcme-degerlendirme': 'Ölçme değerlendirme',
   'sinav-hazirlik': 'Sınav hazırlığı',
-  'konu-tekrari': 'Konu tekrari',
+  'konu-tekrari': 'Konu tekrarı',
   'eksik-konu-tamamlama': 'Eksik konu tamamlama',
   'ders calisma': 'Ders çalışması',
   'ders çalışma': 'Ders çalışması',
 };
 
 export const planSourceLabelMap: Record<string, string> = {
-  manual: 'Elle atandi',
+  manual: 'Elle atandı',
   'weekly-plan': 'Haftalık plan',
-  'ai-plan': 'Akilli plan',
+  'ai-plan': 'Akıllı plan',
   'free-study': 'Serbest çalışma',
 };
 
 export const examTypeLabelMap: Record<ExamType, string> = {
-  'school-written': 'Yazili',
+  'school-written': 'Yazılı',
   'school-quiz': 'Kısa sınav',
-  'school-oral': 'Sozlu',
+  'school-oral': 'Sözlü',
   'mock-exam': 'Deneme',
   'state-exam': 'Genel sınav',
   'report-card': 'Karne',
@@ -49,7 +49,7 @@ export const buildLocalId = (prefix: string) => {
 };
 
 export const formatTaskGoal = (value?: string) => value ? (taskGoalLabelMap[value] || value) : '';
-export const formatPlanSource = (value?: string, label?: string) => label || (value ? (planSourceLabelMap[value] || value) : 'Elle atandi');
+export const formatPlanSource = (value?: string, label?: string) => label || (value ? (planSourceLabelMap[value] || value) : 'Elle atandı');
 
 export const getTaskDateKey = (value?: string) => {
   if (typeof value !== 'string' || !value) return '';

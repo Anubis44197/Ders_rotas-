@@ -133,13 +133,13 @@ const chooseQuestionCount = (blockType: PlanBlockType) => {
 };
 
 const chooseSourceLabel = (mode: PlanningMode, blockType: PlanBlockType) => {
-  if (mode === 'revision') return 'Tekrar calismasi';
-  if (blockType === 'exam_prep') return 'Sinav onceligi';
-  if (blockType === 'assessment') return 'Olcme blogu';
+  if (mode === 'revision') return 'Tekrar çalışması';
+  if (blockType === 'exam_prep') return 'Sınav önceliği';
+  if (blockType === 'assessment') return 'Ölçme bloğu';
   if (blockType === 'revision') return 'Risk / tekrar';
-  if (blockType === 'new_learning') return 'Mufredat akisi';
-  if (blockType === 'question_practice') return 'Akilli dagitim';
-  return 'Haftalik plan';
+  if (blockType === 'new_learning') return 'Müfredat akışı';
+  if (blockType === 'question_practice') return 'Akıllı dağıtım';
+  return 'Haftalık plan';
 };
 
 const getStatusPriority = (status?: string) => {
@@ -274,15 +274,7 @@ const chooseTimeWindow = (
     }
   }
 
-  const schoolSlots = resolveScheduleDay(weeklySchedule, dayName).slots;
-  const lastSchoolSlot = [...schoolSlots].sort((left, right) => left.endTime.localeCompare(right.endTime)).slice(-1)[0];
-  const baseMinutes = Math.max(lastSchoolSlot ? toMinutes(lastSchoolSlot.endTime) + 30 : 16 * 60, 16 * 60);
-  const startMinutes = baseMinutes + dailyDrafts.length * (duration + 10);
-  return {
-    startTime: fromMinutes(startMinutes),
-    endTime: fromMinutes(startMinutes + duration),
-    fatiguePenalty: 10,
-  };
+  return null;
 };
 
 export const createWeeklyPlanDraft = ({
@@ -326,10 +318,30 @@ export const createWeeklyPlanDraft = ({
   const drafts: GeneratedPlanBlockDraft[] = [];
 
   prioritizedTopics.forEach((topic, index) => {
-    const { chosenDay, hasDeepWindow } = chooseDayForTopic(mode, topic, snapshot, weeklySchedule, dayAssignments);
-    const draftsForDay = dayAssignments.get(chosenDay) || [];
-    const blockType = chooseBlockType(mode, topic, hasDeepWindow);
-    const timeWindow = chooseTimeWindow(snapshot, weeklySchedule, chosenDay, blockType, draftsForDay);
+    const primaryChoice = chooseDayForTopic(mode, topic, snapshot, weeklySchedule, dayAssignments);
+    const dayChoices = [primaryChoice.chosenDay, ...DAYS.filter((day) => day !== primaryChoice.chosenDay)];
+    let chosenDay = primaryChoice.chosenDay;
+    let draftsForDay = dayAssignments.get(chosenDay) || [];
+    let blockType = chooseBlockType(mode, topic, primaryChoice.hasDeepWindow);
+    let timeWindow = chooseTimeWindow(snapshot, weeklySchedule, chosenDay, blockType, draftsForDay);
+
+    if (!timeWindow) {
+      for (const candidateDay of dayChoices.slice(1)) {
+        const candidateDrafts = dayAssignments.get(candidateDay) || [];
+        if (candidateDrafts.length >= getDailyBlockLimit(candidateDay)) continue;
+        const candidateBlockType = chooseBlockType(mode, topic, hasWindowForQuality(snapshot, candidateDay, 'deep'));
+        const candidateWindow = chooseTimeWindow(snapshot, weeklySchedule, candidateDay, candidateBlockType, candidateDrafts);
+        if (candidateWindow) {
+          chosenDay = candidateDay;
+          draftsForDay = candidateDrafts;
+          blockType = candidateBlockType;
+          timeWindow = candidateWindow;
+          break;
+        }
+      }
+    }
+
+    if (!timeWindow) return;
     const finalPriority = Math.max(0, topic.priorityScore - timeWindow.fatiguePenalty);
     const draft: GeneratedPlanBlockDraft = {
       id: `plan_block_${chosenDay}_${normalize(topic.subject)}_${normalize(topic.topicName)}_${index}`,
