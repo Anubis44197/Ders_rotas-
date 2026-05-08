@@ -171,7 +171,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
               <p className="mt-3 text-sm leading-6 text-slate-500">{task.description || 'Odakli okuma seansi aktif.'}</p>
               <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold">
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">Plan: {task.plannedDuration} dk</span>
-                {task.curriculumUnitName ? <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">Unite: {task.curriculumUnitName}</span> : null}
+                {task.curriculumUnitName ? <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">Ünite: {task.curriculumUnitName}</span> : null}
                 {task.curriculumTopicName ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">Konu: {task.curriculumTopicName}</span> : null}
               </div>
               <div className="mt-6 grid grid-cols-3 gap-3">

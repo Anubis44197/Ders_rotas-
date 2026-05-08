@@ -531,7 +531,7 @@ const normalizeWeeklyScheduleSlot = (slot: any, fallbackIndex: number): WeeklySc
   note: repairedText(slot?.note).trim() || undefined,
 });
 
-const normalizeScheduleWindow = (window: any): ScheduleDayWindow | null => {
+const normalizeScheduleWindow = (window: any, fallbackIndex = 0): ScheduleDayWindow | null => {
   const startTime = String(window?.startTime ?? '').trim();
   const endTime = String(window?.endTime ?? '').trim();
   const quality = window?.quality === 'deep' || window?.quality === 'medium' || window?.quality === 'light'
@@ -539,7 +539,12 @@ const normalizeScheduleWindow = (window: any): ScheduleDayWindow | null => {
     : 'medium';
 
   if (!startTime || !endTime || startTime >= endTime) return null;
-  return { startTime, endTime, quality };
+  return {
+    id: String(window?.id || `window_${fallbackIndex}_${startTime}_${endTime}_${quality}`),
+    startTime,
+    endTime,
+    quality,
+  };
 };
 
 const buildLegacyScheduleDay = (value: string): WeeklyScheduleDay => {
@@ -579,7 +584,7 @@ const normalizeWeeklySchedule = (schedule: any): WeeklySchedule => {
         {
           slots,
           availableWindows: Array.isArray(rawDay.availableWindows)
-            ? rawDay.availableWindows.map(normalizeScheduleWindow).filter((item: ScheduleDayWindow | null): item is ScheduleDayWindow => Boolean(item))
+            ? rawDay.availableWindows.map((window: any, index: number) => normalizeScheduleWindow(window, index)).filter((item: ScheduleDayWindow | null): item is ScheduleDayWindow => Boolean(item))
             : [],
           confirmed: Boolean(rawDay.confirmed) && (slots.length > 0 || (Array.isArray(rawDay.availableWindows) && rawDay.availableWindows.length > 0)),
         },

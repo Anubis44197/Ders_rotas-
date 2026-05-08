@@ -338,6 +338,7 @@ export interface StoredStudyPlan {
 export type ScheduleWindowQuality = 'light' | 'medium' | 'deep';
 
 export interface ScheduleDayWindow {
+  id?: string;
   startTime: string;
   endTime: string;
   quality: ScheduleWindowQuality;
