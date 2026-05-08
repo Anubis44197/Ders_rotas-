@@ -1746,12 +1746,12 @@ const App: React.FC = () => {
       if (ok) {
         addToast('Veriler başarıyla içe aktarıldı.', 'success');
       } else {
-        addToast('Gecersiz yedek dosyasi: gerekli alanlar eksik veya hatali.', 'error');
+        addToast('Geçersiz yedek dosyası: gerekli alanlar eksik veya hatalı.', 'error');
       }
       return ok;
     } catch (error) {
       console.error('Import error:', error);
-      addToast('Yedek dosyasi okunamadi veya JSON formati gecersiz.', 'error');
+      addToast('Yedek dosyası okunamadı veya JSON formatı geçersiz.', 'error');
       return false;
     }
   };
