@@ -308,13 +308,16 @@ const runBackupRoundTripHeavyData = () => {
   const studyPlans = [buildStoredPlan()];
   const backup = {
     backup: {
-      app: 'Ders Rotası',
+      app: 'Ders Rotasi',
       schemaVersion: 2,
       exportedAt: today.toISOString(),
       summary: {
         courses: courses.length,
         tasks: tasks.length,
-        exams: examRecords.length,
+        rewards: rewards.length,
+        badges: badges.length,
+        examRecords: examRecords.length,
+        studyPlans: studyPlans.length,
       },
     },
     appData: {
@@ -337,8 +340,10 @@ const runBackupRoundTripHeavyData = () => {
   const payload = parsed.appData;
   assert(Array.isArray(payload.courses) && Array.isArray(payload.tasks) && Array.isArray(payload.rewards) && Array.isArray(payload.badges), 'Yedek dosyası zorunlu dizi alanlarını korumalı.');
   assert(payload.tasks.length === tasks.length, 'Büyük görev listesi import/export turunda eksilmemeli.');
-  assert(payload.weeklySchedule.Pazartesi.availableWindows[0].id === 'study_mon_a', 'Çalışma penceresi id bilgisi yedekte korunmalı.');
-  assert(payload.weeklySchedule.Pazartesi.availableWindows[1].id === 'study_mon_b', 'Aynı saatli ikinci çalışma penceresi ayrı id ile korunmalı.');
+  const mondayWindowIds = payload.weeklySchedule.Pazartesi.availableWindows.map((window: ScheduleDayWindow) => window.id);
+  assert(mondayWindowIds.includes('study_mon_a'), 'Çalışma penceresi id bilgisi yedekte korunmalı.');
+  assert(mondayWindowIds.includes('study_mon_b'), 'Aynı saatli ikinci çalışma penceresi ayrı id ile korunmalı.');
+  assert(new Set(mondayWindowIds).size === mondayWindowIds.length, 'Aynı saatli çalışma pencereleri yedekte tekil id taşımalı.');
 
   const before = deriveAnalysisSnapshot(tasks, courses, studyPlans, examRecords, compositeExamResults);
   const after = deriveAnalysisSnapshot(payload.tasks, payload.courses, payload.studyPlans, payload.examRecords, payload.compositeExamResults);
