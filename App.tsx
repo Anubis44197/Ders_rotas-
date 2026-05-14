@@ -74,19 +74,23 @@ const fromMinutes = (value: number) => {
   return `${`${hour}`.padStart(2, '0')}:${`${minute}`.padStart(2, '0')}`;
 };
 
-const legacySampleWeeklySchedule: WeeklySchedule = {
-  Pazartesi: { confirmed: true, slots: [createScheduleSlot('Matematik', '09:00', '10:00'), createScheduleSlot('Turkce', '10:00', '11:00')], availableWindows: [] },
-  Sali: { confirmed: true, slots: [createScheduleSlot('Fen Bilimleri', '09:00', '10:00'), createScheduleSlot('Turkce', '10:00', '11:00')], availableWindows: [] },
-  Carsamba: { confirmed: true, slots: [createScheduleSlot('Matematik', '09:00', '10:00'), createScheduleSlot('Sosyal Bilgiler', '10:00', '11:00')], availableWindows: [] },
-  Persembe: { confirmed: true, slots: [createScheduleSlot('Ingilizce', '09:00', '10:00'), createScheduleSlot('Fen Bilimleri', '10:00', '11:00')], availableWindows: [] },
-  Cuma: { confirmed: true, slots: [createScheduleSlot('Matematik', '09:00', '10:00'), createScheduleSlot('Turkce', '10:00', '11:00')], availableWindows: [] },
-  Cumartesi: { confirmed: false, slots: [], availableWindows: [] },
-  Pazar: { confirmed: false, slots: [], availableWindows: [] },
-};
-
 const defaultWeeklySchedule: WeeklySchedule = Object.fromEntries(
   SCHEDULE_DAYS.map((day) => [day, createEmptyScheduleDay()]),
 ) as WeeklySchedule;
+
+const isLegacySampleSchedule = (schedule: WeeklySchedule) => {
+  const dayEntries = SCHEDULE_DAYS.map((day) => schedule[day]);
+  const schoolBlocks = dayEntries.flatMap((day) => Array.isArray(day?.slots) ? day.slots : []);
+  const studyWindows = dayEntries.flatMap((day) => Array.isArray(day?.availableWindows) ? day.availableWindows : []);
+  const confirmedDays = dayEntries.filter((day) => day?.confirmed).length;
+  const normalizedTimes = schoolBlocks.map((slot) => slot.startTime + '-' + slot.endTime).sort();
+
+  return schoolBlocks.length === 9
+    && studyWindows.length === 0
+    && confirmedDays === 5
+    && normalizedTimes.filter((value) => value === '09:00-10:00').length === 5
+    && normalizedTimes.filter((value) => value === '10:00-11:00').length === 4;
+};
 
 const defaultPlanningEngineSnapshot: PlanningEngineSnapshot = {
   scheduleDays: [],
@@ -263,6 +267,77 @@ const normalizeSafeNumber = (value: unknown): number => {
   const next = Number(value);
   return Number.isFinite(next) ? next : 0;
 };
+
+const academicStorageKeys = [
+  'courses',
+  'tasks',
+  'curriculum',
+  'weeklySchedule',
+  'examScheduleEntries',
+  'examRecords',
+  'compositeExamResults',
+  'studyPlans',
+  'planningEngineSnapshot',
+  'performanceData',
+  'rewards',
+  'successPoints',
+  'badges',
+  'resumeTaskId',
+];
+
+const legacyDemoSubjectKeys = new Set(['matematik', 'turkce', 'fen', 'fen bilimleri', 'sosyal bilgiler', 'ingilizce']);
+
+const normalizeLegacyDemoText = (value: unknown) => String(value || '')
+  .toLocaleLowerCase('tr-TR')
+  .normalize('NFKD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/\u0131/g, 'i')
+  .replace(/\u011f/g, 'g')
+  .replace(/\u00fc/g, 'u')
+  .replace(/\u015f/g, 's')
+  .replace(/\u00f6/g, 'o')
+  .replace(/\u00e7/g, 'c')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const parseStorageJson = (key: string) => {
+  try {
+    const rawValue = window.localStorage.getItem(key);
+    return rawValue ? JSON.parse(rawValue) : null;
+  } catch {
+    return null;
+  }
+};
+
+const isLegacyDemoCourseList = (value: unknown) => {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 8) return false;
+  return value.every((course) => legacyDemoSubjectKeys.has(normalizeLegacyDemoText(course?.name)));
+};
+
+const isLegacyDemoCurriculum = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const subjectNames = Object.keys(value);
+  if (subjectNames.length === 0 || subjectNames.length > 8) return false;
+  return subjectNames.every((subject) => legacyDemoSubjectKeys.has(normalizeLegacyDemoText(subject)));
+};
+
+const purgeLegacyDemoData = () => {
+  if (typeof window === 'undefined') return;
+  const coursesPayload = parseStorageJson('courses');
+  const curriculumPayload = parseStorageJson('curriculum');
+  const schedulePayload = parseStorageJson('weeklySchedule');
+  const shouldPurge = isLegacyDemoCourseList(coursesPayload)
+    || isLegacyDemoCurriculum(curriculumPayload)
+    || Boolean(schedulePayload && isLegacySampleSchedule(normalizeWeeklySchedule(schedulePayload)));
+
+  if (!shouldPurge) return;
+
+  academicStorageKeys.forEach((key) => window.localStorage.removeItem(key));
+  Object.keys(window.localStorage)
+    .filter((key) => key.startsWith('timerState_'))
+    .forEach((key) => window.localStorage.removeItem(key));
+};
+
 
 const normalizeSafeBoolean = (value: unknown): boolean => value === true;
 
@@ -622,11 +697,13 @@ const normalizeWeeklySchedule = (schedule: any): WeeklySchedule => {
   });
 
   const normalized = Object.fromEntries(nextEntries) as WeeklySchedule;
-  if (JSON.stringify(normalized) === JSON.stringify(legacySampleWeeklySchedule)) {
+  if (isLegacySampleSchedule(normalized)) {
     return defaultWeeklySchedule;
   }
   return normalized;
 };
+
+purgeLegacyDemoData();
 
 const normalizeCurriculum = (value: any): SubjectCurriculum => {
   if (!value || typeof value !== 'object') return {};
