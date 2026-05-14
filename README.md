@@ -82,13 +82,7 @@ Preview sunucusu Vite tarafindan verilen lokal adreste calisir.
 
 ## Ortam Degiskenleri
 
-AI destekli alanlar icin proje kokunde `.env.local` dosyasi olusturulabilir:
-
-```bash
-VITE_GOOGLE_AI_API_KEY=anahtarinizi_yazin
-```
-
-`.env.local` repoya eklenmez. Uygulama anahtar olmadan da temel planlama, gorev, analiz ve raporlama ekranlarini calistirir.
+Normal kurulum ve kullanim icin herhangi bir API anahtari veya ortam degiskeni gerekmez.
 
 ## Guncel Stabil Durum
 
