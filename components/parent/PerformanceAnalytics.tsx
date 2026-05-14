@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Task } from '../../types';
 import EmptyState from '../shared/EmptyState';
 import { isCompletedTask } from '../../utils/taskStatus';
 import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
 import { Info } from '../icons';
-import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette } from '../shared/chartDesign';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 
 interface PerformanceAnalyticsProps {
   tasks: Task[];
@@ -108,7 +108,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
             <h3 className="text-lg font-black text-slate-900">Aylık ilerleme</h3>
             <p className="mt-1 text-sm text-slate-500">Tamamlanan görev ve ortalama skor aynı tabloda izlenir.</p>
           </div>
-          <ResponsiveContainer width="100%" height={260}>
+          <SafeResponsiveContainer width="100%" height={260}>
             <LineChart data={monthlyData}>
               <CartesianGrid {...chartGridProps} />
               <XAxis dataKey="month" {...chartAxisProps} />
@@ -117,7 +117,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
               <Line legendType="none" type="monotone" dataKey="completed" stroke={chartPalette.blue} strokeWidth={3} name="Tamamlanan görev" dot={{ r: 4, fill: chartPalette.blue, strokeWidth: 0 }} activeDot={{ r: 7 }} />
               <Line legendType="none" type="monotone" dataKey="score" stroke={chartPalette.mint} strokeWidth={3} name="Ortalama skor" dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} activeDot={{ r: 7 }} />
             </LineChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         </div>
 
         <div className="space-y-5">
@@ -166,7 +166,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <div className={card}>
           <h3 className="mb-4 text-lg font-black text-slate-900">Haftalık performans</h3>
-          <ResponsiveContainer width="100%" height={240}>
+          <SafeResponsiveContainer width="100%" height={240}>
             <BarChart data={weeklyData}>
               <CartesianGrid {...chartGridProps} />
               <XAxis dataKey="week" {...chartAxisProps} />
@@ -175,12 +175,12 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
               <Bar legendType="none" dataKey="completed" fill={chartPalette.blue} name="Tamamlanan görev" radius={[10, 10, 0, 0]} />
               <Bar legendType="none" dataKey="duration" fill={chartPalette.mint} name="Toplam süre (dk)" radius={[10, 10, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         </div>
 
         <div className={card}>
           <h3 className="mb-4 text-lg font-black text-slate-900">Yıllık genel görünüm</h3>
-          <ResponsiveContainer width="100%" height={240}>
+          <SafeResponsiveContainer width="100%" height={240}>
             <LineChart data={yearlyData}>
               <CartesianGrid {...chartGridProps} />
               <XAxis dataKey="year" {...chartAxisProps} />
@@ -189,7 +189,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
               <Line legendType="none" type="monotone" dataKey="completed" stroke={chartPalette.blue} strokeWidth={3} name="Tamamlanan görev" dot={{ r: 4, fill: chartPalette.blue, strokeWidth: 0 }} activeDot={{ r: 7 }} />
               <Line legendType="none" type="monotone" dataKey="duration" stroke={chartPalette.mint} strokeWidth={3} name="Toplam süre (dk)" dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} activeDot={{ r: 7 }} />
             </LineChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         </div>
       </div>
     </div>

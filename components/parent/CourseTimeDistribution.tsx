@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { Task, Course } from '../../types';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { BookOpen, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
-import { ChartTooltip, chartSeries } from '../shared/chartDesign';
+import { ChartTooltip, chartSeries, SafeResponsiveContainer } from '../shared/chartDesign';
 import { isCompletedTask } from '../../utils/taskStatus';
 
 interface CourseTimeDistributionProps {
@@ -88,7 +88,7 @@ const CourseTimeDistribution: React.FC<CourseTimeDistributionProps> = ({ tasks, 
           <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">En yüksek ders: <strong>{topCourse?.name || '-'}</strong></div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={320}>
+      <SafeResponsiveContainer width="100%" height={320}>
         <PieChart>
           <Pie legendType="none" data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={62} outerRadius={110}>
             {data.map((entry, index) => (
@@ -97,7 +97,7 @@ const CourseTimeDistribution: React.FC<CourseTimeDistributionProps> = ({ tasks, 
           </Pie>
           <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} dk`} />} />
         </PieChart>
-      </ResponsiveContainer>
+      </SafeResponsiveContainer>
     </div>
   );
 };

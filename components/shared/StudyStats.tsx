@@ -1,11 +1,11 @@
 import React from 'react';
 import { isCompletedTask } from '../../utils/taskStatus';
 import { Task } from '../../types';
-import { BarChart, Bar, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, Clock, Target, Trophy, Calendar, BarChart as BarChartIcon, Info } from '../icons';
 import '../child/progress-bar.css';
 import { getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
-import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries } from './chartDesign';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries, SafeResponsiveContainer } from './chartDesign';
 
 interface StudyStatsProps {
   tasks: Task[];
@@ -64,7 +64,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks }) => {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="ios-widget rounded-[24px] p-4">
           <div className="mb-4 flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary-600" /><h4 className="font-bold text-slate-700">7 Günlük Performans</h4></div>
-          <ResponsiveContainer width="100%" height={250}>
+          <SafeResponsiveContainer width="100%" height={250}>
             <LineChart data={weeklyData}>
               <CartesianGrid {...chartGridProps} />
               <XAxis dataKey="day" {...chartAxisProps} />
@@ -73,25 +73,25 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks }) => {
               <Line legendType="none" type="monotone" dataKey="tasks" name="Görev sayısı" stroke={chartPalette.blue} strokeWidth={3} dot={{ r: 4, fill: chartPalette.blue, strokeWidth: 0 }} activeDot={{ r: 7 }} />
               <Line legendType="none" type="monotone" dataKey="score" name="Ortalama puan" stroke={chartPalette.mint} strokeWidth={3} dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} activeDot={{ r: 7 }} />
             </LineChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         </div>
 
         <div className="ios-widget rounded-[24px] p-4">
           <div className="mb-4 flex items-center gap-2"><BarChartIcon className="h-5 w-5 text-primary-600" /><h4 className="font-bold text-slate-700">Ders Dagilimi</h4></div>
-          <ResponsiveContainer width="100%" height={250}>
+          <SafeResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie legendType="none" data={subjectData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }: any) => `${name} %${(percent * 100).toFixed(0)}`}>
                 {subjectData.map((_, index) => <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />)}
               </Pie>
               <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} görev`} />} />
             </PieChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         </div>
       </div>
 
       <div className="ios-widget mt-6 rounded-[24px] p-4">
         <h4 className="mb-4 flex items-center font-bold text-slate-700"><Clock className="mr-2 h-5 w-5 text-primary-600" />Günlük Çalışma Süreleri (dk)</h4>
-        <ResponsiveContainer width="100%" height={200}>
+        <SafeResponsiveContainer width="100%" height={200}>
           <BarChart data={weeklyData}>
             <CartesianGrid {...chartGridProps} />
             <XAxis dataKey="day" {...chartAxisProps} />
@@ -99,7 +99,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks }) => {
             <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} dakika`} />} />
             <Bar legendType="none" dataKey="time" name="Çalışma süresi" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </SafeResponsiveContainer>
       </div>
     </div>
   );

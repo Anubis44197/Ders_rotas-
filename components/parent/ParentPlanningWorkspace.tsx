@@ -202,7 +202,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         )}
       </section>
 
-      <WeeklySchedulePanel schedule={weeklySchedule} courses={safeCourses} onSave={onChangeSchedule} />
+      <WeeklySchedulePanel schedule={weeklySchedule} courses={safeCourses} curriculum={curriculum} addTask={addTask} onSave={onChangeSchedule} />
 
       <div className="space-y-6">
         <PlanningPanel

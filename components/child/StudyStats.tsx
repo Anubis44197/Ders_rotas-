@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { Task, Course } from '../../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { TrendingUp, Clock, Target, Zap, Calendar, BookOpen } from '../icons';
 import { isCompletedTask } from '../../utils/taskStatus';
 import { getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
-import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries } from '../shared/chartDesign';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries, SafeResponsiveContainer } from '../shared/chartDesign';
 
 interface StudyStatsProps {
   tasks: Task[];
@@ -119,7 +119,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.25fr)_320px]">
         <div className={card}>
           <div className="mb-4 flex items-center gap-2 text-slate-900"><Calendar className="h-5 w-5 text-primary-600" /><h3 className="text-lg font-black">Son 7 gün</h3></div>
-          <ResponsiveContainer width="100%" height={260}>
+          <SafeResponsiveContainer width="100%" height={260}>
             <LineChart data={weeklyTrendData}>
               <CartesianGrid {...chartGridProps} />
               <XAxis dataKey="day" {...chartAxisProps} />
@@ -148,7 +148,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
               <Line legendType="none" type="monotone" dataKey="studyTime" stroke={chartPalette.mint} strokeWidth={4} dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} name="Çalışma" activeDot={{ r: 7 }} />
               <Line legendType="none" type="monotone" dataKey="avgScore" stroke={chartPalette.lilac} strokeWidth={4} dot={{ r: 4, fill: chartPalette.lilac, strokeWidth: 0 }} name="Puan" activeDot={{ r: 7 }} />
             </LineChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         </div>
 
         <div className="space-y-5">
@@ -167,14 +167,14 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
 
           <div className={card}>
             <h3 className="mb-4 text-base font-black text-slate-900">Ders dağılımı</h3>
-            <ResponsiveContainer width="100%" height={220}>
+            <SafeResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie legendType="none" data={courseDistribution} cx="50%" cy="50%" outerRadius={70} dataKey="value" innerRadius={38}>
                   {courseDistribution.map((_, index) => <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />)}
                 </Pie>
             <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} görev`} />} />
               </PieChart>
-            </ResponsiveContainer>
+            </SafeResponsiveContainer>
             <div className="mt-3 space-y-2">
               {courseDistribution.map((item, index) => (
                 <div key={item.name} className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2 text-sm">
@@ -189,7 +189,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
 
       <div className={card}>
         <div className="mb-4 flex items-center gap-2 text-slate-900"><BookOpen className="h-5 w-5 text-blue-600" /><h3 className="text-lg font-black">Günlük görev dağılımı</h3></div>
-        <ResponsiveContainer width="100%" height={240}>
+        <SafeResponsiveContainer width="100%" height={240}>
           <BarChart data={weeklyTrendData}>
             <CartesianGrid {...chartGridProps} />
             <XAxis dataKey="day" {...chartAxisProps} />
@@ -197,7 +197,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
             <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} görev`} />} />
             <Bar legendType="none" dataKey="tasks" name="Görev" radius={[12, 12, 0, 0]} fill={chartPalette.blue} />
           </BarChart>
-        </ResponsiveContainer>
+        </SafeResponsiveContainer>
       </div>
     </div>
   );

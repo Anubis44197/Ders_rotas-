@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { Task } from '../../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Clock, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
-import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette } from '../shared/chartDesign';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 import { isCompletedTask } from '../../utils/taskStatus';
 
 interface BestPeriodAnalysisProps {
@@ -110,7 +110,7 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <div>
           <h4 className="mb-2 font-semibold text-slate-800">Gün bazlı skor</h4>
-          <ResponsiveContainer width="100%" height={220}>
+          <SafeResponsiveContainer width="100%" height={220}>
             <BarChart data={weekdayData}>
               <CartesianGrid {...chartGridProps} />
               <XAxis dataKey="day" {...chartAxisProps} />
@@ -119,11 +119,11 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
               <Bar legendType="none" dataKey="score" name="Skor" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
               <Bar legendType="none" dataKey="count" name="Görev" fill={chartPalette.mint} radius={[10, 10, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         </div>
         <div>
           <h4 className="mb-2 font-semibold text-slate-800">Saat bazlı skor</h4>
-          <ResponsiveContainer width="100%" height={220}>
+          <SafeResponsiveContainer width="100%" height={220}>
             <BarChart data={hourData}>
               <CartesianGrid {...chartGridProps} />
               <XAxis dataKey="hour" interval={2} {...chartAxisProps} />
@@ -132,7 +132,7 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
               <Bar legendType="none" dataKey="score" name="Skor" fill={chartPalette.lilac} radius={[10, 10, 0, 0]} />
               <Bar legendType="none" dataKey="count" name="Görev" fill={chartPalette.peach} radius={[10, 10, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         </div>
       </div>
     </div>

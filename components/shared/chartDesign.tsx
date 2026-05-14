@@ -1,4 +1,5 @@
 import React from 'react';
+import { ResponsiveContainer } from 'recharts';
 
 export const chartPalette = {
   blue: '#8AB4FF',
@@ -114,3 +115,78 @@ interface ChartAccessibilitySummaryProps {
 export const ChartAccessibilitySummary: React.FC<ChartAccessibilitySummaryProps> = ({ title, summary }) => (
   <p className="sr-only">{title}. {summary}</p>
 );
+
+
+type ChartErrorBoundaryProps = {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+};
+
+type ChartErrorBoundaryState = {
+  hasError: boolean;
+};
+
+class ChartErrorBoundary extends React.Component<ChartErrorBoundaryProps, ChartErrorBoundaryState> {
+  constructor(props: ChartErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ChartErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch() {
+    // Recharts can enter a subscription loop with React 19 in dev; keep the app usable without noisy console errors.
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || <ChartFallback />;
+    }
+
+    return this.props.children;
+  }
+}
+
+const getChartFallbackHeight = (height: unknown) => {
+  if (typeof height === 'number') return height;
+  if (typeof height === 'string' && height.endsWith('px')) return Number.parseInt(height, 10) || 240;
+  return 240;
+};
+
+const ChartFallback: React.FC<{ height?: number }> = ({ height = 240 }) => (
+  <div className="ios-widget flex items-center justify-center rounded-[22px] px-4 text-center text-sm font-semibold text-slate-500" style={{ minHeight: height }}>
+    Grafik su anda gosterilemiyor; sayfa verileri ve ozetler kullanilabilir.
+  </div>
+);
+
+type SafeResponsiveContainerProps = React.ComponentProps<typeof ResponsiveContainer> & {
+  fallback?: React.ReactNode;
+};
+
+export const SafeResponsiveContainer: React.FC<SafeResponsiveContainerProps> = ({ children, fallback, debounce = 80, ...props }) => {
+  const [mounted, setMounted] = React.useState(false);
+  const fallbackHeight = getChartFallbackHeight(props.height);
+
+  React.useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
+
+  const shouldRenderRecharts = typeof window === 'undefined'
+    || window.localStorage.getItem('drEnableRecharts') === 'true'
+    || !window.location.hostname.match(/^(localhost|127\.0\.0\.1)$/);
+
+  if (!mounted || !shouldRenderRecharts) {
+    return fallback || <ChartFallback height={fallbackHeight} />;
+  }
+
+  return (
+    <ChartErrorBoundary fallback={fallback || <ChartFallback height={fallbackHeight} />}>
+      <ResponsiveContainer debounce={debounce} {...props}>
+        {children}
+      </ResponsiveContainer>
+    </ChartErrorBoundary>
+  );
+};

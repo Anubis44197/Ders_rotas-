@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BarChart as RechartsBarChart, Bar, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { BarChart as RechartsBarChart, Bar, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChildDashboardProps, Task, TaskFilter, ChildView, CurriculumUnit } from '../../types';
 import ActiveTaskTimer from './ActiveTaskTimer';
 import ActiveReadingSession from './ActiveReadingSession';
@@ -8,7 +8,7 @@ import { Trophy, PlusCircle, Play, Gift, BadgeCheck, Target, BarChart, Brain, Bo
 import { getTodayString, getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
 import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
 import { isCompletedTask as isTaskCompleted } from '../../utils/taskStatus';
-import { ChartTooltip, chartAxisProps, chartPalette } from '../shared/chartDesign';
+import { ChartTooltip, chartAxisProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 import ContextHelp from '../shared/ContextHelp';
 
 const card = 'ios-card rounded-[28px] p-4';
@@ -149,14 +149,14 @@ const WeeklyPointsPanel: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
         </div>
         <BarChart className="h-5 w-5 text-emerald-500" />
       </div>
-      <ResponsiveContainer width="100%" height={150}>
+      <SafeResponsiveContainer width="100%" height={150}>
         <RechartsBarChart data={weeklyData} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
           <XAxis dataKey="day" {...chartAxisProps} />
           <YAxis {...chartAxisProps} />
           <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} BP`} />} />
           <Bar legendType="none" dataKey="points" name="Puan" radius={[12, 12, 0, 0]} fill={chartPalette.blue} />
         </RechartsBarChart>
-      </ResponsiveContainer>
+      </SafeResponsiveContainer>
     </div>
   );
 };

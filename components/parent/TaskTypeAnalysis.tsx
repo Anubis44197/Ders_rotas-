@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Task } from '../../types';
 import { Info, Loader } from '../icons';
 import { isCompletedTask } from '../../utils/taskStatus';
 import EmptyState from '../shared/EmptyState';
-import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette } from '../shared/chartDesign';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 
 interface Props {
   tasks: Task[];
@@ -134,7 +134,7 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={260}>
+      <SafeResponsiveContainer width="100%" height={260}>
         <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="taskType" {...chartAxisProps} />
@@ -144,7 +144,7 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
           <Bar legendType="none" yAxisId="left" dataKey="avgScore" name="Ortalama skor" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
           <Bar legendType="none" yAxisId="right" dataKey="avgDuration" name="Ortalama süre" fill={chartPalette.mint} radius={[10, 10, 0, 0]} />
         </BarChart>
-      </ResponsiveContainer>
+      </SafeResponsiveContainer>
     </div>
   );
 };

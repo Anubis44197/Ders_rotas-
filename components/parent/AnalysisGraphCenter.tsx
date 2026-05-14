@@ -1,9 +1,9 @@
 import { isCompletedTask } from '../../utils/taskStatus';
 import React, { useMemo, useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, ScatterChart, Scatter, ZAxis } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { AnalysisSnapshot, SessionMetrics } from '../../utils/analysisEngine';
 import { Course, SubjectCurriculum, Task } from '../../types';
-import { ChartAccessibilitySummary, ChartTooltip, chartPalette } from '../shared/chartDesign';
+import { ChartAccessibilitySummary, ChartTooltip, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 
 const card = 'ios-card rounded-[30px] p-5';
 const navButton = 'ios-button w-full rounded-[18px] px-3 py-2 text-left text-sm font-semibold transition';
@@ -493,7 +493,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
       case 'general-score-trend':
         if (!generalScoreTrendData.length) return renderEmpty('Genel skor trendi için yeterli veri yok.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <LineChart data={generalScoreTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="date" tickLine={false} axisLine={false} />
@@ -501,13 +501,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Tooltip content={<ChartTooltip />} />
               <Line legendType="none" type="monotone" dataKey="score" stroke={chartBlue} strokeWidth={4} name="Genel skor" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
             </LineChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'course-performance':
         if (!coursePerformanceData.length) return renderEmpty('Ders performansı için veri yok.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <BarChart data={coursePerformanceData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="courseName" tickLine={false} axisLine={false} />
@@ -516,13 +516,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Bar legendType="none" dataKey="mastery" fill={chartMint} name="Hakimiyet" radius={[12, 12, 0, 0]} />
               <Bar legendType="none" dataKey="efficiency" fill={chartBlue} name="Verim" radius={[12, 12, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'risk-graph':
         if (!riskData.length) return renderEmpty('Odak verisi oluşmadı.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <BarChart data={riskData} layout="vertical" margin={{ left: 20, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis type="number" domain={[0, 100]} tickLine={false} axisLine={false} />
@@ -530,13 +530,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Tooltip content={<ChartTooltip />} />
               <Bar legendType="none" dataKey="risk" fill={chartCoral} name="Takip" radius={[0, 12, 12, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'curriculum-coverage':
         if (!coverageData.length) return renderEmpty('Müfredat kapsama verisi için ders/müfredat kaydı gerekli.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <BarChart data={coverageData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="courseName" tickLine={false} axisLine={false} />
@@ -544,13 +544,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Tooltip content={<ChartTooltip />} />
               <Bar legendType="none" dataKey="coverage" fill={chartMint} name="Kapsama %" radius={[12, 12, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'retention-curve':
         if (!retentionData.length) return renderEmpty('Kalıcılık eğrisi için en az 2 tekrar oturumu gerekli.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <LineChart data={retentionData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="day" tickLine={false} axisLine={false} />
@@ -558,13 +558,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Tooltip content={<ChartTooltip />} />
               <Line legendType="none" type="monotone" dataKey="retention" stroke={chartLilac} strokeWidth={4} name="Retention" dot={{ fill: chartLilac, strokeWidth: 0, r: 4 }} />
             </LineChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'accuracy-vs-time':
         if (!accuracyVsTimeData.length) return renderEmpty('Doğruluk / süre ilişkisi için soru oturumu gerekli.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis type="number" dataKey="duration" name="Süre" unit=" dk" tickLine={false} axisLine={false} />
@@ -573,13 +573,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Tooltip content={<ChartTooltip />} cursor={{ strokeDasharray: '3 3' }} />
               <Scatter legendType="none" name="Oturum" data={accuracyVsTimeData} fill={chartBlue} />
             </ScatterChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'best-time-window':
         if (!bestTimeWindowData.length) return renderEmpty('Saat penceresi verisi oluşmadı.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <BarChart data={bestTimeWindowData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="window" tickLine={false} axisLine={false} />
@@ -588,13 +588,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Bar legendType="none" dataKey="focus" fill={chartMint} name="Odak" radius={[12, 12, 0, 0]} />
               <Bar legendType="none" dataKey="accuracy" fill={chartPeach} name="Doğruluk" radius={[12, 12, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'learning-efficiency':
         if (!learningEfficiencyData.length) return renderEmpty('Öğrenme verimi için veri yok.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <LineChart data={learningEfficiencyData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="label" tickLine={false} axisLine={false} />
@@ -602,13 +602,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Tooltip content={<ChartTooltip />} />
               <Line legendType="none" type="monotone" dataKey="efficiency" stroke={chartBlue} strokeWidth={4} name="Mastery / dk" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
             </LineChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'deep-work-ratio':
         if (!deepWorkData.length) return renderEmpty('Derin çalışma oranı için tamamlanan oturum verisi yok.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <BarChart data={deepWorkData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="name" tickLine={false} axisLine={false} />
@@ -616,13 +616,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Tooltip content={<ChartTooltip />} />
               <Bar legendType="none" dataKey="value" fill={chartLilac} name="Oran %" radius={[12, 12, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'daily-ema-trend':
         if (!emaTrendData.length) return renderEmpty('EMA trendi için günlük veri yok.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <LineChart data={emaTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="date" tickLine={false} axisLine={false} />
@@ -631,13 +631,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Line legendType="none" type="monotone" dataKey="raw" stroke="#a9b7cd" strokeWidth={2} name="Ham" dot={false} />
               <Line legendType="none" type="monotone" dataKey="ema" stroke={chartBlue} strokeWidth={4} name="EMA" dot={{ fill: chartBlue, strokeWidth: 0, r: 4 }} />
             </LineChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'task-type-analysis':
         if (!taskTypeData.length) return renderEmpty('Görev tipi analizi için veri yok.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <BarChart data={taskTypeData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="taskType" tickLine={false} axisLine={false} />
@@ -646,13 +646,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Bar legendType="none" dataKey="mastery" fill={chartMint} name="Hakimiyet" radius={[12, 12, 0, 0]} />
               <Bar legendType="none" dataKey="efficiency" fill={chartBlue} name="Verim" radius={[12, 12, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       case 'reading-analytics':
         if (!readingData.length) return renderEmpty('Okuma analitiği için tamamlanan kitap okuma kaydı yok.');
         return (
-          <ResponsiveContainer width="100%" height={320}>
+          <SafeResponsiveContainer width="100%" height={320}>
             <LineChart data={readingData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
               <XAxis dataKey="month" tickLine={false} axisLine={false} />
@@ -661,7 +661,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <Line legendType="none" type="monotone" dataKey="pages" stroke={chartMint} strokeWidth={4} name="Sayfa" dot={{ fill: chartMint, strokeWidth: 0, r: 4 }} />
               <Line legendType="none" type="monotone" dataKey="comprehension" stroke={chartPeach} strokeWidth={4} name="Anlama" dot={{ fill: chartPeach, strokeWidth: 0, r: 4 }} />
             </LineChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         );
 
       default:
@@ -780,7 +780,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
                       Hata tipi dağılımı için yeterli soru oturumu verisi yok.
                     </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height={180}>
+                    <SafeResponsiveContainer width="100%" height={180}>
                       <BarChart data={qualityInsights.errorDistribution}>
                         <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
                         <XAxis dataKey="name" tickLine={false} axisLine={false} />
@@ -788,7 +788,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
                         <Tooltip content={<ChartTooltip />} />
                         <Bar legendType="none" dataKey="value" fill={chartPeach} name="Oran %" radius={[12, 12, 0, 0]} />
                       </BarChart>
-                    </ResponsiveContainer>
+                    </SafeResponsiveContainer>
                   )}
                 </div>
 

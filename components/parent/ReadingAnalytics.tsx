@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter } from 'recharts';
+import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, LineChart, Line, PieChart, Pie, Cell, ScatterChart, Scatter } from 'recharts';
 import { BookOpen, Info } from '../icons';
 import { isCompletedTask } from '../../utils/taskStatus';
 import { Task } from '../../types';
-import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries } from '../shared/chartDesign';
+import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries, SafeResponsiveContainer } from '../shared/chartDesign';
 
 interface ReadingAnalyticsProps {
   tasks: Task[];
@@ -87,7 +87,7 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
           <h3 className="text-lg font-semibold text-gray-900">Haftalık Okuma Skoru</h3>
           <Info className="h-4 w-4 text-slate-400" />
         </div>
-        <ResponsiveContainer width="100%" height={220}>
+        <SafeResponsiveContainer width="100%" height={220}>
           <LineChart data={weeklyScores}>
             <CartesianGrid {...chartGridProps} />
             <XAxis dataKey="day" {...chartAxisProps} />
@@ -95,13 +95,13 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
             <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} puan`} />} />
             <Line legendType="none" type="monotone" dataKey="score" name="Okuma skoru" stroke={chartPalette.lilac} strokeWidth={3} dot={{ r: 4, fill: chartPalette.lilac, strokeWidth: 0 }} activeDot={{ r: 7 }} />
           </LineChart>
-        </ResponsiveContainer>
+        </SafeResponsiveContainer>
       </div>
 
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
         <div className="ios-card rounded-[28px] p-6">
           <h3 className="mb-6 text-lg font-semibold text-gray-900">Aylık Okuma Trendi</h3>
-          <ResponsiveContainer width="100%" height={260}>
+          <SafeResponsiveContainer width="100%" height={260}>
             <BarChart data={monthlyData}>
               <CartesianGrid {...chartGridProps} />
               <XAxis dataKey="month" {...chartAxisProps} />
@@ -109,13 +109,13 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
               <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} kitap`} />} />
               <Bar legendType="none" dataKey="books" name="Kitap" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </SafeResponsiveContainer>
         </div>
 
         <div className="ios-card rounded-[28px] p-6">
           <h3 className="mb-6 text-lg font-semibold text-gray-900">Tür Dağılımı</h3>
           {genreData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <SafeResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie legendType="none" data={genreData} cx="50%" cy="50%" innerRadius={52} outerRadius={90} dataKey="value">
                   {genreData.map((entry, index) => (
@@ -124,7 +124,7 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
                 </Pie>
                 <Tooltip content={<ChartTooltip valueFormatter={(value) => `${value} okuma`} />} />
               </PieChart>
-            </ResponsiveContainer>
+            </SafeResponsiveContainer>
           ) : (
             <div className="flex h-[260px] flex-col items-center justify-center text-gray-500">
               <BookOpen className="mb-4 h-14 w-14" />
@@ -136,7 +136,7 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
 
       <div className="ios-card rounded-[28px] p-6">
         <h3 className="mb-6 text-lg font-semibold text-gray-900">Süre ve Skor İlişkisi</h3>
-        <ResponsiveContainer width="100%" height={260}>
+        <SafeResponsiveContainer width="100%" height={260}>
           <ScatterChart>
             <CartesianGrid {...chartGridProps} />
             <XAxis dataKey="duration" name="Süre" unit=" dk" {...chartAxisProps} />
@@ -144,7 +144,7 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
             <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name === 'Skor' ? `${value} puan` : `${value}`} />} cursor={{ stroke: chartPalette.blue, strokeDasharray: '2 8' }} />
             <Scatter legendType="none" name="Okuma" data={durationScoreData} fill={chartPalette.coral} />
           </ScatterChart>
-        </ResponsiveContainer>
+        </SafeResponsiveContainer>
       </div>
     </div>
   );

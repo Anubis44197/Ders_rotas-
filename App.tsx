@@ -24,6 +24,7 @@ import {
   ExamScheduleEntry,
   StoredStudyPlan,
   StudyPlan,
+  SubjectPlan,
   PlanningEngineSnapshot,
   ScheduleDayRecord,
   ScheduleDayWindow,
@@ -175,13 +176,14 @@ function useStickyState<T>(defaultValue: T, key: string, normalize?: (value: unk
       const resolvedValue = typeof nextValue === 'function'
         ? (nextValue as (prevState: T) => T)(prevValue)
         : nextValue;
-      return sanitize(resolvedValue);
+      const nextSafeValue = sanitize(resolvedValue);
+      return JSON.stringify(nextSafeValue) === JSON.stringify(prevValue) ? prevValue : nextSafeValue;
     });
   }, [sanitize]);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(key, JSON.stringify(sanitize(value)));
+      window.localStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
       console.error(`Error setting localStorage key "${key}":`, error);
     }
@@ -253,6 +255,31 @@ const normalizeSafeBadges = (value: unknown): Badge[] => {
 const normalizeSafeCurriculum = (value: unknown): SubjectCurriculum => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return value as SubjectCurriculum;
+};
+
+const normalizeSafeArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? value as T[] : []);
+
+const normalizeSafeNumber = (value: unknown): number => {
+  const next = Number(value);
+  return Number.isFinite(next) ? next : 0;
+};
+
+const normalizeSafeBoolean = (value: unknown): boolean => value === true;
+
+const normalizePlanningEngineSnapshot = (value: unknown): PlanningEngineSnapshot => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return defaultPlanningEngineSnapshot;
+  const candidate = value as Partial<PlanningEngineSnapshot>;
+  return {
+    scheduleDays: normalizeSafeArray<ScheduleDayRecord>(candidate.scheduleDays),
+    curriculumTopics: normalizeSafeArray<CurriculumTopicRecord>(candidate.curriculumTopics),
+    examSchedules: normalizeSafeArray<ExamScheduleEntry>(candidate.examSchedules),
+    topicStatuses: normalizeSafeArray<TopicStatusRecord>(candidate.topicStatuses),
+    studyPlanRecords: normalizeSafeArray<StudyPlanRecord>(candidate.studyPlanRecords),
+    planBlockRecords: normalizeSafeArray<PlanBlockRecord>(candidate.planBlockRecords),
+    studySessions: normalizeSafeArray<StudySessionRecord>(candidate.studySessions),
+    assessmentResults: normalizeSafeArray<AssessmentResultRecord>(candidate.assessmentResults),
+    replanTriggers: normalizeSafeArray<ReplanTriggerRecord>(candidate.replanTriggers),
+  };
 };
 
 const repairText = (value?: string) => {
@@ -718,29 +745,59 @@ const normalizeBadges = (items: Badge[]): Badge[] => items.map((item, index) => 
 });
 const normalizeCourses = (items: Course[]): Course[] =>
   sortCourses(items.map((item, index) => normalizeCourseRecord(item, index)).filter((course): course is Course => Boolean(course)));
-const normalizeStudyPlans = (items: any[]): StoredStudyPlan[] => {
-  if (!Array.isArray(items)) return [];
+const normalizeStudyPlans = (value: unknown): StoredStudyPlan[] => {
+  if (!Array.isArray(value)) return [];
 
   const plansByWeek = new Map<number, number>();
 
-  return items.map((item, index) => {
-    const week = Number(item?.week) || 0;
-    const nextVersion = Number(item?.version) || ((plansByWeek.get(week) || 0) + 1);
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object' || !('plan' in item) || typeof item.plan !== 'object' || Array.isArray(item.plan)) return null;
+    const week = Number(item.week) || 0;
+    const nextVersion = Number(item.version) || ((plansByWeek.get(week) || 0) + 1);
     plansByWeek.set(week, nextVersion);
+    const normalizedPlan = Object.fromEntries(
+      Object.entries(item.plan)
+        .filter(([, subjectPlan]) => subjectPlan && typeof subjectPlan === 'object')
+        .map(([subject, subjectPlan]) => {
+          const typedSubjectPlan = subjectPlan as Partial<SubjectPlan>;
+          return [
+            repairedText(subject) || subject,
+            {
+              units: Array.isArray(typedSubjectPlan.units)
+                ? typedSubjectPlan.units.map((unit: any) => ({
+                    name: repairedText(unit?.name) || String(unit?.name ?? ''),
+                    topics: Array.isArray(unit?.topics)
+                      ? unit.topics.map((topic: any) => ({
+                          name: repairedText(topic?.name) || String(topic?.name ?? ''),
+                          tasks: Array.isArray(topic?.tasks) ? topic.tasks : [],
+                        }))
+                      : [],
+                  }))
+                : [],
+            },
+          ] as const;
+        })
+        .filter(([, subjectPlan]) => subjectPlan.units.length > 0),
+    ) as StudyPlan;
+
+    if (Object.keys(normalizedPlan).length === 0) return null;
 
     return {
       ...item,
-      id: typeof item?.id === 'string' && item.id ? item.id : `stored_plan_week_${week}_v${nextVersion}_${index}`,
+      id: typeof item.id === 'string' && item.id ? item.id : `stored_plan_week_${week}_v${nextVersion}_${index}`,
       week,
       version: nextVersion,
-      status: item?.status,
-      reason: item?.reason,
-      generatedAt: typeof item?.generatedAt === 'string' && item.generatedAt ? item.generatedAt : undefined,
-      approvedAt: typeof item?.approvedAt === 'string' && item.approvedAt ? item.approvedAt : undefined,
-      approvedBy: item?.approvedBy === 'parent' || item?.approvedBy === 'system' ? item.approvedBy : undefined,
-      parentPlanId: typeof item?.parentPlanId === 'string' && item.parentPlanId ? item.parentPlanId : undefined,
+      status: item.status,
+      reason: item.reason,
+      generatedAt: typeof item.generatedAt === 'string' && item.generatedAt ? item.generatedAt : undefined,
+      approvedAt: typeof item.approvedAt === 'string' && item.approvedAt ? item.approvedAt : undefined,
+      approvedBy: item.approvedBy === 'parent' || item.approvedBy === 'system' ? item.approvedBy : undefined,
+      parentPlanId: typeof item.parentPlanId === 'string' && item.parentPlanId ? item.parentPlanId : undefined,
+      plan: normalizedPlan,
+      schedule: normalizeWeeklySchedule(item.schedule),
+      type: item.type === 'revision' ? 'revision' : 'normal',
     } as StoredStudyPlan;
-  });
+  }).filter((item): item is StoredStudyPlan => Boolean(item));
 };
 
 const normalizeExamScheduleEntries = (items: any[], courses: Course[]): ExamScheduleEntry[] => {
@@ -1407,17 +1464,17 @@ const App: React.FC = () => {
   const [courses, setCourses] = useStickyState<Course[]>([], 'courses', normalizeSafeCourses);
   const [tasks, setTasks] = useStickyState<Task[]>([], 'tasks', normalizeSafeTasks);
   const [curriculum, setCurriculum] = useStickyState<SubjectCurriculum>({}, 'curriculum', normalizeSafeCurriculum);
-  const [weeklySchedule, setWeeklySchedule] = useStickyState<WeeklySchedule>(defaultWeeklySchedule, 'weeklySchedule');
-  const [examScheduleEntries, setExamScheduleEntries] = useStickyState<ExamScheduleEntry[]>([], 'examScheduleEntries');
-  const [examRecords, setExamRecords] = useStickyState<ExamRecord[]>([], 'examRecords');
-  const [compositeExamResults, setCompositeExamResults] = useStickyState<CompositeExamResult[]>([], 'compositeExamResults');
-  const [studyPlans, setStudyPlans] = useStickyState<StoredStudyPlan[]>([], 'studyPlans');
-  const [planningEngineSnapshot, setPlanningEngineSnapshot] = useStickyState<PlanningEngineSnapshot>(defaultPlanningEngineSnapshot, 'planningEngineSnapshot');
-  const [performanceData, setPerformanceData] = useStickyState<PerformanceData[]>([], 'performanceData');
+  const [weeklySchedule, setWeeklySchedule] = useStickyState<WeeklySchedule>(defaultWeeklySchedule, 'weeklySchedule', normalizeWeeklySchedule);
+  const [examScheduleEntries, setExamScheduleEntries] = useStickyState<ExamScheduleEntry[]>([], 'examScheduleEntries', normalizeSafeArray<ExamScheduleEntry>);
+  const [examRecords, setExamRecords] = useStickyState<ExamRecord[]>([], 'examRecords', normalizeSafeArray<ExamRecord>);
+  const [compositeExamResults, setCompositeExamResults] = useStickyState<CompositeExamResult[]>([], 'compositeExamResults', normalizeSafeArray<CompositeExamResult>);
+  const [studyPlans, setStudyPlans] = useStickyState<StoredStudyPlan[]>([], 'studyPlans', normalizeStudyPlans);
+  const [planningEngineSnapshot, setPlanningEngineSnapshot] = useStickyState<PlanningEngineSnapshot>(defaultPlanningEngineSnapshot, 'planningEngineSnapshot', normalizePlanningEngineSnapshot);
+  const [performanceData, setPerformanceData] = useStickyState<PerformanceData[]>([], 'performanceData', normalizeSafeArray<PerformanceData>);
   const [rewards, setRewards] = useStickyState<Reward[]>([], 'rewards', normalizeSafeRewards);
-  const [successPoints, setSuccessPoints] = useStickyState<number>(0, 'successPoints');
+  const [successPoints, setSuccessPoints] = useStickyState<number>(0, 'successPoints', normalizeSafeNumber);
   const [badges, setBadges] = useStickyState<Badge[]>([{ id: 'b1', name: 'İlk Adım', description: 'İlk görevini tamamladın!', icon: BadgeCheck }], 'badges', normalizeSafeBadges);
-  const [isParentLocked, setIsParentLocked] = useStickyState<boolean>(true, 'isParentLocked');
+  const [isParentLocked, setIsParentLocked] = useStickyState<boolean>(true, 'isParentLocked', normalizeSafeBoolean);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [showDeleteCourseModal, setShowDeleteCourseModal] = useState(false);
@@ -1444,7 +1501,7 @@ const App: React.FC = () => {
   const [themeMode, setThemeMode] = useStickyState<'light' | 'dark'>('dark', 'themeMode');
   const [showNotificationDot, setShowNotificationDot] = useStickyState<boolean>(true, 'showNotificationDot');
   const [rememberLastParentView, setRememberLastParentView] = useStickyState<boolean>(true, 'rememberLastParentView');
-  const [dismissedNotificationKeys, setDismissedNotificationKeys] = useStickyState<string[]>([], 'dismissedNotificationKeys');
+  const [dismissedNotificationKeys, setDismissedNotificationKeys] = useStickyState<string[]>([], 'dismissedNotificationKeys', normalizeSafeArray<string>);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);

@@ -1,10 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { Course, ScheduleDayWindow, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
-import { Calendar, CheckCircle, Clock, PlusCircle, Trash2, X } from '../icons';
+import type { Course, CurriculumUnit, ScheduleDayWindow, SubjectCurriculum, Task, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
+import { Calendar, CheckCircle, ClipboardList, Clock, PlusCircle, Trash2, X } from '../icons';
+import {
+  ASSIGNMENT_METRIC_OPTIONS,
+  ASSIGNMENT_METRICS_BY_TASK_TYPE,
+  assignmentMetricLabelMap,
+  normalizeForLookup,
+  taskTypeKeyToTaskType,
+  type AssignmentMetricKey,
+  type TaskTypeKey,
+} from './parentDashboardShared';
 
 interface WeeklySchedulePanelProps {
   schedule: WeeklySchedule;
   courses: Course[];
+  curriculum?: SubjectCurriculum;
+  addTask?: (task: Omit<Task, 'id' | 'status'>) => Promise<Task>;
   onSave: (schedule: WeeklySchedule) => void;
 }
 
@@ -36,6 +47,7 @@ const resolveScheduleDay = (value: WeeklySchedule[string] | string | undefined) 
 const createSlotId = () => `slot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const createStudyWindowId = () => `window_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const createWindowKey = (window: ScheduleDayWindow, index: number) => window.id || `${window.startTime}_${window.endTime}_${window.quality}_${index}`;
+const getTodayDateInput = () => new Date().toISOString().slice(0, 10);
 
 const sortSlots = (slots: WeeklyScheduleSlot[]) => [...slots].sort((left, right) => left.startTime.localeCompare(right.startTime));
 const sortWindows = (windows: ScheduleDayWindow[]) => [...windows].sort((left, right) => left.startTime.localeCompare(right.startTime));
@@ -46,7 +58,7 @@ const dayHasChanges = (left: WeeklySchedule[string] | string | undefined, right:
   return JSON.stringify(leftDay) !== JSON.stringify(rightDay);
 };
 
-const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, courses, onSave }) => {
+const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, courses, curriculum, addTask, onSave }) => {
   const safeSchedule = useMemo(() => schedule || ({} as WeeklySchedule), [schedule]);
   const safeCourses = useMemo(() => (Array.isArray(courses) ? courses : []), [courses]);
   const [draft, setDraft] = useState<WeeklySchedule>(safeSchedule);
@@ -62,6 +74,17 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isTaskAssignmentOpen, setIsTaskAssignmentOpen] = useState(false);
+  const [assignmentCourseName, setAssignmentCourseName] = useState('');
+  const [assignmentUnitName, setAssignmentUnitName] = useState('');
+  const [assignmentTopicName, setAssignmentTopicName] = useState('');
+  const [assignmentDueDate, setAssignmentDueDate] = useState(getTodayDateInput());
+  const [assignmentDuration, setAssignmentDuration] = useState('30');
+  const [assignmentTaskTypeKey, setAssignmentTaskTypeKey] = useState<TaskTypeKey>('study');
+  const [assignmentQuestionCount, setAssignmentQuestionCount] = useState('');
+  const [assignmentSelectedMetrics, setAssignmentSelectedMetrics] = useState<AssignmentMetricKey[]>([]);
+  const [assignmentMessage, setAssignmentMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isAssigningTask, setIsAssigningTask] = useState(false);
 
   useEffect(() => {
     setDraft(safeSchedule);
@@ -78,6 +101,34 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
   }, [safeCourses, selectedCourseName]);
 
   const activeCourses = useMemo(() => safeCourses.filter((course) => course.active !== false), [safeCourses]);
+  const activeCourseNameSet = useMemo(() => new Set(activeCourses.map((course) => normalizeForLookup(course.name))), [activeCourses]);
+  const assignmentSubjectOptions = useMemo(() => {
+    const curriculumSubjects = Object.keys(curriculum || {})
+      .filter((subject) => activeCourseNameSet.has(normalizeForLookup(subject)))
+      .map((subject) => ({ value: subject, label: subject }));
+
+    if (curriculumSubjects.length > 0) return curriculumSubjects;
+    return activeCourses.map((course) => ({ value: course.name, label: course.name }));
+  }, [activeCourseNameSet, activeCourses, curriculum]);
+  const assignmentUnits = useMemo<CurriculumUnit[]>(() => {
+    if (!curriculum || !assignmentCourseName) return [];
+
+    const directUnits = curriculum[assignmentCourseName] as CurriculumUnit[] | undefined;
+    if (Array.isArray(directUnits) && directUnits.length > 0) return directUnits;
+
+    const normalizedCourseName = normalizeForLookup(assignmentCourseName);
+    const matchedSubject = Object.keys(curriculum).find((subject) => normalizeForLookup(subject) === normalizedCourseName);
+    if (!matchedSubject) return Array.isArray(directUnits) ? directUnits : [];
+    return curriculum[matchedSubject] as CurriculumUnit[];
+  }, [assignmentCourseName, curriculum]);
+  const assignmentTopics = useMemo(() => {
+    if (!assignmentUnitName) return [];
+    return assignmentUnits.find((unit) => unit.name === assignmentUnitName)?.topics || [];
+  }, [assignmentUnitName, assignmentUnits]);
+  const assignmentMetricOptions = useMemo(
+    () => ASSIGNMENT_METRIC_OPTIONS.filter((metric) => (ASSIGNMENT_METRICS_BY_TASK_TYPE[assignmentTaskTypeKey] || []).includes(metric.key)),
+    [assignmentTaskTypeKey],
+  );
 
   const hasDraftChanges = useMemo(
     () => DAYS.some((day) => dayHasChanges(draft[day], safeSchedule[day])),
@@ -230,6 +281,88 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
     window.setTimeout(() => setSaved(false), 1800);
   };
 
+  const resetAssignmentForm = () => {
+    setAssignmentDueDate(getTodayDateInput());
+    setAssignmentDuration('30');
+    setAssignmentTaskTypeKey('study');
+    setAssignmentQuestionCount('');
+    setAssignmentSelectedMetrics([]);
+    setAssignmentUnitName('');
+    setAssignmentTopicName('');
+  };
+
+  const openTaskAssignment = () => {
+    setAssignmentMessage(null);
+    if (!assignmentCourseName && assignmentSubjectOptions.length > 0) {
+      setAssignmentCourseName(assignmentSubjectOptions[0].value);
+    }
+    setIsTaskAssignmentOpen(true);
+  };
+
+  const closeTaskAssignment = () => {
+    if (isAssigningTask) return;
+    setAssignmentMessage(null);
+    setIsTaskAssignmentOpen(false);
+  };
+
+  const toggleAssignmentMetric = (metricKey: AssignmentMetricKey) => {
+    setAssignmentSelectedMetrics((prev) => (prev.includes(metricKey) ? [] : [metricKey]));
+  };
+
+  const handleAssignTask = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isAssigningTask) return;
+
+    if (!addTask) {
+      setAssignmentMessage({ type: 'error', text: 'Bu ekranda görev atama bağlantısı hazır değil.' });
+      return;
+    }
+
+    if (!assignmentDueDate || !assignmentDuration || !assignmentCourseName || !assignmentUnitName || !assignmentTopicName) {
+      setAssignmentMessage({ type: 'error', text: 'Görev atamak için ders, ünite, konu, tarih ve süre seçimi zorunludur.' });
+      return;
+    }
+
+    const resolvedCourseId = safeCourses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(assignmentCourseName))?.id;
+    if (!resolvedCourseId) {
+      setAssignmentMessage({ type: 'error', text: 'Seçili ders için kayıtlı ders kimliği bulunamadı. Önce Müfredat ekranından dersi kaydedin.' });
+      return;
+    }
+
+    const plannedDuration = Number(assignmentDuration);
+    if (!Number.isFinite(plannedDuration) || plannedDuration <= 0) {
+      setAssignmentMessage({ type: 'error', text: 'Süre 0 dakikadan büyük olmalı.' });
+      return;
+    }
+
+    const generatedTitle = [assignmentCourseName, assignmentUnitName, assignmentTopicName].join(' / ');
+    const derivedTaskGoalType = assignmentTaskTypeKey === 'question' ? 'test-cozme' : assignmentTaskTypeKey === 'revision' ? 'konu-tekrari' : 'ders calisma';
+    const payload: Omit<Task, 'id' | 'status'> = {
+      title: generatedTitle,
+      dueDate: assignmentDueDate,
+      courseId: resolvedCourseId,
+      taskType: taskTypeKeyToTaskType(assignmentTaskTypeKey),
+      plannedDuration,
+      ...(assignmentTaskTypeKey === 'question' && Number(assignmentQuestionCount) > 0 ? { questionCount: Number(assignmentQuestionCount) } : {}),
+      ...(assignmentSelectedMetrics.length > 0 ? { selectedMetrics: assignmentSelectedMetrics, metricTargetScore: 100 as const } : {}),
+      curriculumUnitName: assignmentUnitName,
+      curriculumTopicName: assignmentTopicName,
+      taskGoalType: derivedTaskGoalType,
+      planSource: 'manual' as const,
+    };
+
+    setIsAssigningTask(true);
+    try {
+      await addTask(payload);
+      resetAssignmentForm();
+      setAssignmentMessage({ type: 'success', text: 'Görev çocuğun görev listesine eklendi.' });
+    } catch (error) {
+      setAssignmentMessage({ type: 'error', text: error instanceof Error ? error.message : 'Görev eklenirken beklenmeyen bir hata oluştu.' });
+    } finally {
+      setIsAssigningTask(false);
+    }
+  };
+
   return (
     <section className="ios-card rounded-[28px] p-5">
       <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -244,14 +377,25 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 xl:items-end">
-          <button
-            type="button"
-            onClick={() => openEditorForDay(activeDay, 'school')}
-            className="ios-button inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700"
-          >
-            <PlusCircle className="h-4 w-4 text-primary-600" />
-            Okul programını düzenle
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row xl:justify-end">
+            <button
+              type="button"
+              onClick={() => openEditorForDay(activeDay, 'school')}
+              className="ios-button inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700"
+            >
+              <PlusCircle className="h-4 w-4 text-primary-600" />
+              Okul programını düzenle
+            </button>
+            <button
+              type="button"
+              onClick={openTaskAssignment}
+              disabled={!addTask}
+              className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 disabled:opacity-50"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Görev ata
+            </button>
+          </div>
           {saved && (
             <div className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-700">
               Program kaydedildi
@@ -517,6 +661,56 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {isTaskAssignmentOpen && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={closeTaskAssignment}>
+          <form className="ios-card flex max-h-[88dvh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px]" onSubmit={handleAssignTask} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Çocuğa görev ata">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-600">
+                  <ClipboardList className="h-4 w-4" />
+                  Çocuğa görev ata
+                </div>
+                <h3 className="mt-2 text-2xl font-black text-slate-900">Plan içinden hızlı görev</h3>
+                <p className="mt-1 text-sm text-slate-500">Ders, ünite ve konu seçerek görevi doğrudan çocuğun görev listesine gönder.</p>
+              </div>
+              <button type="button" onClick={closeTaskAssignment} className="ios-button flex h-11 w-11 items-center justify-center rounded-full p-0 text-slate-600" aria-label="Görev atama penceresini kapat">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="dr-modal-scroll flex-1 overflow-y-auto px-6 py-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-bold text-slate-700">Ders<select value={assignmentCourseName} onChange={(event) => { setAssignmentCourseName(event.target.value); setAssignmentUnitName(''); setAssignmentTopicName(''); setAssignmentMessage(null); }} className="dr-form-field mt-2 w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none"><option value="">Ders seç</option>{assignmentSubjectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                <label className="text-sm font-bold text-slate-700">Görev tipi<select value={assignmentTaskTypeKey} onChange={(event) => setAssignmentTaskTypeKey(event.target.value as TaskTypeKey)} className="dr-form-field mt-2 w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none"><option value="study">Ders çalışma</option><option value="question">Soru çözme</option><option value="revision">Konu tekrarı</option></select></label>
+                <label className="text-sm font-bold text-slate-700">Ünite<select value={assignmentUnitName} onChange={(event) => { setAssignmentUnitName(event.target.value); setAssignmentTopicName(''); setAssignmentMessage(null); }} disabled={!assignmentUnits.length} className="dr-form-field mt-2 w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none disabled:opacity-50"><option value="">Ünite seç</option>{assignmentUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select></label>
+                <label className="text-sm font-bold text-slate-700">Konu<select value={assignmentTopicName} onChange={(event) => { setAssignmentTopicName(event.target.value); setAssignmentMessage(null); }} disabled={!assignmentTopics.length} className="dr-form-field mt-2 w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none disabled:opacity-50"><option value="">Konu seç</option>{assignmentTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}</select></label>
+                <label className="text-sm font-bold text-slate-700">Teslim tarihi<input type="date" value={assignmentDueDate} onChange={(event) => setAssignmentDueDate(event.target.value)} className="dr-form-field mt-2 w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none" /></label>
+                <label className="text-sm font-bold text-slate-700">Süre (dk)<input type="number" min="5" step="5" value={assignmentDuration} onChange={(event) => setAssignmentDuration(event.target.value)} className="dr-form-field mt-2 w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none" /></label>
+                {assignmentTaskTypeKey === 'question' && <label className="text-sm font-bold text-slate-700 sm:col-span-2">Soru sayısı<input type="number" min="1" value={assignmentQuestionCount} onChange={(event) => setAssignmentQuestionCount(event.target.value)} className="dr-form-field mt-2 w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none" /></label>}
+              </div>
+
+              <div className="mt-5 rounded-[22px] border border-white/10 bg-white/5 p-4">
+                <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Takip ölçütü</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {assignmentMetricOptions.map((metric) => {
+                    const selected = assignmentSelectedMetrics.includes(metric.key);
+                    return <button key={metric.key} type="button" onClick={() => toggleAssignmentMetric(metric.key)} className={['rounded-full px-3 py-2 text-xs font-black', selected ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'].join(' ')} title={metric.hint}>{assignmentMetricLabelMap[metric.key]}</button>;
+                  })}
+                </div>
+              </div>
+
+              {assignmentUnits.length === 0 && assignmentCourseName && <div className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">Bu ders için müfredat ünitesi bulunamadı. Görev atamak için önce Müfredatı Düzenle ekranında ünite ve konu ekleyin.</div>}
+              {assignmentMessage && <div className={['mt-4 rounded-2xl px-4 py-3 text-sm font-bold', assignmentMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'].join(' ')}>{assignmentMessage.text}</div>}
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-white/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
+              <button type="button" onClick={closeTaskAssignment} className="ios-button rounded-2xl px-4 py-3 text-sm font-bold text-slate-700">Vazgeç</button>
+              <button type="submit" disabled={isAssigningTask || !assignmentCourseName || !assignmentUnitName || !assignmentTopicName} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-slate-900 disabled:opacity-50"><ClipboardList className="h-4 w-4" />{isAssigningTask ? 'Ekleniyor...' : 'Görevi ata'}</button>
+            </div>
+          </form>
         </div>
       )}
     </section>

@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { Task } from '../../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Brush } from 'recharts';
 import { Zap, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
-import { ChartTooltip, chartAxisProps, chartBrushProps, chartGridProps, chartPalette } from '../shared/chartDesign';
+import { ChartTooltip, chartAxisProps, chartBrushProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 import { isCompletedTask } from '../../utils/taskStatus';
 
 interface CompletionSpeedAnalysisProps {
@@ -90,7 +90,7 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={350}>
+      <SafeResponsiveContainer width="100%" height={350}>
         <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: data.length > 8 ? 75 : 5 }}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="title" interval={0} angle={-20} textAnchor="end" height={60} {...chartAxisProps} />
@@ -100,7 +100,7 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
           <Bar legendType="none" dataKey="actual" name="Gerçek süre" fill={chartPalette.peach} radius={[10, 10, 0, 0]} />
           {data.length > 8 && <Brush dataKey="title" {...chartBrushProps} />}
         </BarChart>
-      </ResponsiveContainer>
+      </SafeResponsiveContainer>
     </div>
   );
 };

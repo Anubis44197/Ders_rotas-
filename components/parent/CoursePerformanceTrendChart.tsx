@@ -1,8 +1,8 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Brush } from 'recharts';
 import EmptyState from '../shared/EmptyState';
 import { Info } from '../icons';
-import { ChartTooltip, chartAxisProps, chartBrushProps, chartGridProps, chartPalette } from '../shared/chartDesign';
+import { ChartTooltip, chartAxisProps, chartBrushProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 
 interface Props {
   data: Array<{
@@ -34,7 +34,7 @@ const CoursePerformanceTrendChart: React.FC<Props> = ({ data, courseName }) => {
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={320}>
+      <SafeResponsiveContainer width="100%" height={320}>
         <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 60 }}>
           <CartesianGrid {...chartGridProps} />
           <XAxis dataKey="period" {...chartAxisProps} />
@@ -44,7 +44,7 @@ const CoursePerformanceTrendChart: React.FC<Props> = ({ data, courseName }) => {
           <Line legendType="none" type="monotone" dataKey="focusScore" name="Odak skoru" stroke={chartPalette.mint} strokeWidth={3} dot={{ r: 4, fill: chartPalette.mint, strokeWidth: 0 }} activeDot={{ r: 7 }} />
           {data.length > 5 && <Brush dataKey="period" {...chartBrushProps} />}
         </LineChart>
-      </ResponsiveContainer>
+      </SafeResponsiveContainer>
     </div>
   );
 };

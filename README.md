@@ -36,6 +36,14 @@ npm run smoke
 npm run build
 ```
 
+## Guncel Durum
+
+- React hata yakalama ekrani eklendi; bozuk veya eski tarayici verisi beyaz ekran yerine kurtarma ekrani gosterir.
+- Recharts kaynakli gelistirme ortami render donguleri icin guvenli grafik kapsayicisi kullanilir; localhost uzerinde grafikler varsayilan olarak ozet/fallback ile acilir.
+- Planlama ekranindaki Haftalik Zaman Zemini kartindan cocuga hizli gorev atanabilir.
+- Gorev atama penceresi ders, unite, konu, tarih, sure, soru sayisi ve takip olcutu secimlerini mevcut gorev sistemine baglar.
+- PWA metadata uyarilari icin modern mobile web app meta etiketi eklenmistir.
+
 ## Production Onizleme
 
 ```bash
