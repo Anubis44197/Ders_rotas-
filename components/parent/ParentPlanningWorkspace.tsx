@@ -136,7 +136,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
             className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-slate-900"
           >
             <PlusCircle className="h-4 w-4" />
-            Müfredatı Düzenle
+            Ders Ekle / Kaldır
           </button>
         </div>
 

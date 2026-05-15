@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Course, ExamScheduleEntry, PlanBlockRecord, PlanningEngineSnapshot, StoredStudyPlan, StudyPlan, SubjectCurriculum, SubjectPlanTask, Task, WeeklySchedule } from '../../types';
 import { AlertTriangle, Calendar, PlusCircle, Sparkles, X } from '../icons';
 import { createWeeklyPlanDraft } from '../../utils/planEngine';
@@ -24,7 +24,7 @@ type PlanMode = 'select_type' | 'ai_normal' | 'manual_normal' | 'revision';
 type PlanTempo = 'Hafif' | 'Orta' | 'Yogun';
 type StoredPlanStatus = 'draft' | 'pending-approval' | 'active' | 'archived';
 
-const DAYS = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
+const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const TEMPO_LIMITS: Record<PlanTempo, number> = { Hafif: 5, Orta: 8, Yogun: 12 };
 const PLAN_DAY_TASK_PREVIEW_LIMIT = 4;
 const TEMPO_LABELS: Record<PlanTempo, string> = {

@@ -41,7 +41,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                             <div className="min-w-0">
                                 <h1 className="text-xl font-black">Uygulama acilirken bir veri hatasi yakalandi</h1>
                                 <p className="mt-2 text-sm leading-6 text-slate-300">
-                                    Beyaz ekran yerine bu kurtarma ekrani gosteriliyor. Sayfayi yenileyebilir ya da bu tarayicidaki yerel DersRotasi verisini temizleyip temiz baslangic yapabilirsiniz.
+                                    Beyaz ekran yerine bu kurtarma ekranı gösteriliyor. Sayfayı yenileyebilir ya da bu tarayıcıdaki yerel DersRotası verisini temizleyip temiz başlangıç yapabilirsiniz.
                                 </p>
                                 <p className="mt-3 rounded-2xl bg-black/20 px-3 py-2 text-xs text-rose-100">
                                     {this.state.error?.message || 'Bilinmeyen bir hata meydana geldi'}

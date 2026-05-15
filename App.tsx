@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ParentDashboard from './components/parent/ParentDashboard';
 import ChildDashboard from './components/child/ChildDashboard';
 import ParentLockScreen from './components/parent/ParentLockScreen';
@@ -40,6 +40,7 @@ import {
 } from './types';
 import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown, PlusCircle, Search, Lightbulb, BookOpen } from './components/icons';
 import { ALL_ICONS } from './constants';
+import { INITIAL_REAL_COURSES, INITIAL_REAL_CURRICULUM, INITIAL_REAL_PERFORMANCE } from './initialRealCurriculum';
 import { calculateTaskPoints } from './utils/scoringAlgorithm';
 import { getLocalDateString } from './utils/dateUtils';
 import { deriveAnalysisSnapshot } from './utils/analysisEngine';
@@ -47,7 +48,12 @@ import { isCompletedTask } from './utils/taskStatus';
 import { playHaptic } from './utils/haptics';
 import { GoogleGenAI } from '@google/genai';
 
-const SCHEDULE_DAYS = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
+const SCHEDULE_DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
+const legacyScheduleDayMap: Record<string, string> = {
+  Sali: 'Salı',
+  Carsamba: 'Çarşamba',
+  Persembe: 'Perşembe',
+};
 
 const createScheduleSlot = (courseName: string, startTime: string, endTime: string, note?: string): WeeklyScheduleSlot => ({
   id: `slot_${courseName}_${startTime}_${endTime}`.replace(/\s+/g, '_').toLowerCase(),
@@ -311,14 +317,115 @@ const parseStorageJson = (key: string) => {
 
 const isLegacyDemoCourseList = (value: unknown) => {
   if (!Array.isArray(value) || value.length === 0 || value.length > 8) return false;
-  return value.every((course) => legacyDemoSubjectKeys.has(normalizeLegacyDemoText(course?.name)));
+  const subjectKeys = value.map((course) => normalizeLegacyDemoText(course?.name));
+  return subjectKeys.some((key) => legacyDemoSubjectKeys.has(key) && !retainedRealSubjectKeys.has(key))
+    && subjectKeys.every((key) => legacyDemoSubjectKeys.has(key));
 };
 
 const isLegacyDemoCurriculum = (value: unknown) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const subjectNames = Object.keys(value);
   if (subjectNames.length === 0 || subjectNames.length > 8) return false;
-  return subjectNames.every((subject) => legacyDemoSubjectKeys.has(normalizeLegacyDemoText(subject)));
+  const subjectKeys = subjectNames.map(normalizeLegacyDemoText);
+  return subjectKeys.some((key) => legacyDemoSubjectKeys.has(key) && !retainedRealSubjectKeys.has(key))
+    && subjectKeys.every((key) => legacyDemoSubjectKeys.has(key));
+};
+
+const retainedRealSubjectKeys = new Set(['matematik']);
+const shouldPruneLegacySubject = (value: unknown) => {
+  const key = normalizeLegacyDemoText(value);
+  return legacyDemoSubjectKeys.has(key) && !retainedRealSubjectKeys.has(key);
+};
+const isRetainedRealSubject = (value: unknown) => retainedRealSubjectKeys.has(normalizeLegacyDemoText(value));
+
+const pruneLegacyDemoSubjects = () => {
+  if (typeof window === 'undefined') return;
+  const migrationKey = 'drLegacyDemoSubjectsPrunedV1';
+  if (window.localStorage.getItem(migrationKey) === 'true') return;
+
+  const coursesPayload = parseStorageJson('courses');
+  const curriculumPayload = parseStorageJson('curriculum');
+  const hasRetainedSubject = (Array.isArray(coursesPayload) && coursesPayload.some((course) => isRetainedRealSubject(course?.name)))
+    || (curriculumPayload && typeof curriculumPayload === 'object' && !Array.isArray(curriculumPayload) && Object.keys(curriculumPayload).some(isRetainedRealSubject));
+
+  if (!hasRetainedSubject) return;
+
+  const keptCourseIds = new Set<string>();
+  if (Array.isArray(coursesPayload)) {
+    const byName = new Map<string, any>();
+    coursesPayload.forEach((course) => {
+      if (!course || typeof course !== 'object' || shouldPruneLegacySubject(course.name)) return;
+      const key = normalizeLegacyDemoText(course.name);
+      if (!byName.has(key)) byName.set(key, course);
+    });
+    const nextCourses = [...byName.values()];
+    nextCourses.forEach((course) => {
+      if (typeof course?.id === 'string') keptCourseIds.add(course.id);
+    });
+    window.localStorage.setItem('courses', JSON.stringify(nextCourses));
+  }
+
+  if (curriculumPayload && typeof curriculumPayload === 'object' && !Array.isArray(curriculumPayload)) {
+    const nextCurriculum = Object.fromEntries(
+      Object.entries(curriculumPayload).filter(([subject]) => !shouldPruneLegacySubject(subject)),
+    );
+    window.localStorage.setItem('curriculum', JSON.stringify(nextCurriculum));
+  }
+
+  const filterCourseItems = (key: string) => {
+    const payload = parseStorageJson(key);
+    if (!Array.isArray(payload)) return;
+    window.localStorage.setItem(key, JSON.stringify(payload.filter((item) => (
+      (!item?.courseName || !shouldPruneLegacySubject(item.courseName))
+      && (!item?.courseId || keptCourseIds.size === 0 || keptCourseIds.has(item.courseId))
+    ))));
+  };
+
+  ['tasks', 'performanceData', 'examRecords', 'examScheduleEntries'].forEach(filterCourseItems);
+
+  const compositePayload = parseStorageJson('compositeExamResults');
+  if (Array.isArray(compositePayload)) {
+    const nextComposite = compositePayload
+      .map((result) => ({
+        ...result,
+        courses: Array.isArray(result?.courses)
+          ? result.courses.filter((course: any) => (
+              !shouldPruneLegacySubject(course?.courseName)
+              && (!course?.courseId || keptCourseIds.size === 0 || keptCourseIds.has(course.courseId))
+            ))
+          : [],
+      }))
+      .filter((result) => result.courses.length > 0);
+    window.localStorage.setItem('compositeExamResults', JSON.stringify(nextComposite));
+  }
+
+  const schedulePayload = parseStorageJson('weeklySchedule');
+  if (schedulePayload && typeof schedulePayload === 'object' && !Array.isArray(schedulePayload)) {
+    const nextSchedule = Object.fromEntries(Object.entries(schedulePayload).map(([day, value]: [string, any]) => [
+      day,
+      {
+        ...value,
+        slots: Array.isArray(value?.slots) ? value.slots.filter((slot: any) => !shouldPruneLegacySubject(slot?.courseName)) : [],
+      },
+    ]));
+    window.localStorage.setItem('weeklySchedule', JSON.stringify(nextSchedule));
+  }
+
+  const studyPlansPayload = parseStorageJson('studyPlans');
+  if (Array.isArray(studyPlansPayload)) {
+    const nextStudyPlans = studyPlansPayload
+      .map((plan) => ({
+        ...plan,
+        plan: plan?.plan && typeof plan.plan === 'object' && !Array.isArray(plan.plan)
+          ? Object.fromEntries(Object.entries(plan.plan).filter(([subject]) => !shouldPruneLegacySubject(subject)))
+          : {},
+      }))
+      .filter((plan) => Object.keys(plan.plan).length > 0);
+    window.localStorage.setItem('studyPlans', JSON.stringify(nextStudyPlans));
+  }
+
+  window.localStorage.removeItem('planningEngineSnapshot');
+  window.localStorage.setItem(migrationKey, 'true');
 };
 
 const purgeLegacyDemoData = () => {
@@ -357,12 +464,25 @@ const normalizePlanningEngineSnapshot = (value: unknown): PlanningEngineSnapshot
   };
 };
 
+const isMojibakeCodePoint = (codePoint: number, nextCodePoint?: number) =>
+  codePoint === 0x00c3 ||
+  codePoint === 0x00c2 ||
+  codePoint === 0x00c4 ||
+  codePoint === 0x00c5 ||
+  codePoint === 0xfffd ||
+  (codePoint === 0x00e2 && (nextCodePoint === 0x20ac || nextCodePoint === 0x0080 || nextCodePoint === 0x0099));
+
+const hasMojibake = (value: string) => {
+  const codePoints = Array.from(value).map((char) => char.codePointAt(0) ?? 0);
+  return codePoints.some((codePoint, index) => isMojibakeCodePoint(codePoint, codePoints[index + 1]));
+};
+
 const repairText = (value?: string) => {
   if (typeof value !== 'string' || !value) return value;
 
   let next = value;
   for (let i = 0; i < 3; i += 1) {
-    if (!/[ÃÂâ�]/.test(next)) break;
+    if (!hasMojibake(next)) break;
     try {
       const bytes = Uint8Array.from(Array.from(next).map((char) => char.charCodeAt(0) & 0xff));
       const repaired = new TextDecoder('utf-8').decode(bytes);
@@ -376,7 +496,7 @@ const repairText = (value?: string) => {
   return next;
 };
 
-const looksCorrupted = (value?: string) => typeof value === 'string' && /[ÃÂâ�]/.test(value);
+const looksCorrupted = (value?: string) => typeof value === 'string' && hasMojibake(value);
 
 const normalizeForLookup = (value: string) =>
   value
@@ -668,9 +788,42 @@ const buildLegacyScheduleDay = (value: string): WeeklyScheduleDay => {
   };
 };
 
+const seedInitialRealCurriculum = () => {
+  if (typeof window === 'undefined') return;
+
+  const coursesPayload = parseStorageJson('courses');
+  const curriculumPayload = parseStorageJson('curriculum');
+  const hasCourses = Array.isArray(coursesPayload) && coursesPayload.length > 0;
+  const hasCurriculum = Boolean(
+    curriculumPayload
+    && typeof curriculumPayload === 'object'
+    && !Array.isArray(curriculumPayload)
+    && Object.keys(curriculumPayload).length > 0,
+  );
+  const forceMathSeed = new URLSearchParams(window.location.search).get('reset') === 'math';
+  const shouldReplaceWithRealMath = forceMathSeed
+    || !hasCourses
+    || !hasCurriculum
+    || isLegacyDemoCourseList(coursesPayload)
+    || isLegacyDemoCurriculum(curriculumPayload);
+
+  if (!shouldReplaceWithRealMath) return;
+
+  academicStorageKeys.forEach((key) => window.localStorage.removeItem(key));
+  Object.keys(window.localStorage)
+    .filter((key) => key.startsWith('timerState_'))
+    .forEach((key) => window.localStorage.removeItem(key));
+
+  window.localStorage.setItem('courses', JSON.stringify(INITIAL_REAL_COURSES));
+  window.localStorage.setItem('curriculum', JSON.stringify(INITIAL_REAL_CURRICULUM));
+  window.localStorage.setItem('performanceData', JSON.stringify(INITIAL_REAL_PERFORMANCE));
+  window.localStorage.setItem('successPoints', '0');
+  window.localStorage.setItem('rewards', '[]');
+};
 const normalizeWeeklySchedule = (schedule: any): WeeklySchedule => {
   const nextEntries = SCHEDULE_DAYS.map((day) => {
-    const rawDay = schedule?.[day];
+    const legacyDay = Object.entries(legacyScheduleDayMap).find(([, currentDay]) => currentDay === day)?.[0];
+    const rawDay = schedule?.[day] ?? (legacyDay ? schedule?.[legacyDay] : undefined);
 
     if (typeof rawDay === 'string') {
       return [day, buildLegacyScheduleDay(rawDay)] as const;
@@ -703,6 +856,8 @@ const normalizeWeeklySchedule = (schedule: any): WeeklySchedule => {
   return normalized;
 };
 
+seedInitialRealCurriculum();
+pruneLegacyDemoSubjects();
 purgeLegacyDemoData();
 
 const normalizeCurriculum = (value: any): SubjectCurriculum => {
@@ -737,22 +892,25 @@ const normalizePerformanceData = (items: any[]): PerformanceData[] =>
 
 const normalizeExamRecords = (items: any[], courses: Course[]): ExamRecord[] => {
   if (!Array.isArray(items)) return [];
+  const knownCourseIds = new Set(courses.map((course) => course.id));
 
   return items
     .map((item, index) => {
       const courseName = repairedText(item?.courseName).trim();
-      const matchedCourse = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(courseName));
-      const courseId = typeof item?.courseId === 'string' && item.courseId ? item.courseId : matchedCourse?.id || '';
+      const rawCourseId = typeof item?.courseId === 'string' && item.courseId ? item.courseId : '';
+      const matchedCourse = courses.find((course) => course.id === rawCourseId || normalizeForLookup(course.name) === normalizeForLookup(courseName));
+      const courseId = rawCourseId && knownCourseIds.has(rawCourseId) ? rawCourseId : matchedCourse?.id || '';
+      const resolvedCourseName = matchedCourse?.name || courseName;
       const title = repairedText(item?.title).trim();
       const date = typeof item?.date === 'string' ? item.date : '';
       const score = Number(item?.score);
 
-      if (!courseId || !courseName || !title || !date || !Number.isFinite(score)) return null;
+      if (!courseId || !resolvedCourseName || !title || !date || !Number.isFinite(score)) return null;
 
       return {
         id: typeof item?.id === 'string' && item.id ? item.id : `exam_record_${courseId}_${date}_${index}`,
         courseId,
-        courseName,
+        courseName: resolvedCourseName,
         examType: item?.examType || 'school-written',
         title,
         date,
@@ -773,6 +931,7 @@ const normalizeExamRecords = (items: any[], courses: Course[]): ExamRecord[] => 
 
 const normalizeCompositeExamResults = (items: any[], courses: Course[]): CompositeExamResult[] => {
   if (!Array.isArray(items)) return [];
+  const knownCourseIds = new Set(courses.map((course) => course.id));
 
   return items
     .map((item, index) => {
@@ -782,13 +941,15 @@ const normalizeCompositeExamResults = (items: any[], courses: Course[]): Composi
         ? item.courses
             .map((entry: any) => {
               const courseName = repairedText(entry?.courseName).trim();
-              const matchedCourse = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(courseName));
-              const courseId = typeof entry?.courseId === 'string' && entry.courseId ? entry.courseId : matchedCourse?.id || '';
+              const rawCourseId = typeof entry?.courseId === 'string' && entry.courseId ? entry.courseId : '';
+              const matchedCourse = courses.find((course) => course.id === rawCourseId || normalizeForLookup(course.name) === normalizeForLookup(courseName));
+              const courseId = rawCourseId && knownCourseIds.has(rawCourseId) ? rawCourseId : matchedCourse?.id || '';
+              const resolvedCourseName = matchedCourse?.name || courseName;
               const score = Number(entry?.score);
-              if (!courseId || !courseName || !Number.isFinite(score)) return null;
+              if (!courseId || !resolvedCourseName || !Number.isFinite(score)) return null;
               return {
                 courseId,
-                courseName,
+                courseName: resolvedCourseName,
                 score: Math.max(0, Math.min(100, score)),
                 net: Number.isFinite(Number(entry?.net)) ? Number(entry.net) : undefined,
               };
@@ -822,6 +983,63 @@ const normalizeBadges = (items: Badge[]): Badge[] => items.map((item, index) => 
 });
 const normalizeCourses = (items: Course[]): Course[] =>
   sortCourses(items.map((item, index) => normalizeCourseRecord(item, index)).filter((course): course is Course => Boolean(course)));
+
+const normalizeCoursesWithAliases = (items: Course[]) => {
+  const normalized = items
+    .map((item, index) => normalizeCourseRecord(item, index))
+    .filter((course): course is Course => Boolean(course));
+  const byName = new Map<string, Course>();
+  const courseIdAliases = new Map<string, string>();
+
+  normalized.forEach((course) => {
+    const key = normalizeForLookup(course.name);
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, course);
+      courseIdAliases.set(course.id, course.id);
+      return;
+    }
+
+    courseIdAliases.set(course.id, existing.id);
+    if (existing.active === false && course.active !== false) {
+      existing.active = true;
+    }
+  });
+
+  return {
+    courses: sortCourses([...byName.values()]),
+    courseIdAliases,
+  };
+};
+
+const remapCourseId = (courseId: string, aliases: Map<string, string>) => aliases.get(courseId) || courseId;
+
+const dedupePerformanceData = (items: PerformanceData[], courses: Course[]): PerformanceData[] => {
+  const courseById = new Map(courses.map((course) => [course.id, course]));
+  const merged = new Map<string, PerformanceData>();
+
+  items.forEach((item) => {
+    if (!courseById.has(item.courseId)) return;
+    const course = courseById.get(item.courseId)!;
+    const existing = merged.get(item.courseId) || {
+      courseId: item.courseId,
+      courseName: course.name,
+      correct: 0,
+      incorrect: 0,
+      timeSpent: 0,
+    };
+    merged.set(item.courseId, {
+      courseId: item.courseId,
+      courseName: course.name,
+      correct: existing.correct + item.correct,
+      incorrect: existing.incorrect + item.incorrect,
+      timeSpent: existing.timeSpent + item.timeSpent,
+    });
+  });
+
+  return [...merged.values()];
+};
+
 const normalizeStudyPlans = (value: unknown): StoredStudyPlan[] => {
   if (!Array.isArray(value)) return [];
 
@@ -879,21 +1097,24 @@ const normalizeStudyPlans = (value: unknown): StoredStudyPlan[] => {
 
 const normalizeExamScheduleEntries = (items: any[], courses: Course[]): ExamScheduleEntry[] => {
   if (!Array.isArray(items)) return [];
+  const knownCourseIds = new Set(courses.map((course) => course.id));
 
   return items
     .map((item, index) => {
       const courseName = repairedText(item?.courseName).trim();
-      const matchedCourse = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(courseName));
-      const courseId = typeof item?.courseId === 'string' && item.courseId ? item.courseId : matchedCourse?.id || '';
+      const rawCourseId = typeof item?.courseId === 'string' && item.courseId ? item.courseId : '';
+      const matchedCourse = courses.find((course) => course.id === rawCourseId || normalizeForLookup(course.name) === normalizeForLookup(courseName));
+      const courseId = rawCourseId && knownCourseIds.has(rawCourseId) ? rawCourseId : matchedCourse?.id || '';
+      const resolvedCourseName = matchedCourse?.name || courseName;
       const examName = repairedText(item?.examName ?? item?.name).trim();
       const date = typeof item?.date === 'string' ? item.date : '';
 
-      if (!courseId || !courseName || !examName || !date) return null;
+      if (!courseId || !resolvedCourseName || !examName || !date) return null;
 
       return {
         id: typeof item?.id === 'string' && item.id ? item.id : `exam_schedule_${courseId}_${date}_${index}`,
         courseId,
-        courseName,
+        courseName: resolvedCourseName,
         examName,
         date,
         note: repairedText(item?.note).trim() || undefined,
@@ -1350,7 +1571,7 @@ const deriveReplanTriggers = (
       .flatMap((subjectPlan) => subjectPlan.units)
       .flatMap((unit) => unit.topics)
       .flatMap((topic) => topic.tasks)
-      .filter((task) => task.day === 'Pazartesi' || task.day === 'Sali' || task.day === 'Carsamba')
+      .filter((task) => task.day === 'Pazartesi' || task.day === 'Salı' || task.day === 'Çarşamba' || task.day === 'Sali' || task.day === 'Carsamba')
       .map((task) => task.id);
 
     if (midWeekTaskIds.length > 0) {
@@ -1650,9 +1871,21 @@ const App: React.FC = () => {
   }, [setParentWorkspaceView, setUserType]);
 
   useEffect(() => {
-    const nextCourses = normalizeCourses(courses);
-    const nextTasks = tasks.map(normalizeTask);
-    const nextPerformance = normalizePerformanceData(performanceData);
+    const { courses: nextCourses, courseIdAliases } = normalizeCoursesWithAliases(courses);
+    const nextTasks = tasks.map((task) => {
+      const normalizedTask = normalizeTask(task);
+      return {
+        ...normalizedTask,
+        courseId: remapCourseId(normalizedTask.courseId, courseIdAliases),
+      };
+    });
+    const nextPerformance = dedupePerformanceData(
+      normalizePerformanceData(performanceData).map((item) => ({
+        ...item,
+        courseId: remapCourseId(item.courseId, courseIdAliases),
+      })),
+      nextCourses,
+    );
     const nextRewards = normalizeRewards(rewards);
     const nextBadges = normalizeBadges(badges);
     const nextCurriculum = normalizeCurriculum(curriculum);
@@ -1795,10 +2028,22 @@ const App: React.FC = () => {
       return false;
     }
 
-    const normalizedCourses = normalizeCourses(payload.courses as Course[]);
+    const { courses: normalizedCourses, courseIdAliases } = normalizeCoursesWithAliases(payload.courses as Course[]);
     setCourses(normalizedCourses);
-    setTasks(payload.tasks.map(normalizeTask));
-    setPerformanceData(normalizePerformanceData(Array.isArray(payload.performanceData) ? payload.performanceData : []));
+    setTasks(payload.tasks.map((task: Task) => {
+      const normalizedTask = normalizeTask(task);
+      return {
+        ...normalizedTask,
+        courseId: remapCourseId(normalizedTask.courseId, courseIdAliases),
+      };
+    }));
+    setPerformanceData(dedupePerformanceData(
+      normalizePerformanceData(Array.isArray(payload.performanceData) ? payload.performanceData : []).map((item) => ({
+        ...item,
+        courseId: remapCourseId(item.courseId, courseIdAliases),
+      })),
+      normalizedCourses,
+    ));
     setRewards(normalizeRewards(payload.rewards as Reward[]));
     setBadges(normalizeBadges(payload.badges as Badge[]));
     setSuccessPoints(parsedSuccessPoints || 0);
@@ -1954,17 +2199,34 @@ const App: React.FC = () => {
   };
 
   const addCourse = (courseName: string) => {
+    const normalizedCourseName = repairedText(courseName).trim();
+    if (!normalizedCourseName) return;
+    const existingCourse = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(normalizedCourseName));
+    if (existingCourse) {
+      if (existingCourse.active === false) {
+        setCourses((prev) => sortCourses(prev.map((course) => (
+          course.id === existingCourse.id ? { ...course, name: normalizedCourseName, active: true } : course
+        ))));
+      }
+      setPerformanceData((prev) => (
+        prev.some((item) => item.courseId === existingCourse.id)
+          ? prev
+          : [...prev, { courseId: existingCourse.id, courseName: existingCourse.name, correct: 0, incorrect: 0, timeSpent: 0 }]
+      ));
+      return;
+    }
+
     const randomIcon = ALL_ICONS[courses.length % ALL_ICONS.length];
     const nextOrder = courses.reduce((maxOrder, course) => Math.max(maxOrder, course.order), -1) + 1;
     const newCourse: Course = {
       id: createId('course'),
-      name: courseName,
+      name: normalizedCourseName,
       active: true,
       order: nextOrder,
       icon: randomIcon,
     };
     setCourses((prev) => sortCourses([newCourse, ...prev]));
-    setPerformanceData((prev) => [...prev, { courseId: newCourse.id, courseName, correct: 0, incorrect: 0, timeSpent: 0 }]);
+    setPerformanceData((prev) => [...prev, { courseId: newCourse.id, courseName: normalizedCourseName, correct: 0, incorrect: 0, timeSpent: 0 }]);
   };
 
   const handleDeleteCourseRequest = (courseId: string) => {
@@ -2891,12 +3153,12 @@ const App: React.FC = () => {
           <div className="flex min-w-0 items-center gap-6">
             {userType === UserType.Parent && !isParentLocked ? (
               <div className="hidden xl:block">
-                <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">DersRotasi</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">DersRotası</div>
                 <div className="text-lg font-black text-slate-900">Ebeveyn Paneli</div>
               </div>
             ) : (
               <div className="hidden min-w-0 sm:block">
-                <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">DersRotasi</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">DersRotası</div>
                 <div className="text-lg font-black text-slate-900">{userType === UserType.Parent ? 'Ebeveyn Paneli' : 'Çocuk Paneli'}</div>
               </div>
             )}

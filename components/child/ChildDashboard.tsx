@@ -15,7 +15,19 @@ const card = 'ios-card rounded-[28px] p-4';
 const subtleCard = 'ios-widget rounded-[26px] p-4';
 const CHILD_TASK_PREVIEW_LIMIT = 6;
 const CHILD_COMPLETED_PREVIEW_LIMIT = 4;
-const looksCorrupted = (value?: string) => typeof value === 'string' && (value.includes('\u00C3') || value.includes('\u00C2') || value.includes('\u00E2'));
+const isMojibakeCodePoint = (codePoint: number, nextCodePoint?: number) =>
+  codePoint === 0x00c3 ||
+  codePoint === 0x00c2 ||
+  codePoint === 0x00c4 ||
+  codePoint === 0x00c5 ||
+  codePoint === 0xfffd ||
+  (codePoint === 0x00e2 && (nextCodePoint === 0x20ac || nextCodePoint === 0x0080 || nextCodePoint === 0x0099));
+
+const looksCorrupted = (value?: string) => {
+  if (typeof value !== 'string') return false;
+  const codePoints = Array.from(value).map((char) => char.codePointAt(0) ?? 0);
+  return codePoints.some((codePoint, index) => isMojibakeCodePoint(codePoint, codePoints[index + 1]));
+};
 
 const repairText = (value?: string) => {
   if (typeof value !== 'string' || !value) return value;
@@ -51,9 +63,14 @@ const goalLabelMap: Record<string, string> = {
   'konu-tekrari': 'Konu tekrarı',
   'eksik-konu-tamamlama': 'Eksik konu tamamlama',
   'ders calisma': 'Ders çalışması',
-  'ders \u00e7al\u0131\u015fma': 'Ders çalışması',
+  'ders çalışma': 'Ders çalışması',
 };
-const planSourceLabelMap: Record<string, string> = { manual: 'Elle atandı', 'weekly-plan': 'Haftalık plan', 'ai-plan': 'Akıllı plan', 'free-study': 'Serbest çalışma' };
+const planSourceLabelMap: Record<string, string> = {
+  manual: 'Elle atandı',
+  'weekly-plan': 'Haftalık plan',
+  'ai-plan': 'Akıllı plan',
+  'free-study': 'Serbest çalışma',
+};
 const safeGoalText = (value?: string) => goalLabelMap[safeText(value, '')] || safeText(value, 'Çalışma hedefi');
 const safePlanSource = (value?: string) => planSourceLabelMap[safeText(value, '')] || 'Atanan görev';
 const getTaskDateKey = (value?: string) => {

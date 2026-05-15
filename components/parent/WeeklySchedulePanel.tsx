@@ -21,7 +21,7 @@ interface WeeklySchedulePanelProps {
 
 type EditorMode = 'school' | 'study';
 
-const DAYS = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
+const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const QUALITY_META: Record<ScheduleDayWindow['quality'], { label: string; tone: string }> = {
   light: { label: 'Hafif tekrar', tone: 'border-sky-400 text-sky-700' },
   medium: { label: 'Normal çalışma', tone: 'border-indigo-400 text-indigo-700' },
@@ -373,7 +373,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
           </div>
           <h2 className="mt-2 text-2xl font-black text-slate-900">Okul programı ve ev çalışma zamanı</h2>
           <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-500">
-            Ders/k konu girişi müfredatta kalır. Burada sadece okul saatleri ve plan motorunun kullanacağı ev çalışma pencereleri yönetilir.
+            Ders/konu girişi müfredatta kalır. Burada sadece okul saatleri ve plan motorunun kullanacağı ev çalışma pencereleri yönetilir.
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 xl:items-end">

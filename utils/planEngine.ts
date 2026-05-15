@@ -35,7 +35,7 @@ interface PrioritizedTopic {
   priorityScore: number;
 }
 
-const DAYS = ['Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi', 'Pazar'];
+const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const TEMPO_LIMITS: Record<PlanningTempo, number> = { Hafif: 5, Orta: 8, Yogun: 12 };
 
 const normalize = (value: string) =>

@@ -8,6 +8,19 @@ interface CurriculumManagerPanelProps {
 }
 
 const cloneCurriculum = (curriculum: SubjectCurriculum): SubjectCurriculum => JSON.parse(JSON.stringify(curriculum || {}));
+const normalizeSubjectName = (value: string) =>
+  value
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/\s+/g, ' ')
+    .trim();
 const fieldClass = 'dr-form-field rounded-2xl px-3 py-3 text-sm outline-none';
 const primaryButtonClass = 'ios-button-active rounded-2xl px-4 py-3 text-sm font-bold';
 const iconPrimaryButtonClass = 'ios-button-active rounded-2xl px-3 py-3';
@@ -38,7 +51,13 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
 
   const handleAddSubject = () => {
     const subjectName = newSubjectName.trim();
-    if (!subjectName || draft[subjectName]) return;
+    const existingSubject = Object.keys(draft).find((subject) => normalizeSubjectName(subject) === normalizeSubjectName(subjectName));
+    if (!subjectName) return;
+    if (existingSubject) {
+      setActiveSubject(existingSubject);
+      setNewSubjectName('');
+      return;
+    }
 
     const next = {
       ...draft,
@@ -165,8 +184,9 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
               placeholder="Yeni ders"
               className={`min-w-0 flex-1 ${fieldClass}`}
             />
-            <button onClick={handleAddSubject} className={iconPrimaryButtonClass} title="Ders ekle">
+            <button onClick={handleAddSubject} className={`${iconPrimaryButtonClass} inline-flex items-center gap-2`} title="Ders ekle">
               <PlusCircle className="h-4 w-4" />
+              <span className="text-sm font-black">Ekle</span>
             </button>
           </div>
 
@@ -183,8 +203,9 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
                       <div className="truncate font-bold">{subject}</div>
                       <div className={`mt-1 text-xs ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>{unitCount} ünite • {topicCount} konu</div>
                     </button>
-                    <button onClick={() => handleDeleteSubject(subject)} className={isActive ? 'rounded-full bg-white/15 p-2 text-white hover:bg-white/25' : destructiveIconButtonClass} title="Dersi sil">
+                    <button onClick={() => handleDeleteSubject(subject)} className={isActive ? 'inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-2 text-xs font-black text-white hover:bg-white/25' : `${destructiveIconButtonClass} inline-flex items-center gap-1 text-xs font-black`} title="Dersi sil">
                       <Trash2 className="h-4 w-4" />
+                      <span>Sil</span>
                     </button>
                   </div>
                 </div>
