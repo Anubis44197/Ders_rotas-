@@ -1,0 +1,400 @@
+{
+  "generatedAt": "2026-05-18T13:16:08.227Z",
+  "appUrl": "http://127.0.0.1:3000/?quick=analysis&e2e=1&qaRecords=none",
+  "environment": {
+    "os": "win32",
+    "node": "v25.1.0"
+  },
+  "loadTests": [
+    {
+      "level": 6000,
+      "expected": "Analiz <= 2200ms, ekran <= 3200ms, grafik <= 2200ms",
+      "actual": "Analiz 369ms, ekran 1563ms, grafik 19ms, cache 2/4",
+      "verdict": "PASS",
+      "engine": {
+        "analysisMs": 369,
+        "decisionMs": 17,
+        "cacheSecondRunMs": 362,
+        "cacheHit": 1,
+        "cacheMiss": 1,
+        "rssBytes": 101437440,
+        "heapUsedBytes": 24440080,
+        "storageBytesEstimate": 3629729,
+        "sessionCount": 5580,
+        "topicCount": 303,
+        "generalScore": 78
+      },
+      "browser": {
+        "screenOpenMs": 1563,
+        "analysisReadyMs": 1563,
+        "graphRenderMs": 19,
+        "jsHeapUsedBytes": 39982388,
+        "jsHeapTotalBytes": 112191444,
+        "cacheHits": 2,
+        "cacheMisses": 4,
+        "cacheVersion": 5,
+        "storage": {
+          "localStorageBytes": 3491,
+          "indexedDbBytes": 2857571,
+          "storageEstimateBytes": 10740275811
+        },
+        "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\level-6000.png"
+      }
+    },
+    {
+      "level": 10000,
+      "expected": "Analiz <= 3600ms, ekran <= 4500ms, grafik <= 3500ms",
+      "actual": "Analiz 1370ms, ekran 2918ms, grafik 16ms, cache 2/4",
+      "verdict": "PASS",
+      "engine": {
+        "analysisMs": 1370,
+        "decisionMs": 25,
+        "cacheSecondRunMs": 901,
+        "cacheHit": 1,
+        "cacheMiss": 1,
+        "rssBytes": 130289664,
+        "heapUsedBytes": 40082944,
+        "storageBytesEstimate": 6034091,
+        "sessionCount": 9300,
+        "topicCount": 308,
+        "generalScore": 77
+      },
+      "browser": {
+        "screenOpenMs": 2918,
+        "analysisReadyMs": 2918,
+        "graphRenderMs": 16,
+        "jsHeapUsedBytes": 50829583,
+        "jsHeapTotalBytes": 125548391,
+        "cacheHits": 2,
+        "cacheMisses": 4,
+        "cacheVersion": 5,
+        "storage": {
+          "localStorageBytes": 3492,
+          "indexedDbBytes": 3835936,
+          "storageEstimateBytes": 10741254176
+        },
+        "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\level-10000.png"
+      }
+    },
+    {
+      "level": 20000,
+      "expected": "Analiz <= 7000ms, ekran <= 8500ms, grafik <= 6000ms",
+      "actual": "Analiz 3769ms, ekran 7145ms, grafik 16ms, cache 2/4",
+      "verdict": "PASS",
+      "engine": {
+        "analysisMs": 3769,
+        "decisionMs": 51,
+        "cacheSecondRunMs": 2692,
+        "cacheHit": 1,
+        "cacheMiss": 1,
+        "rssBytes": 147767296,
+        "heapUsedBytes": 53249664,
+        "storageBytesEstimate": 12041313,
+        "sessionCount": 18600,
+        "topicCount": 320,
+        "generalScore": 77
+      },
+      "browser": {
+        "screenOpenMs": 7145,
+        "analysisReadyMs": 7145,
+        "graphRenderMs": 16,
+        "jsHeapUsedBytes": 131540146,
+        "jsHeapTotalBytes": 215586882,
+        "cacheHits": 2,
+        "cacheMisses": 4,
+        "cacheVersion": 5,
+        "storage": {
+          "localStorageBytes": 3493,
+          "indexedDbBytes": 5531393,
+          "storageEstimateBytes": 10742949633
+        },
+        "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\level-20000.png"
+      }
+    }
+  ],
+  "navigation": [
+    {
+      "name": "ebeveyn ana ekran -> ders detay -> geri",
+      "loops": 100,
+      "expected": "100 tekrar sonunda bos ekran/state bozulmasi olmamali.",
+      "actual": "blank=0, state=0, crash=0",
+      "blankScreens": 0,
+      "stateMismatches": 0,
+      "duplicateIssues": 0,
+      "crashes": 0,
+      "verdict": "PASS",
+      "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\nav-a-course-back.png"
+    },
+    {
+      "name": "raporlar -> grafik detayi -> geri",
+      "loops": 100,
+      "expected": "100 tekrar sonunda grafik akisinda bos ekran veya crash olmamali.",
+      "actual": "blank=0, state=0, crash=0",
+      "blankScreens": 0,
+      "stateMismatches": 0,
+      "duplicateIssues": 0,
+      "crashes": 0,
+      "verdict": "PASS",
+      "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\nav-b-reports-back.png"
+    },
+    {
+      "name": "hedefler -> deneme karti -> geri",
+      "loops": 100,
+      "expected": "Deneme karti her turde bulunmali, geri donuste state bozulmamali.",
+      "actual": "blank=0, state=0, crash=0",
+      "blankScreens": 0,
+      "stateMismatches": 0,
+      "duplicateIssues": 0,
+      "crashes": 0,
+      "verdict": "PASS",
+      "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\nav-c-goals-back.png"
+    },
+    {
+      "name": "veli -> cocuk ekrani -> geri/parent donus",
+      "loops": 100,
+      "expected": "Parent/child gecisinde bos ekran veya kilitlenme olmamali.",
+      "actual": "blank=0, state=0, crash=0",
+      "blankScreens": 0,
+      "stateMismatches": 0,
+      "duplicateIssues": 0,
+      "crashes": 0,
+      "verdict": "PASS",
+      "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\nav-d-parent-child.png"
+    },
+    {
+      "name": "cocuk gorev tamamla -> veli ekrani -> geri",
+      "loops": 100,
+      "expected": "Tamamlama sonrasi parent ozet guncellenmeli, duplicate parent-action olmamali.",
+      "actual": "blank=0, state=0, crash=0, duplicateDelta=0",
+      "blankScreens": 0,
+      "stateMismatches": 0,
+      "duplicateIssues": 0,
+      "crashes": 0,
+      "verdict": "PASS",
+      "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\nav-e-child-complete-parent.png"
+    }
+  ],
+  "graphAccuracy": {
+    "expected": "Tum grafik/filtre kartlari ham veriyle uyumlu olmali.",
+    "actual": "9 kontrol birebir uyumlu",
+    "verdict": "PASS",
+    "checks": [
+      {
+        "key": "ders performansi / genel skor",
+        "expected": 77,
+        "actual": 77,
+        "verdict": "PASS"
+      },
+      {
+        "key": "donem filtresi Haftalık",
+        "expected": "Haftalık",
+        "actual": "Haftalık",
+        "verdict": "PASS"
+      },
+      {
+        "key": "donem filtresi Aylık",
+        "expected": "Aylık",
+        "actual": "Aylık",
+        "verdict": "PASS"
+      },
+      {
+        "key": "donem filtresi 3 Aylık",
+        "expected": "3 Aylık",
+        "actual": "3 Aylık",
+        "verdict": "PASS"
+      },
+      {
+        "key": "donem filtresi Tüm Zamanlar",
+        "expected": "Tüm Zamanlar",
+        "actual": "Tüm Zamanlar",
+        "verdict": "PASS"
+      },
+      {
+        "key": "deneme trendi",
+        "expected": "Stabil",
+        "actual": "GidisatStabil",
+        "verdict": "PASS"
+      },
+      {
+        "key": "hedef gerceklesme yuzdesi",
+        "expected": 999,
+        "actual": 999,
+        "verdict": "PASS"
+      },
+      {
+        "key": "konu oncelik listesi",
+        "expected": 8,
+        "actual": 8,
+        "verdict": "PASS"
+      },
+      {
+        "key": "en verimli saat",
+        "expected": "Sabah",
+        "actual": "Sabah",
+        "verdict": "PASS"
+      }
+    ],
+    "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\graph-accuracy.png"
+  },
+  "calculations": {
+    "sampleCount": 50,
+    "expected": "50 rastgele kayitta manuel beklenen metrikler ile karar motoru uyumlu olmali.",
+    "actual": "Tum 50 ornek uyumlu",
+    "verdict": "PASS",
+    "mismatches": 0,
+    "examples": [
+      {
+        "idx": 0,
+        "taskId": "bulk_task_10000_0",
+        "manualAccuracy": 42,
+        "engineAccuracy": 42,
+        "repeatDelayDays": 1,
+        "priority": "Dikkat",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      },
+      {
+        "idx": 1,
+        "taskId": "bulk_task_10000_186",
+        "manualAccuracy": 83,
+        "engineAccuracy": 83,
+        "repeatDelayDays": 187,
+        "priority": "Takip et",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      },
+      {
+        "idx": 2,
+        "taskId": "bulk_task_10000_372",
+        "manualAccuracy": 50,
+        "engineAccuracy": 50,
+        "repeatDelayDays": 163,
+        "priority": "Takip et",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      },
+      {
+        "idx": 3,
+        "taskId": "bulk_task_10000_558",
+        "manualAccuracy": 92,
+        "engineAccuracy": 92,
+        "repeatDelayDays": 139,
+        "priority": "Takip et",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      },
+      {
+        "idx": 4,
+        "taskId": "bulk_task_10000_744",
+        "manualAccuracy": 83,
+        "engineAccuracy": 83,
+        "repeatDelayDays": 115,
+        "priority": "Stabil",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      },
+      {
+        "idx": 5,
+        "taskId": "bulk_task_10000_930",
+        "manualAccuracy": 67,
+        "engineAccuracy": 67,
+        "repeatDelayDays": 91,
+        "priority": "Dikkat",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      },
+      {
+        "idx": 6,
+        "taskId": "bulk_task_10000_1116",
+        "manualAccuracy": 92,
+        "engineAccuracy": 92,
+        "repeatDelayDays": 67,
+        "priority": "Takip et",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      },
+      {
+        "idx": 7,
+        "taskId": "bulk_task_10000_1302",
+        "manualAccuracy": 75,
+        "engineAccuracy": 75,
+        "repeatDelayDays": 43,
+        "priority": "Stabil",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      },
+      {
+        "idx": 8,
+        "taskId": "bulk_task_10000_1488",
+        "manualAccuracy": 67,
+        "engineAccuracy": 67,
+        "repeatDelayDays": 19,
+        "priority": "Takip et",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      },
+      {
+        "idx": 9,
+        "taskId": "bulk_task_10000_1674",
+        "manualAccuracy": 83,
+        "engineAccuracy": 83,
+        "repeatDelayDays": 205,
+        "priority": "Kritik",
+        "confidence": "Yuksek",
+        "notificationTier": "silent"
+      }
+    ]
+  },
+  "stress": {
+    "durationMinutes": 10,
+    "expected": "10 dakika yogun kullanimda gecikme artisi sinirli olmali, crash olmamali.",
+    "actual": "slowIterations=0/148, p95=4893ms, memoryGrowth=35145749, storageGrowth=13474, cacheDelta=0/148",
+    "verdict": "PASS",
+    "memoryGrowthBytes": 35145749,
+    "cacheDelta": {
+      "hit": 0,
+      "miss": 148
+    },
+    "storageGrowthBytes": 13474,
+    "delayedFrames": 0,
+    "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\stress-10min.png"
+  },
+  "soak": {
+    "durationMinutes": 30,
+    "iterations": 30,
+    "expected": "30 dakika otomasyon sonunda crash/veri tutarsizligi olmamali.",
+    "actual": "crash=0, mismatch=0, memoryGrowth=-5068908",
+    "verdict": "PASS",
+    "memoryGrowthBytes": -5068908,
+    "crashCount": 0,
+    "dataMismatchCount": 0,
+    "screenshot": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-18-6000plus\\soak-30min.png"
+  },
+  "risks": [],
+  "answers": [
+    {
+      "question": "1. 6000+ kayitla uygulama takiliyor mu?",
+      "answer": "Hayir. Ekran 1563ms, grafik 19ms."
+    },
+    {
+      "question": "2. Geri butonu ve ekran gecisleri bozuluyor mu?",
+      "answer": "Hayir. 5 akis x 100 dongu PASS."
+    },
+    {
+      "question": "3. Grafikler dogru veriyi gosteriyor mu?",
+      "answer": "Evet, kontrol edilen metrikler ham veri ile uyumlu."
+    },
+    {
+      "question": "4. Hesaplamalar UI ile tutarli mi?",
+      "answer": "Evet, 50 ornekte uyumlu."
+    },
+    {
+      "question": "5. Uygulama zamanla sisiyor mu?",
+      "answer": "Belirgin sizma yok. Stress ve soak testleri stabil."
+    },
+    {
+      "question": "6. 10000 ve 20000 kayit sinirinda ne oluyor?",
+      "answer": "10000: Analiz 1370ms, ekran 2918ms, grafik 16ms, cache 2/4. 20000: Analiz 3769ms, ekran 7145ms, grafik 16ms, cache 2/4."
+    }
+  ]
+}

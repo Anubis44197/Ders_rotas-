@@ -43,3 +43,9 @@ planning-side-nav.png
 # Generated patch artifacts
 *.diff
 *.patch
+
+# Browser profile dumps from local QA runs
+docs/e2e-artifacts-*/chrome-profile/
+docs/e2e-artifacts-*/chrome-profile-*/
+node_modules/.cache/ui-e2e-profiles/
+node_modules/.cache/dersrotasi-qa-profiles/

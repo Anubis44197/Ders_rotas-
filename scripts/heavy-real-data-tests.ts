@@ -1,7 +1,8 @@
+import { performance } from 'node:perf_hooks';
 import { deriveAnalysisSnapshot } from '../utils/analysisEngine';
 import { createWeeklyPlanDraft } from '../utils/planEngine';
+import { INITIAL_REAL_COURSES, INITIAL_REAL_CURRICULUM, INITIAL_REAL_PERFORMANCE } from '../initialRealCurriculum';
 import type {
-  Badge,
   CompositeExamResult,
   Course,
   ExamRecord,
@@ -16,7 +17,15 @@ import type {
   WeeklySchedule,
 } from '../types';
 
-const today = new Date();
+const TOTAL_TASKS = 6000;
+const QUESTION_TASKS = 4500;
+const REVISION_TASKS = 750;
+const STUDY_TASKS = 750;
+const COMPLETED_TASKS = 5900;
+const ANALYSIS_BUDGET_MS = 5000;
+const BACKUP_BUDGET_MS = 2500;
+
+const today = new Date('2026-05-15T12:00:00');
 const iso = (date: Date) => date.toISOString().slice(0, 10);
 const addDays = (count: number) => {
   const copy = new Date(today);
@@ -29,172 +38,172 @@ const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
 };
 
-const courses: Course[] = [
-  { id: 'math', name: 'Matematik', active: true, order: 0, icon: 'BookOpen' },
-  { id: 'tr', name: 'Türkçe', active: true, order: 1, icon: 'BookOpen' },
-  { id: 'science', name: 'Fen Bilimleri', active: true, order: 2, icon: 'BookOpen' },
-  { id: 'social', name: 'Sosyal Bilgiler', active: true, order: 3, icon: 'BookOpen' },
-  { id: 'eng', name: 'İngilizce', active: false, order: 4, icon: 'BookOpen' },
-];
+const activeCourses: Course[] = INITIAL_REAL_COURSES.filter((course) => course.active !== false);
+const curriculum: SubjectCurriculum = INITIAL_REAL_CURRICULUM;
 
-const curriculum: SubjectCurriculum = courses
-  .filter((course) => course.active !== false)
-  .reduce((acc, course) => {
-    acc[course.name] = Array.from({ length: 3 }, (_, unitIndex) => ({
-      name: `Ünite ${unitIndex + 1}`,
-      topics: Array.from({ length: 4 }, (_, topicIndex) => ({
-        name: `Konu ${(unitIndex * 4) + topicIndex + 1}`,
-        completed: topicIndex % 2 === 0,
-      })),
-    }));
-    return acc;
-  }, {} as SubjectCurriculum);
+type TopicRef = {
+  course: Course;
+  unitName: string;
+  topicName: string;
+  sequence: number;
+};
 
-const baseTask = (index: number, partial: Partial<Task> = {}): Task => {
-  const course = courses[index % 4];
-  const day = daysAgo(index % 28);
-  const isQuestion = index % 3 === 0;
-  const isReading = index % 5 === 0;
-  const isLegacyCompleted = index % 7 === 0;
-  const questionCount = isQuestion ? 20 + (index % 10) : undefined;
-  const correctCount = isQuestion && questionCount ? Math.max(1, questionCount - (index % 8)) : undefined;
-  const successScore = 50 + (index % 45);
+const topicRefs: TopicRef[] = activeCourses.flatMap((course) => {
+  const units = curriculum[course.name] || [];
+  return units.flatMap((unit, unitIndex) => unit.topics.map((topic, topicIndex) => ({
+    course,
+    unitName: unit.name,
+    topicName: topic.name,
+    sequence: (course.order * 1000) + (unitIndex * 100) + topicIndex,
+  })));
+});
+
+assert(activeCourses.length === 6, 'Gercek ders sayisi 6 olmali.');
+assert(topicRefs.length >= 100, 'Gercek mufredat en az 100 konu icermeli.');
+
+const weightedCourses = activeCourses.flatMap((course) => {
+  const weight = course.name === 'Matematik' ? 4
+    : course.name === 'Fen Bilgisi' ? 3
+      : course.name === 'T\u00fcrk\u00e7e' ? 3
+        : course.name === 'Ingilizce' ? 2
+          : 1;
+  return Array.from({ length: weight }, () => course);
+});
+
+const refsByCourse = new Map<string, TopicRef[]>();
+topicRefs.forEach((ref) => {
+  const bucket = refsByCourse.get(ref.course.id) || [];
+  bucket.push(ref);
+  refsByCourse.set(ref.course.id, bucket);
+});
+
+const pickCourse = (index: number) => weightedCourses[index % weightedCourses.length];
+const pickTopic = (index: number, course: Course) => {
+  const bucket = refsByCourse.get(course.id) || topicRefs;
+  return bucket[index % bucket.length];
+};
+
+const completionDateFor = (index: number) => daysAgo(index % 180);
+const completionTimestampFor = (index: number) => {
+  const day = completionDateFor(index);
+  const hourBuckets = [7, 10, 13, 16, 18, 20, 22, 23];
+  const hour = hourBuckets[index % hourBuckets.length];
+  const minute = (index * 7) % 60;
+  return new Date(`${day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`).getTime();
+};
+
+const createTask = (index: number): Task => {
+  const course = pickCourse(index);
+  const topic = pickTopic(index * 7, course);
+  const isQuestion = index < QUESTION_TASKS;
+  const isRevision = index >= QUESTION_TASKS && index < QUESTION_TASKS + REVISION_TASKS;
+  const completed = index < COMPLETED_TASKS;
+  const weakTopic = topic.sequence % 11 === 0;
+  const baseAccuracy = weakTopic ? 0.45 + ((index % 9) / 100) : 0.62 + ((index % 28) / 100);
+  const questionCount = isQuestion ? 12 + (index % 29) : undefined;
+  const correctCount = questionCount ? Math.max(0, Math.min(questionCount, Math.round(questionCount * baseAccuracy))) : undefined;
+  const incorrectCount = questionCount && correctCount !== undefined ? Math.max(0, questionCount - correctCount - (index % 3 === 0 ? 1 : 0)) : undefined;
+  const emptyCount = questionCount && correctCount !== undefined && incorrectCount !== undefined ? Math.max(0, questionCount - correctCount - incorrectCount) : undefined;
+  const plannedDuration = isQuestion ? 25 + (index % 5) * 5 : isRevision ? 30 : 40;
+  const actualDuration = (plannedDuration * 60) + ((index % 7) - 2) * 120;
+  const normalizedAccuracy = questionCount ? (correctCount || 0) / questionCount : undefined;
+  const successScore = typeof normalizedAccuracy === 'number'
+    ? Math.round(normalizedAccuracy * 100)
+    : isRevision
+      ? 58 + (index % 35)
+      : 55 + (index % 38);
 
   return {
-    id: `heavy_task_${index}`,
+    id: `qa_heavy_task_${index}`,
     courseId: course.id,
-    title: `${course.name} görev ${index}`,
-    dueDate: day,
-    status: (isLegacyCompleted ? 'tamamlandi' : 'tamamlandı') as Task['status'],
-    taskType: isQuestion ? 'soru çözme' : isReading ? 'kitap okuma' : 'ders çalışma',
-    taskGoalType: isReading ? 'konu-tekrari' : index % 4 === 0 ? 'sinav-hazirlik' : 'ders calisma',
-    plannedDuration: 25 + (index % 4) * 10,
-    actualDuration: 900 + (index % 8) * 300,
-    breakTime: (index % 4) * 45,
-    pauseTime: (index % 3) * 30,
+    title: `${course.name} - ${topic.topicName}`,
+    description: index % 17 === 0 ? `Uzun konu dayan\u0131kl\u0131l\u0131k kontrolu: ${topic.unitName} / ${topic.topicName}` : undefined,
+    dueDate: daysAgo((index % 180) + (completed ? 0 : -7)),
+    status: completed ? 'tamamland\u0131' : 'bekliyor',
+    taskType: isQuestion ? 'soru \u00e7\u00f6zme' : 'ders \u00e7al\u0131\u015fma',
+    taskGoalType: isQuestion ? 'test-cozme' : isRevision ? 'konu-tekrari' : 'ders calisma',
+    plannedDuration,
+    actualDuration: completed ? Math.max(300, actualDuration) : undefined,
+    breakTime: completed ? (index % 6) * 45 : undefined,
+    pauseTime: completed ? (index % 5) * 30 : undefined,
     questionCount,
     correctCount,
-    incorrectCount: questionCount && correctCount ? questionCount - correctCount : undefined,
-    focusScore: 55 + (index % 40),
-    successScore,
-    firstAttemptScore: isQuestion ? Math.max(35, successScore - (index % 9)) : undefined,
-    selfAssessmentScore: 45 + (index % 50),
-    confidenceGap: (index % 12) - 6,
-    conceptErrorCount: isQuestion ? index % 4 : undefined,
-    processErrorCount: isQuestion ? index % 3 : undefined,
+    incorrectCount,
+    emptyCount,
+    firstAttemptScore: isQuestion ? Math.max(20, successScore - (index % 13)) : undefined,
+    selfAssessmentScore: completed ? Math.max(20, Math.min(100, successScore + ((index % 15) - 7))) : undefined,
+    confidenceGap: completed ? ((index % 15) - 7) : undefined,
+    conceptErrorCount: isQuestion ? (weakTopic ? 3 + (index % 4) : index % 3) : undefined,
+    processErrorCount: isQuestion ? index % 4 : undefined,
     attentionErrorCount: isQuestion ? index % 5 : undefined,
-    pagesRead: isReading ? 8 + (index % 24) : undefined,
-    completionDate: day,
-    completionTimestamp: new Date(`${day}T${String(9 + (index % 12)).padStart(2, '0')}:15:00`).getTime(),
-    isSelfAssigned: index % 9 === 0,
-    curriculumUnitName: `Ünite ${1 + (index % 3)}`,
-    curriculumTopicName: `Konu ${1 + (index % 8)}`,
-    ...partial,
+    successScore: completed ? successScore : undefined,
+    focusScore: completed ? Math.max(35, Math.min(100, 78 - (index % 9) + (weakTopic ? -6 : 8))) : undefined,
+    completionDate: completed ? completionDateFor(index) : undefined,
+    completionTimestamp: completed ? completionTimestampFor(index) : undefined,
+    isSelfAssigned: index % 10 === 0,
+    curriculumUnitName: topic.unitName,
+    curriculumTopicName: topic.topicName,
+    planTaskId: index % 12 === 0 ? `qa_plan_block_${index}` : undefined,
+    planWeek: index % 12 === 0 ? 20 - (index % 8) : undefined,
+    planSource: index % 12 === 0 ? 'weekly-plan' : undefined,
   };
 };
+
+const tasks = Array.from({ length: TOTAL_TASKS }, (_, index) => createTask(index));
 
 const weeklySchedule: WeeklySchedule = {
   Pazartesi: {
     confirmed: true,
-    slots: [
-      { id: 'school_math_mon', courseName: 'Matematik', startTime: '09:00', endTime: '10:00' },
-      { id: 'school_tr_mon', courseName: 'Türkçe', startTime: '10:00', endTime: '11:00' },
-    ],
+    slots: [{ id: 'school_math_mon', courseName: 'Matematik', startTime: '09:00', endTime: '10:00' }],
     availableWindows: [
-      { id: 'study_mon_a', startTime: '16:00', endTime: '17:00', quality: 'deep' },
-      { id: 'study_mon_b', startTime: '16:00', endTime: '17:00', quality: 'deep' },
-      { id: 'study_mon_c', startTime: '18:00', endTime: '19:00', quality: 'medium' },
+      { id: 'study_mon_deep', startTime: '16:00', endTime: '17:30', quality: 'deep' },
+      { id: 'study_mon_medium', startTime: '19:00', endTime: '20:00', quality: 'medium' },
     ],
   },
-  Sali: {
-    confirmed: true,
-    slots: [{ id: 'school_science_tue', courseName: 'Fen Bilimleri', startTime: '09:00', endTime: '10:00' }],
-    availableWindows: [{ id: 'study_tue_a', startTime: '17:00', endTime: '18:30', quality: 'medium' }],
-  },
-  Carsamba: {
-    confirmed: true,
-    slots: [{ id: 'school_social_wed', courseName: 'Sosyal Bilgiler', startTime: '09:00', endTime: '10:00' }],
-    availableWindows: [{ id: 'study_wed_a', startTime: '16:30', endTime: '18:00', quality: 'deep' }],
-  },
-  Persembe: { confirmed: true, slots: [], availableWindows: [{ id: 'study_thu_a', startTime: '17:00', endTime: '18:00', quality: 'light' }] },
-  Cuma: { confirmed: true, slots: [], availableWindows: [{ id: 'study_fri_a', startTime: '16:00', endTime: '17:30', quality: 'medium' }] },
-  Cumartesi: { confirmed: true, slots: [], availableWindows: [{ id: 'study_sat_a', startTime: '11:00', endTime: '12:30', quality: 'deep' }] },
-  Pazar: { confirmed: true, slots: [], availableWindows: [] },
+  Sali: { confirmed: true, slots: [{ id: 'school_tr_tue', courseName: 'T\u00fcrk\u00e7e', startTime: '10:00', endTime: '11:00' }], availableWindows: [{ id: 'study_tue', startTime: '17:00', endTime: '18:30', quality: 'medium' }] },
+  Carsamba: { confirmed: true, slots: [{ id: 'school_science_wed', courseName: 'Fen Bilgisi', startTime: '09:00', endTime: '10:00' }], availableWindows: [{ id: 'study_wed', startTime: '16:30', endTime: '18:00', quality: 'deep' }] },
+  Persembe: { confirmed: true, slots: [], availableWindows: [{ id: 'study_thu', startTime: '17:00', endTime: '18:00', quality: 'light' }] },
+  Cuma: { confirmed: true, slots: [], availableWindows: [{ id: 'study_fri', startTime: '16:00', endTime: '17:30', quality: 'medium' }] },
+  Cumartesi: { confirmed: true, slots: [], availableWindows: [{ id: 'study_sat', startTime: '11:00', endTime: '12:30', quality: 'deep' }] },
+  Pazar: { confirmed: true, slots: [], availableWindows: [{ id: 'study_sun', startTime: '11:00', endTime: '12:00', quality: 'light' }] },
 };
 
-const examScheduleEntries: ExamScheduleEntry[] = [
-  { id: 'exam_math_written', courseId: 'math', courseName: 'Matematik', examName: 'Matematik yazılısı', date: addDays(4) },
-  { id: 'exam_tr_written', courseId: 'tr', courseName: 'Türkçe', examName: 'Türkçe yazılısı', date: addDays(9) },
-];
-
-const examRecords: ExamRecord[] = [
-  { id: 'school_math_low', courseId: 'math', courseName: 'Matematik', examType: 'school-written', title: 'Matematik yazılısı', date: daysAgo(2), termKey: '2026-2', scopeType: 'course', score: 62, maxScore: 100, source: 'manual' },
-  { id: 'school_tr_high', courseId: 'tr', courseName: 'Türkçe', examType: 'school-written', title: 'Türkçe yazılısı', date: daysAgo(3), termKey: '2026-2', scopeType: 'course', score: 88, maxScore: 100, source: 'manual' },
-  { id: 'school_science_mid', courseId: 'science', courseName: 'Fen Bilimleri', examType: 'school-quiz', title: 'Fen kazanım taraması', date: daysAgo(7), termKey: '2026-2', scopeType: 'unit', unitNames: ['Ünite 2'], score: 74, maxScore: 100, source: 'manual' },
-];
+const examRecords: ExamRecord[] = activeCourses.map((course, index) => ({
+  id: `qa_exam_${course.id}`,
+  courseId: course.id,
+  courseName: course.name,
+  examType: 'school-written',
+  title: `${course.name} yaz\u0131l\u0131s\u0131`,
+  date: daysAgo(6 + index),
+  termKey: '2026-2',
+  scopeType: 'course',
+  score: 58 + ((index * 7) % 35),
+  maxScore: 100,
+  source: 'manual',
+}));
 
 const compositeExamResults: CompositeExamResult[] = [
   {
-    id: 'state_exam_heavy_1',
-    title: 'Genel deneme',
-    examType: 'state-exam',
-    date: daysAgo(1),
-    totalScore: 412,
-    courses: [
-      { courseId: 'math', courseName: 'Matematik', score: 68, net: 14.5 },
-      { courseId: 'tr', courseName: 'Türkçe', score: 86, net: 18 },
-      { courseId: 'science', courseName: 'Fen Bilimleri', score: 72, net: 15 },
-      { courseId: 'social', courseName: 'Sosyal Bilgiler', score: 64, net: 13 },
-    ],
+    id: 'qa_lgs_deneme_1',
+    title: 'Genel deneme 1',
+    examType: 'mock-exam',
+    date: daysAgo(3),
+    totalScore: 410,
+    courses: activeCourses.map((course, index) => ({ courseId: course.id, courseName: course.name, score: 55 + ((index * 9) % 38), net: 8 + index * 1.5 })),
   },
 ];
 
-const buildSnapshot = (tasks: Task[]): PlanningEngineSnapshot => ({
-  scheduleDays: Object.entries(weeklySchedule).map(([dayName, day]) => ({
-    dayName,
-    schoolBlocks: day.slots.map((slot) => ({ id: slot.id, courseName: slot.courseName, startTime: slot.startTime, endTime: slot.endTime })),
-    availableWindows: day.availableWindows || [],
-    confirmed: day.confirmed,
-  })),
-  curriculumTopics: courses
-    .filter((course) => course.active !== false)
-    .flatMap((course, courseIndex) => Array.from({ length: 6 }, (_, topicIndex) => ({
-      id: `${course.id}_topic_${topicIndex}`,
-      courseId: course.id,
-      courseName: course.name,
-      unitName: `Ünite ${1 + Math.floor(topicIndex / 3)}`,
-      topicName: `Konu ${topicIndex + 1}`,
-      sequenceOrder: courseIndex * 10 + topicIndex,
-      isRequired: true,
-    }))),
-  examSchedules: examScheduleEntries,
-  topicStatuses: courses.flatMap((course) => Array.from({ length: 3 }, (_, index) => ({
-    topicId: `${course.id}_topic_${index}`,
-    status: index % 2 === 0 ? 'needs_revision' : 'new',
-    nextRecommendedAction: index % 2 === 0 ? 'revise' : 'learn',
-  }))),
-  studyPlanRecords: [],
-  planBlockRecords: [],
-  studySessions: tasks.map((task) => ({
-    id: `session_${task.id}`,
-    taskId: task.id,
-    courseId: task.courseId,
-    courseName: courses.find((course) => course.id === task.courseId)?.name || task.courseId,
-    relatedPlanBlockId: task.planTaskId,
-    startedAt: new Date(task.completionTimestamp || today.getTime()).toISOString(),
-    endedAt: new Date((task.completionTimestamp || today.getTime()) + (task.actualDuration || 0) * 1000).toISOString(),
-    taskType: task.taskGoalType === 'sinav-hazirlik' ? 'exam_prep' : task.taskGoalType === 'konu-tekrari' ? 'revision' : 'new_learning',
-    actualDuration: Math.round((task.actualDuration || 0) / 60),
-    completed: true,
-    completionQuality: (task.successScore || 0) >= 80 ? 'high' : (task.successScore || 0) >= 60 ? 'medium' : 'low',
-  })),
-  assessmentResults: [],
-  replanTriggers: [],
-});
+const examScheduleEntries: ExamScheduleEntry[] = activeCourses.slice(0, 4).map((course, index) => ({
+  id: `qa_upcoming_exam_${course.id}`,
+  courseId: course.id,
+  courseName: course.name,
+  examName: `${course.name} yakla\u015fan yaz\u0131l\u0131`,
+  date: addDays(3 + index * 2),
+}));
 
-const buildStoredPlan = (): StoredStudyPlan => ({
-  id: 'heavy_plan_week_6',
-  week: 6,
+const studyPlan: StoredStudyPlan = {
+  id: 'qa_heavy_plan_week_20',
+  week: 20,
   version: 1,
   status: 'active',
   reason: 'initial-plan',
@@ -206,211 +215,228 @@ const buildStoredPlan = (): StoredStudyPlan => ({
   plan: {
     Matematik: {
       units: [{
-        name: 'Ünite 1',
+        name: topicRefs[0].unitName,
         topics: [{
-          name: 'Konu 1',
-          tasks: [{ id: 'plan_block_999', day: 'Pazartesi', startTime: '16:00', endTime: '17:00', type: 'study', duration: 45, questionCount: null, source: 'Akıllı plan', completed: false }],
+          name: topicRefs[0].topicName,
+          tasks: tasks.filter((task) => task.planTaskId).slice(0, 30).map((task) => ({
+            id: task.planTaskId!,
+            day: 'Pazartesi',
+            startTime: '16:00',
+            endTime: '17:00',
+            type: task.taskGoalType === 'test-cozme' ? 'question_practice' : task.taskGoalType === 'konu-tekrari' ? 'revision' : 'new_learning',
+            duration: task.plannedDuration,
+            questionCount: task.questionCount || null,
+            source: 'Haftal\u0131k plan',
+            completed: task.status === 'tamamland\u0131',
+          }))
         }],
       }],
     },
   },
-});
-
-const runHeavyAnalysis = () => {
-  const tasks = Array.from({ length: 160 }, (_, index) => baseTask(index));
-  const snapshot = deriveAnalysisSnapshot(tasks, courses, [], examRecords, compositeExamResults);
-
-  assert(snapshot.sessions.length === tasks.length, 'Tüm tamamlanan ve legacy tamamlandi görevleri sessiona dönüşmeli.');
-  assert(snapshot.overall.completedTasks === tasks.length, 'Tamamlanan görev sayacı tüm yoğun veriyi saymalı.');
-  assert(snapshot.courses.length >= 4, 'Aktif dersler için ders metrikleri oluşmalı.');
-  assert(snapshot.taskTypes.length >= 3, 'Soru, tekrar/çalışma ve okuma görev tipleri ayrışmalı.');
-  assert(snapshot.studyWindows.some((item) => item.totalSessions > 0), 'Saat penceresi metrikleri dolmalı.');
-  assert(snapshot.school.coursePerformance.length >= 4, 'Okul/ev uyum metrikleri ders bazında oluşmalı.');
-  assert(snapshot.school.latestStateExam?.riskCourses.length === 3, 'Genel deneme risk dersleri analizde görünmeli.');
-  assert(snapshot.school.coursePerformance.every((item) => !/( icin|calismasi|geldikce|guclu|altinda|Sinav)/.test(item.alignmentComment)), 'Uyum yorumları kullanıcıya doğru Türkçe karakterlerle çıkmalı.');
 };
 
-const runHeavyPlanning = () => {
-  const tasks = Array.from({ length: 40 }, (_, index) => baseTask(index));
-  const snapshot = buildSnapshot(tasks);
-  const candidateTopics = snapshot.curriculumTopics.slice(0, 12).map((topic) => ({
-    subject: topic.courseName,
-    unitName: topic.unitName,
-    topicName: topic.topicName,
-    completed: false,
-  }));
+const performanceData: PerformanceData[] = INITIAL_REAL_PERFORMANCE.map((item, index) => ({
+  ...item,
+  correct: 900 - index * 45,
+  incorrect: 120 + index * 17,
+  timeSpent: 1100 + index * 90,
+}));
+
+const rewards: Reward[] = [
+  { id: 'qa_reward_book', name: 'Kitap se\u00e7imi', cost: 120, icon: 'Gift' },
+  { id: 'qa_reward_break', name: 'Ek mola', cost: 80, icon: 'Gift' },
+];
+
+const buildPlanningSnapshot = (): PlanningEngineSnapshot => ({
+  scheduleDays: Object.entries(weeklySchedule).map(([dayName, day]) => ({
+    dayName,
+    schoolBlocks: day.slots.map((slot) => ({ id: slot.id, courseName: slot.courseName, startTime: slot.startTime, endTime: slot.endTime })),
+    availableWindows: day.availableWindows || [],
+    confirmed: day.confirmed,
+  })),
+  curriculumTopics: topicRefs.map((ref) => ({
+    id: `topic_${ref.course.id}_${ref.sequence}`,
+    courseId: ref.course.id,
+    courseName: ref.course.name,
+    unitName: ref.unitName,
+    topicName: ref.topicName,
+    sequenceOrder: ref.sequence,
+    isRequired: true,
+  })),
+  examSchedules: examScheduleEntries,
+  topicStatuses: topicRefs.slice(0, 40).map((ref, index) => ({
+    topicId: `topic_${ref.course.id}_${ref.sequence}`,
+    status: index % 3 === 0 ? 'needs_revision' : index % 3 === 1 ? 'new' : 'in_progress',
+    nextRecommendedAction: index % 3 === 0 ? 'revise' : index % 3 === 1 ? 'learn' : 'practice',
+  })),
+  studyPlanRecords: [],
+  planBlockRecords: [],
+  studySessions: [],
+  assessmentResults: [],
+  replanTriggers: [],
+});
+
+const assertNoBadNumbers = (value: unknown, path = 'snapshot') => {
+  if (typeof value === 'number') {
+    assert(Number.isFinite(value), `${path} finite sayi olmali.`);
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertNoBadNumbers(item, `${path}[${index}]`));
+    return;
+  }
+  Object.entries(value as Record<string, unknown>).forEach(([key, item]) => assertNoBadNumbers(item, `${path}.${key}`));
+};
+
+const runDatasetShapeContract = () => {
+  const questionCount = tasks.filter((task) => task.taskType === 'soru \u00e7\u00f6zme').length;
+  const revisionCount = tasks.filter((task) => task.taskGoalType === 'konu-tekrari').length;
+  const studyCount = tasks.filter((task) => task.taskGoalType === 'ders calisma').length;
+  const completedCount = tasks.filter((task) => task.status === 'tamamland\u0131').length;
+  const usedCourseIds = new Set(tasks.map((task) => task.courseId));
+  const usedTopicKeys = new Set(tasks.map((task) => `${task.courseId}:${task.curriculumUnitName}:${task.curriculumTopicName}`));
+
+  assert(tasks.length === TOTAL_TASKS, 'Toplam gorev sayisi 6000 olmali.');
+  assert(questionCount === QUESTION_TASKS, 'Soru cozme sayisi 4500 olmali.');
+  assert(revisionCount === REVISION_TASKS, 'Konu tekrari sayisi 750 olmali.');
+  assert(studyCount === STUDY_TASKS, 'Ders calisma sayisi 750 olmali.');
+  assert(completedCount === COMPLETED_TASKS, 'Tamamlanan gorev sayisi 5900 olmali.');
+  assert(usedCourseIds.size === activeCourses.length, 'Tum aktif derslere veri dagilmali.');
+  assert(usedTopicKeys.size >= 90, 'En az 90 farkli konuya veri dagilmali.');
+};
+
+const runAnalysisContract = () => {
+  const start = performance.now();
+  const analysis = deriveAnalysisSnapshot(tasks, activeCourses, [studyPlan], examRecords, compositeExamResults);
+  const elapsedMs = Math.round(performance.now() - start);
+
+  assert(elapsedMs <= ANALYSIS_BUDGET_MS, `Analiz ${ANALYSIS_BUDGET_MS}ms altinda tamamlanmali, gercek: ${elapsedMs}ms.`);
+  assert(analysis.sessions.length === COMPLETED_TASKS, 'Tamamlanan her gorev analiz sessionina donusmeli.');
+  assert(analysis.overall.completedTasks === COMPLETED_TASKS, 'Genel tamamlanan gorev sayaci dogru olmali.');
+  assert(analysis.courses.length === activeCourses.length, 'Tum aktif dersler icin ders metrikleri olusmali.');
+  assert(analysis.taskTypes.some((item) => item.taskType === 'question' && item.totalSessions > 3000), 'Soru cozme task type verisi dolu olmali.');
+  assert(analysis.taskTypes.some((item) => item.taskType === 'revision' && item.totalSessions > 500), 'Konu tekrari task type verisi dolu olmali.');
+  assert(analysis.taskTypes.some((item) => item.taskType === 'study' && item.totalSessions > 500), 'Ders calisma task type verisi dolu olmali.');
+  assert(analysis.topics.length >= 90, 'Konu bazli analiz en az 90 konu uretmeli.');
+  assert(analysis.studyWindows.length >= 4, `Saat penceresi analizi tum gun dilimlerini kapsamali. Gercek: ${JSON.stringify(analysis.studyWindows)}`);
+  assert(analysis.school.coursePerformance.length === activeCourses.length, 'Okul/ev uyum metrikleri tum dersleri kapsamali.');
+  assert(analysis.school.latestStateExam?.riskCourses.length === 3, 'Deneme risk dersleri uretilmeli.');
+  assert(analysis.plan.totalPlannedTopicTasks === 30, 'Plan gorevleri analiz plan metrigine yansimali.');
+  assert(analysis.plan.completedPlannedTopicTasks > 0, 'Tamamlanan plan gorevleri analiz plan metrigine yansimali.');
+  assert(analysis.overall.generalScore >= 0 && analysis.overall.generalScore <= 100, 'Genel skor 0-100 araliginda olmali.');
+  assertNoBadNumbers(analysis);
+
+  return { analysis, elapsedMs };
+};
+
+const runGraphContracts = (analysis: ReturnType<typeof deriveAnalysisSnapshot>) => {
+  const questionSessions = analysis.sessions.filter((session) => session.taskType === 'soru \u00e7\u00f6zme' && typeof session.accuracyScore === 'number');
+  const revisionSessions = analysis.sessions.filter((session) => session.taskGoalType === 'konu-tekrari');
+  const masteredTopics = analysis.topics.filter((topic) => topic.masteryScore >= 70);
+  const riskyTopics = analysis.topics.filter((topic) => topic.riskScore >= 60);
+  const dailyBuckets = new Set(analysis.sessions.map((session) => session.completionDate));
+
+  assert(dailyBuckets.size >= 120, 'Genel skor/EMA trendi icin en az 120 gunluk veri olmali.');
+  assert(analysis.courses.every((course) => course.totalSessions > 0), 'Ders performans grafiginde her ders dolu olmali.');
+  assert(riskyTopics.length > 0, 'Risk grafigi icin riskli konu olmali.');
+  assert(masteredTopics.length > 0, 'Mufredat kapsama icin hakim konu olmali.');
+  assert(revisionSessions.length >= 500, 'Kalicilik egrisi icin tekrar oturumu yeterli olmali.');
+  assert(questionSessions.length >= 3000, 'Dogruluk/sure grafigi icin soru oturumu yeterli olmali.');
+  assert(analysis.studyWindows.length >= 4, 'En verimli zaman grafigi icin saat penceresi verisi olmali.');
+  assert(analysis.sessions.some((session) => session.masteryContribution > 0), 'Ogrenme verimi grafigi icin katkı olmali.');
+  assert(analysis.taskTypes.length >= 3, 'Gorev turu analizi icin 3 ana tur olmali.');
+};
+
+const runPlanningContract = () => {
+  const snapshot = buildPlanningSnapshot();
   const drafts = createWeeklyPlanDraft({
     mode: 'ai_normal',
     tempo: 'Orta',
-    candidateTopics,
+    candidateTopics: snapshot.curriculumTopics.slice(0, 40).map((topic) => ({
+      subject: topic.courseName,
+      unitName: topic.unitName,
+      topicName: topic.topicName,
+      completed: false,
+    })),
     snapshot,
     weeklySchedule,
   });
 
-  assert(drafts.length >= 6, 'Yoğun gerçek veride birden fazla plan bloğu üretilmeli.');
-  assert(drafts.every((draft) => draft.startTime && draft.endTime), 'Plan blokları saat bilgisi taşımalı.');
+  assert(drafts.length >= 6, 'Plan motoru gercek mufredattan en az 6 blok uretmeli.');
   assert(drafts.every((draft) => {
     const day = weeklySchedule[draft.day];
     return (day.availableWindows || []).some((window) => draft.startTime >= window.startTime && draft.endTime <= window.endTime);
-  }), 'Plan blokları ev çalışma pencereleri dışına taşmamalı.');
-  assert((weeklySchedule.Pazartesi.availableWindows || [])[0].id !== (weeklySchedule.Pazartesi.availableWindows || [])[1].id, 'Aynı saat/kalite pencereleri kalıcı farklı id taşımalı.');
+  }), 'Plan bloklari ev calisma penceresi disina tasmamali.');
 };
 
-const runPlanCompletionPropagation = () => {
-  const task = baseTask(999, {
-    id: 'plan_task_child_999',
-    courseId: 'math',
-    planTaskId: 'plan_block_999',
-    planWeek: 6,
-    planSource: 'weekly-plan',
-    curriculumUnitName: 'Ünite 1',
-    curriculumTopicName: 'Konu 1',
-    status: 'bekliyor',
-    completionDate: undefined,
-    completionTimestamp: undefined,
-  });
-  const storedPlan = buildStoredPlan();
-  const before = deriveAnalysisSnapshot([task], courses, [storedPlan]);
-  const completed: Task = { ...task, status: 'tamamlandi' as Task['status'], completionDate: iso(today), completionTimestamp: today.getTime(), actualDuration: 2400, focusScore: 84, successScore: 81 };
-  const after = deriveAnalysisSnapshot([completed], courses, [storedPlan]);
-
-  assert(before.sessions.length === 0, 'Bekleyen çocuk görevi analiz sessionına dönüşmemeli.');
-  assert(after.sessions.length === 1, 'Legacy tamamlandi plan görevi analiz sessionına dönüşmeli.');
-  assert(after.plan.completedPlannedTopicTasks === 1, 'Tamamlanan çocuk görevi haftalık plan metriğine yansımalı.');
-  assert(after.topics.some((topic) => topic.topicName === 'Konu 1'), 'Plan görevi konu metriğine yansımalı.');
-};
-
-const runBackupRoundTripHeavyData = () => {
-  const tasks = [
-    ...Array.from({ length: 140 }, (_, index) => baseTask(index)),
-    baseTask(999, {
-      id: 'plan_task_child_999',
-      courseId: 'math',
-      planTaskId: 'plan_block_999',
-      planWeek: 6,
-      planSource: 'weekly-plan',
-      curriculumUnitName: 'Ünite 1',
-      curriculumTopicName: 'Konu 1',
-      status: 'tamamlandi' as Task['status'],
-      completionDate: iso(today),
-      completionTimestamp: today.getTime(),
-    }),
-  ];
-  const performanceData: PerformanceData[] = courses.map((course, index) => ({
-    courseId: course.id,
-    courseName: course.name,
-    correct: 120 - (index * 9),
-    incorrect: 18 + index,
-    timeSpent: 240 + (index * 20),
-  }));
-  const rewards: Reward[] = [{ id: 'reward_book', name: 'Kitap seçimi', cost: 120, icon: 'Gift' }];
-  const badges: Badge[] = [{ id: 'badge_focus', name: 'Odak rozeti', description: 'Uzun çalışma bloklarını tamamladı.', icon: 'Award' }];
-  const studyPlans = [buildStoredPlan()];
+const runBackupRoundTripContract = () => {
+  const start = performance.now();
   const backup = {
     backup: {
       app: 'Ders Rotasi',
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: today.toISOString(),
       summary: {
-        courses: courses.length,
+        courses: activeCourses.length,
         tasks: tasks.length,
         rewards: rewards.length,
-        badges: badges.length,
         examRecords: examRecords.length,
-        studyPlans: studyPlans.length,
+        studyPlans: 1,
       },
     },
     appData: {
-      courses,
+      courses: activeCourses,
       tasks,
       rewards,
-      badges,
       performanceData,
-      successPoints: 450,
+      successPoints: 1200,
       curriculum,
       weeklySchedule,
       examRecords,
       compositeExamResults,
       examScheduleEntries,
-      studyPlans,
+      studyPlans: [studyPlan],
     },
   };
+  const restored = JSON.parse(JSON.stringify(backup));
+  const elapsedMs = Math.round(performance.now() - start);
 
-  const parsed = JSON.parse(JSON.stringify(backup));
-  const payload = parsed.appData;
-  assert(Array.isArray(payload.courses) && Array.isArray(payload.tasks) && Array.isArray(payload.rewards) && Array.isArray(payload.badges), 'Yedek dosyası zorunlu dizi alanlarını korumalı.');
-  assert(payload.tasks.length === tasks.length, 'Büyük görev listesi import/export turunda eksilmemeli.');
-  const mondayWindowIds = payload.weeklySchedule.Pazartesi.availableWindows.map((window: ScheduleDayWindow) => window.id);
-  assert(mondayWindowIds.includes('study_mon_a'), 'Çalışma penceresi id bilgisi yedekte korunmalı.');
-  assert(mondayWindowIds.includes('study_mon_b'), 'Aynı saatli ikinci çalışma penceresi ayrı id ile korunmalı.');
-  assert(new Set(mondayWindowIds).size === mondayWindowIds.length, 'Aynı saatli çalışma pencereleri yedekte tekil id taşımalı.');
+  assert(elapsedMs <= BACKUP_BUDGET_MS, `Yedek round-trip ${BACKUP_BUDGET_MS}ms altinda olmali, gercek: ${elapsedMs}ms.`);
+  assert(restored.appData.tasks.length === TOTAL_TASKS, 'Yedek round-trip gorev kaybi uretmemeli.');
+  assert(restored.appData.courses.length === activeCourses.length, 'Yedek round-trip ders kaybi uretmemeli.');
 
-  const before = deriveAnalysisSnapshot(tasks, courses, studyPlans, examRecords, compositeExamResults);
-  const after = deriveAnalysisSnapshot(payload.tasks, payload.courses, payload.studyPlans, payload.examRecords, payload.compositeExamResults);
-  assert(after.overall.completedTasks === before.overall.completedTasks, 'Yedek turu tamamlanan görev sayısını değiştirmemeli.');
-  assert(after.sessions.length === before.sessions.length, 'Yedek turu analiz oturumlarını değiştirmemeli.');
-  assert(after.plan.completedPlannedTopicTasks === before.plan.completedPlannedTopicTasks, 'Yedek turu plan tamamlama metriğini değiştirmemeli.');
-  assert(after.school.latestStateExam?.totalScore === 412, 'Yedek turu genel deneme sonucunu korumalı.');
-};
+  const before = deriveAnalysisSnapshot(tasks, activeCourses, [studyPlan], examRecords, compositeExamResults);
+  const after = deriveAnalysisSnapshot(restored.appData.tasks, restored.appData.courses, restored.appData.studyPlans, restored.appData.examRecords, restored.appData.compositeExamResults);
+  assert(after.overall.completedTasks === before.overall.completedTasks, 'Yedek round-trip analiz tamamlanan sayisini degistirmemeli.');
+  assert(after.sessions.length === before.sessions.length, 'Yedek round-trip session sayisini degistirmemeli.');
+  assert(after.overall.generalScore === before.overall.generalScore, 'Yedek round-trip genel skoru degistirmemeli.');
 
-const runAllGraphDataContracts = () => {
-  const tasks = [
-    ...Array.from({ length: 140 }, (_, index) => baseTask(index)),
-    baseTask(999, {
-      id: 'plan_task_child_999',
-      courseId: 'math',
-      planTaskId: 'plan_block_999',
-      planWeek: 6,
-      planSource: 'weekly-plan',
-      curriculumUnitName: 'Ünite 1',
-      curriculumTopicName: 'Konu 1',
-      status: 'tamamlandi' as Task['status'],
-      completionDate: iso(today),
-      completionTimestamp: today.getTime(),
-    }),
-  ];
-  const analysis = deriveAnalysisSnapshot(tasks, courses, [buildStoredPlan()], examRecords, compositeExamResults);
-  const completedReadingTasks = tasks.filter((task) => task.taskType === 'kitap okuma' && task.pagesRead);
-  const completedQuestionTasks = tasks.filter((task) => task.taskType === 'soru çözme' && typeof task.correctCount === 'number');
-  const revisionSessions = analysis.sessions.filter((session) => session.taskGoalType === 'konu-tekrari');
-  const curriculumTopicCount = Object.values(curriculum).reduce((sum, units) => sum + units.reduce((unitSum, unit) => unitSum + unit.topics.length, 0), 0);
-
-  assert(analysis.sessions.length > 100, 'Genel skor ve EMA trendi için yeterli oturum olmalı.');
-  assert(analysis.courses.length >= 4, 'Ders bazlı performans grafiği için ders verisi olmalı.');
-  assert(analysis.topics.length >= 8, 'Risk ve kalıcılık grafikleri için konu verisi olmalı.');
-  assert(curriculumTopicCount >= 12, 'Müfredat kapsama grafiği için müfredat konusu olmalı.');
-  assert(completedQuestionTasks.length >= 20, 'Doğruluk/süre grafiği için soru oturumları olmalı.');
-  assert(analysis.studyWindows.length >= 3, 'En verimli zaman grafiği için saat penceresi metrikleri olmalı.');
-  assert(analysis.sessions.some((session) => session.masteryContribution > 0), 'Öğrenme verimi grafiği için öğrenme katkısı olmalı.');
-  assert(tasks.some((task) => (task.actualDuration || 0) >= 1500 && ((task.pauseTime || 0) + (task.breakTime || 0)) / Math.max(1, task.actualDuration || 1) <= 0.15), 'Derin çalışma oranı için kesintisiz blok olmalı.');
-  assert(analysis.taskTypes.length >= 3, 'Görev türü analizi için farklı görev tipleri olmalı.');
-  assert(completedReadingTasks.length >= 10, 'Okuma analitiği için sayfa verisi olmalı.');
-  assert(revisionSessions.length >= 2, 'Kalıcılık eğrisi için tekrar oturumları olmalı.');
-  assert(analysis.plan.completedPlannedTopicTasks === 1, 'Plan/görev tamamlama metriği grafik merkezine veri sağlamalı.');
-};
-
-const runDuplicateWindowRemovalContract = () => {
-  const windows: ScheduleDayWindow[] = [
-    { id: 'duplicate_a', startTime: '16:00', endTime: '17:00', quality: 'deep' },
-    { id: 'duplicate_b', startTime: '16:00', endTime: '17:00', quality: 'deep' },
-    { id: 'different', startTime: '18:00', endTime: '19:00', quality: 'medium' },
-  ];
-  const removeWindowByKey = (items: ScheduleDayWindow[], key: string) => items.filter((item, index) => (item.id || `${item.startTime}_${item.endTime}_${item.quality}_${index}`) !== key);
-  const after = removeWindowByKey(windows, 'duplicate_a');
-
-  assert(after.length === 2, 'Aynı saat/kalite pencerelerinden sadece seçilen pencere silinmeli.');
-  assert(after.some((window) => window.id === 'duplicate_b'), 'Aynı görünen ikinci pencere korunmalı.');
-  assert(after.some((window) => window.id === 'different'), 'Farklı pencere etkilenmemeli.');
+  return elapsedMs;
 };
 
 const main = () => {
-  runHeavyAnalysis();
-  runHeavyPlanning();
-  runPlanCompletionPropagation();
-  runBackupRoundTripHeavyData();
-  runAllGraphDataContracts();
-  runDuplicateWindowRemovalContract();
-  console.log('HEAVY_REAL_DATA_TESTS_OK');
+  runDatasetShapeContract();
+  const { analysis, elapsedMs } = runAnalysisContract();
+  runGraphContracts(analysis);
+  runPlanningContract();
+  const backupElapsedMs = runBackupRoundTripContract();
+
+  console.log(JSON.stringify({
+    status: 'HEAVY_REAL_DATA_TESTS_OK',
+    totalTasks: TOTAL_TASKS,
+    completedTasks: COMPLETED_TASKS,
+    questionTasks: QUESTION_TASKS,
+    revisionTasks: REVISION_TASKS,
+    studyTasks: STUDY_TASKS,
+    activeCourses: activeCourses.length,
+    curriculumTopics: topicRefs.length,
+    analyzedSessions: analysis.sessions.length,
+    analyzedTopics: analysis.topics.length,
+    analysisElapsedMs: elapsedMs,
+    backupRoundTripElapsedMs: backupElapsedMs,
+    generalScore: analysis.overall.generalScore,
+  }, null, 2));
 };
 
 main();

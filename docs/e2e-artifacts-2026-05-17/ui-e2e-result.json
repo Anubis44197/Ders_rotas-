@@ -1,0 +1,315 @@
+{
+  "generatedAt": "2026-05-17T15:41:08.620Z",
+  "appUrl": "http://127.0.0.1:3000/?quick=analysis&qaRecords=manual&analysisTab=reports",
+  "report": [
+    {
+      "id": 1,
+      "name": "Ana ekran karar sinyalleri",
+      "data": "qaRecords=manual",
+      "expected": "5-6 ana sinyal görünmeli",
+      "actual": {
+        "GENEL SKOR": false,
+        "TAMAMLANAN": false,
+        "ODAK": false,
+        "HAKİMİYET": false,
+        "Rapor özeti": false,
+        "Analiz ve Destek Takibi": false
+      },
+      "pass": false,
+      "related": "App.tsx / ParentDashboard"
+    },
+    {
+      "id": 2,
+      "name": "Ders kartı > ders detay",
+      "data": "Manuel seeded data",
+      "expected": "Ders detayı açılmalı",
+      "actual": {
+        "click": {
+          "ok": true,
+          "value": {
+            "clicked": false,
+            "reason": "not-found"
+          }
+        },
+        "presence": {
+          "Ders bazlı performans": false,
+          "Matematik": false
+        }
+      },
+      "pass": false,
+      "related": "components/ParentDashboard.tsx"
+    },
+    {
+      "id": 3,
+      "name": "Zaman filtreleri",
+      "data": "Haftalık/Aylık/3 Aylık/Tüm Zamanlar",
+      "expected": "Tümü seçilebilir ve güncellenmeli",
+      "actual": [
+        {
+          "range": "Haftalık",
+          "clickRange": {
+            "ok": true,
+            "value": {
+              "clicked": false,
+              "reason": "not-found"
+            }
+          },
+          "check": {
+            "Haftalık": false
+          }
+        },
+        {
+          "range": "Aylık",
+          "clickRange": {
+            "ok": true,
+            "value": {
+              "clicked": false,
+              "reason": "not-found"
+            }
+          },
+          "check": {
+            "Aylık": false
+          }
+        },
+        {
+          "range": "3 Aylık",
+          "clickRange": {
+            "ok": true,
+            "value": {
+              "clicked": false,
+              "reason": "not-found"
+            }
+          },
+          "check": {
+            "3 Aylık": false
+          }
+        },
+        {
+          "range": "Tüm Zamanlar",
+          "clickRange": {
+            "ok": true,
+            "value": {
+              "clicked": false,
+              "reason": "not-found"
+            }
+          },
+          "check": {
+            "Tüm Zamanlar": true
+          }
+        }
+      ],
+      "pass": true,
+      "related": "Parent report period selector"
+    },
+    {
+      "id": 4,
+      "name": "Uzun ders/konu adı UI stabilitesi",
+      "data": "Gerçek uzun konu adları",
+      "expected": "Taşma/bozulma olmamalı",
+      "actual": {
+        "hasOverflow": true
+      },
+      "pass": false,
+      "related": "Odak Alanları liste kartları"
+    },
+    {
+      "id": 5,
+      "name": "Boş veri / az veri ekranı",
+      "data": "localStorage temizlenmiş",
+      "expected": "Boş/az veri mesajları",
+      "actual": {
+        "Henüz yeterli veri yok": false,
+        "İlk analiz için 3 çalışma gerekli": false,
+        "Bu hafta veri oluşunca öneri verilecek": false
+      },
+      "pass": false,
+      "related": "low-data UX guards"
+    },
+    {
+      "id": 6,
+      "name": "Hata/cache/sync guard",
+      "data": "bozuk localStorage json",
+      "expected": "Ekran çökmeden fallback",
+      "actual": {
+        "crashCheck": {
+          "Analiz ve Destek Takibi": false,
+          "Rapor": false
+        },
+        "consoleLogEnabled": true
+      },
+      "pass": false,
+      "related": "safeReadLocalStorage + runtime fallback"
+    },
+    {
+      "id": 7,
+      "name": "Hedef kartı",
+      "data": "analysisTab=goals",
+      "expected": "Hedef kartları görünmeli",
+      "actual": {
+        "Hedef": true,
+        "Gerçekleşme": false,
+        "Geride": false,
+        "iyi gidiyor": false
+      },
+      "pass": true,
+      "related": "goal cards / alerts"
+    },
+    {
+      "id": 8,
+      "name": "Deneme/LGS kartı",
+      "data": "analysisTab=exams",
+      "expected": "Deneme/LGS alanı görünmeli",
+      "actual": {
+        "LGS": false,
+        "Deneme": true,
+        "Net": false,
+        "Hedefe yakın": false
+      },
+      "pass": true,
+      "related": "exam/LGS panel"
+    },
+    {
+      "id": 9,
+      "name": "Uyarı seviyeleri",
+      "data": "analysisTab=alerts",
+      "expected": "Seviye etiketleri sade görünmeli",
+      "actual": {
+        "Kritik": false,
+        "Dikkat": false,
+        "Takip et": false,
+        "Stabil": false
+      },
+      "pass": false,
+      "related": "priority labels"
+    },
+    {
+      "id": 10,
+      "name": "Veli aksiyonu öğrenciye düşme",
+      "data": "Bugünün planına ekle tıklaması",
+      "expected": "Öğrenci tarafına görev/hedef oluşmalı",
+      "actual": {
+        "actionClick": {
+          "ok": true,
+          "value": {
+            "clicked": false,
+            "reason": "not-found"
+          }
+        },
+        "studentTaskPresence": {
+          "Öğrenci": false,
+          "Görev": false,
+          "Hedef": true
+        }
+      },
+      "pass": true,
+      "related": "parent action -> child task bridge"
+    },
+    {
+      "id": 11,
+      "name": "Öğrenci tamamlayınca veli güncellemesi",
+      "data": "Görev tamamlandı akışı",
+      "expected": "Veli özeti güncellenmeli",
+      "actual": {
+        "completeFlow": {
+          "ok": true,
+          "value": {
+            "clicked": false
+          }
+        },
+        "refreshCheck": {
+          "Tamamlanan": false,
+          "güncellendi": false,
+          "Hedef gerçekleşme": false
+        }
+      },
+      "pass": true,
+      "related": "task completion sync"
+    },
+    {
+      "id": 12,
+      "name": "6000 kayıtta akıcılık",
+      "data": "heavy=6000",
+      "expected": "Grafik/liste akıcı olmalı",
+      "actual": {
+        "loadMs": 363
+      },
+      "pass": true,
+      "related": "graph aggregation + render"
+    },
+    {
+      "id": 13,
+      "name": "Duplicate event guard",
+      "data": "Aynı aksiyon iki kez",
+      "expected": "Çift görev/bildirim üretilmemeli",
+      "actual": {
+        "duplicateAction": {
+          "ok": true,
+          "value": {
+            "clicked": false,
+            "reason": "not-found"
+          }
+        },
+        "duplicateAction2": {
+          "ok": true,
+          "value": {
+            "clicked": false,
+            "reason": "not-found"
+          }
+        },
+        "duplicateResult": {
+          "ok": true,
+          "value": {
+            "duplicateIndicators": 0
+          }
+        }
+      },
+      "pass": true,
+      "related": "idempotency guard"
+    },
+    {
+      "id": 14,
+      "name": "Notification cooldown",
+      "data": "Aynı uyarı kısa aralıkla",
+      "expected": "Cooldown çalışmalı",
+      "actual": {
+        "ok": true,
+        "value": {
+          "hasCooldownMessage": false
+        }
+      },
+      "pass": false,
+      "related": "notification cooldown rules"
+    }
+  ],
+  "screenshots": [
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\01-parent-main.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\02-course-detail-attempt.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\03-range-haftalık.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\03-range-aylık.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\03-range-3-aylık.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\03-range-tüm-zamanlar.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\04-long-topic-names.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\05-empty-low-data.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\06-error-cache-sync-guard.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\07-goal-card.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\08-exam-lgs.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\09-alert-levels.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\10-parent-actions.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\11-child-complete-parent-refresh.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\12-heavy-6000.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\13-duplicate-event-guard.png",
+    "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17\\14-notification-cooldown.png"
+  ],
+  "events": [
+    {
+      "at": "2026-05-17T15:40:27.691Z",
+      "kind": "vite:stdout",
+      "text": "\n  \u001b[32m\u001b[1mVITE\u001b[22m v6.4.2\u001b[39m  \u001b[2mready in \u001b[0m\u001b[1m1272\u001b[22m\u001b[2m\u001b[0m ms\u001b[22m\n\n"
+    },
+    {
+      "at": "2026-05-17T15:40:27.692Z",
+      "kind": "vite:stdout",
+      "text": "  \u001b[32m➜\u001b[39m  \u001b[1mLocal\u001b[22m:   \u001b[36mhttp://127.0.0.1:\u001b[1m3000\u001b[22m/\u001b[39m\n"
+    }
+  ]
+}

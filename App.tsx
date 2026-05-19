@@ -1,10 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ParentDashboard from './components/parent/ParentDashboard';
-import ChildDashboard from './components/child/ChildDashboard';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ParentLockScreen from './components/parent/ParentLockScreen';
-import CurriculumManagerPanel from './components/parent/CurriculumManagerPanel';
-import ParentOverviewWorkspace from './components/parent/ParentOverviewWorkspace';
-import ParentPlanningWorkspace from './components/parent/ParentPlanningWorkspace';
 import ParentAnalysisShell from './components/parent/ParentAnalysisShell';
 import {
   UserType,
@@ -44,9 +39,23 @@ import { INITIAL_REAL_COURSES, INITIAL_REAL_CURRICULUM, INITIAL_REAL_PERFORMANCE
 import { calculateTaskPoints } from './utils/scoringAlgorithm';
 import { getLocalDateString } from './utils/dateUtils';
 import { deriveAnalysisSnapshot } from './utils/analysisEngine';
+import {
+  buildParentDecision,
+  resolveDecisionRuleConfig,
+  getNotificationCooldownMs,
+  getNotificationTierFromLevel,
+  getParentDecisionVersionMeta,
+  type DecisionRuleOverrides,
+} from './utils/parentDecisionEngine';
 import { isCompletedTask } from './utils/taskStatus';
 import { playHaptic } from './utils/haptics';
 import { GoogleGenAI } from '@google/genai';
+
+const ParentDashboard = lazy(() => import('./components/parent/ParentDashboard'));
+const ChildDashboard = lazy(() => import('./components/child/ChildDashboard'));
+const CurriculumManagerPanel = lazy(() => import('./components/parent/CurriculumManagerPanel'));
+const ParentOverviewWorkspace = lazy(() => import('./components/parent/ParentOverviewWorkspace'));
+const ParentPlanningWorkspace = lazy(() => import('./components/parent/ParentPlanningWorkspace'));
 
 const SCHEDULE_DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
 const legacyScheduleDayMap: Record<string, string> = {
@@ -131,6 +140,33 @@ interface AppSearchResult {
   view: ParentWorkspaceView;
 }
 
+interface ObservabilityEvent {
+  id: string;
+  ts: string;
+  type:
+    | 'analysis_snapshot'
+    | 'analysis_runtime_error'
+    | 'notification_queue'
+    | 'notification_action'
+    | 'settings_change'
+    | 'decision_tuning_change'
+    | 'rollout_mode_change'
+    | 'background_recompute'
+    | 'event_pipeline';
+  sourceEventId?: string | null;
+  meta: Record<string, string | number | boolean | null>;
+}
+
+interface AnalysisPipelineState {
+  processedSourceEventIds: string[];
+  lastBackgroundRecomputeAt: string | null;
+  lastDailySummaryAt: string | null;
+  lastWeeklySummaryAt: string | null;
+  cacheVersion: number;
+  cacheHits: number;
+  cacheMisses: number;
+}
+
 const searchScopes: Array<{ id: SearchScope; label: string }> = [
   { id: 'all', label: 'Tümü' },
   { id: 'tasks', label: 'Görev' },
@@ -139,6 +175,12 @@ const searchScopes: Array<{ id: SearchScope; label: string }> = [
   { id: 'courses', label: 'Ders' },
   { id: 'rewards', label: 'Ödül' },
 ];
+
+const WorkspaceLoadingFallback: React.FC<{ label?: string }> = ({ label = 'Yukleniyor...' }) => (
+  <div className="ios-card rounded-[24px] p-4 text-sm font-semibold text-slate-600">
+    {label}
+  </div>
+);
 
 const normalizeParentWorkspaceView = (value: unknown): ParentWorkspaceView => {
   if (value === 'overview' || value === 'planning' || value === 'analysis') return value;
@@ -164,22 +206,153 @@ const Modal: React.FC<{ show: boolean; onClose: () => void; title: string; child
   );
 };
 
+const APP_IDB_NAME = 'dersrotasi-app-state-v1';
+const APP_IDB_STORE = 'kv';
+const IDB_BACKED_STATE_KEYS = new Set<string>([
+  'tasks',
+  'curriculum',
+  'examScheduleEntries',
+  'examRecords',
+  'compositeExamResults',
+  'studyPlans',
+  'planningEngineSnapshot',
+  'performanceData',
+  'observabilityEvents',
+]);
+const STORAGE_MARKER_FIELD = '__drStorage';
+const STORAGE_MARKER_VALUE = 'idb';
+
+type IdbStorageMarker = {
+  __drStorage: 'idb';
+  version: 1;
+  updatedAt: number;
+};
+
+let stickyStateDbPromise: Promise<IDBDatabase> | null = null;
+
+const shouldPersistInIndexedDb = (key: string) => IDB_BACKED_STATE_KEYS.has(key);
+
+const isIdbStorageMarker = (value: unknown): value is IdbStorageMarker => (
+  Boolean(value)
+  && typeof value === 'object'
+  && !Array.isArray(value)
+  && (value as Record<string, unknown>)[STORAGE_MARKER_FIELD] === STORAGE_MARKER_VALUE
+);
+
+const createIdbStorageMarker = (): IdbStorageMarker => ({
+  __drStorage: 'idb',
+  version: 1,
+  updatedAt: Date.now(),
+});
+
+const openStickyStateDb = (): Promise<IDBDatabase> => {
+  if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined') {
+    return Promise.reject(new Error('IndexedDB unavailable'));
+  }
+  if (stickyStateDbPromise) return stickyStateDbPromise;
+
+  stickyStateDbPromise = new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(APP_IDB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(APP_IDB_STORE)) {
+        db.createObjectStore(APP_IDB_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
+  });
+
+  return stickyStateDbPromise;
+};
+
+const readIndexedDbValue = async (key: string): Promise<unknown | undefined> => {
+  const db = await openStickyStateDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(APP_IDB_STORE, 'readonly');
+    const store = tx.objectStore(APP_IDB_STORE);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result === undefined ? undefined : request.result);
+    request.onerror = () => reject(request.error || new Error(`IndexedDB read failed: ${key}`));
+  });
+};
+
+const writeIndexedDbValue = async (key: string, value: unknown): Promise<void> => {
+  const db = await openStickyStateDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(APP_IDB_STORE, 'readwrite');
+    const store = tx.objectStore(APP_IDB_STORE);
+    const request = store.put(value, key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error(`IndexedDB write failed: ${key}`));
+  });
+};
+
+const deleteIndexedDbValue = async (key: string): Promise<void> => {
+  if (!shouldPersistInIndexedDb(key)) return;
+  const db = await openStickyStateDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(APP_IDB_STORE, 'readwrite');
+    const store = tx.objectStore(APP_IDB_STORE);
+    const request = store.delete(key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error(`IndexedDB delete failed: ${key}`));
+  });
+};
+
+const clearIndexedDbKeys = async (keys: string[]) => {
+  const targets = keys.filter((key) => shouldPersistInIndexedDb(key));
+  if (!targets.length) return;
+  await Promise.all(targets.map((key) => deleteIndexedDbValue(key)));
+};
+
 function useStickyState<T>(defaultValue: T, key: string, normalize?: (value: unknown) => T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const sanitize = useCallback((input: unknown): T => {
     if (normalize) return normalize(input);
     return input as T;
   }, [normalize]);
 
+  const persistInIndexedDb = shouldPersistInIndexedDb(key);
+
   const [value, setValue] = useState<T>(() => {
     try {
       const stored = window.localStorage.getItem(key);
       if (stored === null) return sanitize(defaultValue);
-      return sanitize(JSON.parse(stored));
+      const parsed = JSON.parse(stored);
+      if (isIdbStorageMarker(parsed)) {
+        return sanitize(defaultValue);
+      }
+      return sanitize(parsed);
     } catch (error) {
       console.error(`Error reading localStorage key "${key}":`, error);
       return sanitize(defaultValue);
     }
   });
+  const [idbHydrated, setIdbHydrated] = useState(() => !persistInIndexedDb);
+
+  useEffect(() => {
+    if (!persistInIndexedDb) return;
+    let active = true;
+    (async () => {
+      try {
+        const stored = await readIndexedDbValue(key);
+        if (!active) return;
+        if (stored !== undefined) {
+          setValue((prevValue) => {
+            const nextValue = sanitize(stored);
+            return JSON.stringify(nextValue) === JSON.stringify(prevValue) ? prevValue : nextValue;
+          });
+        }
+      } catch (error) {
+        console.error(`Error reading IndexedDB key "${key}":`, error);
+      } finally {
+        if (active) setIdbHydrated(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [key, persistInIndexedDb, sanitize]);
 
   const setSafeValue = useCallback<React.Dispatch<React.SetStateAction<T>>>((nextValue) => {
     setValue((prevValue) => {
@@ -192,12 +365,24 @@ function useStickyState<T>(defaultValue: T, key: string, normalize?: (value: unk
   }, [sanitize]);
 
   useEffect(() => {
+    if (persistInIndexedDb && !idbHydrated) return;
+    if (isE2ESeedLockActive()) return;
     try {
+      if (persistInIndexedDb) {
+        void writeIndexedDbValue(key, value)
+          .then(() => {
+            window.localStorage.setItem(key, JSON.stringify(createIdbStorageMarker()));
+          })
+          .catch((error) => {
+            console.error(`Error setting IndexedDB key "${key}":`, error);
+          });
+        return;
+      }
       window.localStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
       console.error(`Error setting localStorage key "${key}":`, error);
     }
-  }, [key, value]);
+  }, [idbHydrated, key, persistInIndexedDb, value]);
 
   return [value, setSafeValue];
 }
@@ -268,10 +453,112 @@ const normalizeSafeCurriculum = (value: unknown): SubjectCurriculum => {
 };
 
 const normalizeSafeArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? value as T[] : []);
+const normalizeSafeNumberRecord = (value: unknown): Record<string, number> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, entryValue]) => Number.isFinite(Number(entryValue)))
+    .map(([entryKey, entryValue]) => [entryKey, Number(entryValue)] as const);
+  return Object.fromEntries(entries);
+};
+
+const normalizeDecisionRuleOverrides = (value: unknown): DecisionRuleOverrides => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const candidate = value as { thresholds?: Record<string, unknown>; weights?: Record<string, unknown> };
+  const pickNumber = (record: Record<string, unknown> | undefined, key: string) =>
+    Number.isFinite(Number(record?.[key])) ? Number(record?.[key]) : undefined;
+  return {
+    thresholds: candidate.thresholds
+      ? {
+          lowDataSessionCount: pickNumber(candidate.thresholds, 'lowDataSessionCount'),
+          noStudyDaysCritical: pickNumber(candidate.thresholds, 'noStudyDaysCritical'),
+          weakTopicCountWarning: pickNumber(candidate.thresholds, 'weakTopicCountWarning'),
+          riskWarningMin: pickNumber(candidate.thresholds, 'riskWarningMin'),
+          riskCriticalMin: pickNumber(candidate.thresholds, 'riskCriticalMin'),
+        }
+      : undefined,
+    weights: candidate.weights
+      ? {
+          noStudy: pickNumber(candidate.weights, 'noStudy'),
+          trendDrop: pickNumber(candidate.weights, 'trendDrop'),
+          weakTopics: pickNumber(candidate.weights, 'weakTopics'),
+          risk: pickNumber(candidate.weights, 'risk'),
+          lowDataPenalty: pickNumber(candidate.weights, 'lowDataPenalty'),
+        }
+      : undefined,
+  };
+};
+
+const normalizeDecisionRolloutMode = (value: unknown): 'stable' | 'beta' => (
+  value === 'beta' ? 'beta' : 'stable'
+);
+
+const normalizeSafeObservabilityEvents = (value: unknown): ObservabilityEvent[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry) => entry && typeof entry === 'object')
+    .map((entry, index) => {
+      const candidate = entry as Partial<ObservabilityEvent>;
+      return {
+        id: typeof candidate.id === 'string' && candidate.id ? candidate.id : `evt-legacy-${index}`,
+        ts: typeof candidate.ts === 'string' ? candidate.ts : new Date().toISOString(),
+        type: (candidate.type as ObservabilityEvent['type']) || 'analysis_snapshot',
+        sourceEventId: typeof candidate.sourceEventId === 'string' ? candidate.sourceEventId : null,
+        meta: candidate.meta && typeof candidate.meta === 'object' ? candidate.meta as Record<string, string | number | boolean | null> : {},
+      };
+    })
+    .slice(-120);
+};
+
+const normalizeSafePipelineState = (value: unknown): AnalysisPipelineState => {
+  const fallback: AnalysisPipelineState = {
+    processedSourceEventIds: [],
+    lastBackgroundRecomputeAt: null,
+    lastDailySummaryAt: null,
+    lastWeeklySummaryAt: null,
+    cacheVersion: 1,
+    cacheHits: 0,
+    cacheMisses: 0,
+  };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
+  const candidate = value as Partial<AnalysisPipelineState>;
+  return {
+    processedSourceEventIds: Array.isArray(candidate.processedSourceEventIds)
+      ? candidate.processedSourceEventIds.filter((item): item is string => typeof item === 'string').slice(-300)
+      : [],
+    lastBackgroundRecomputeAt: typeof candidate.lastBackgroundRecomputeAt === 'string' ? candidate.lastBackgroundRecomputeAt : null,
+    lastDailySummaryAt: typeof candidate.lastDailySummaryAt === 'string' ? candidate.lastDailySummaryAt : null,
+    lastWeeklySummaryAt: typeof candidate.lastWeeklySummaryAt === 'string' ? candidate.lastWeeklySummaryAt : null,
+    cacheVersion: Number.isFinite(Number(candidate.cacheVersion)) ? Number(candidate.cacheVersion) : 1,
+    cacheHits: Number.isFinite(Number(candidate.cacheHits)) ? Number(candidate.cacheHits) : 0,
+    cacheMisses: Number.isFinite(Number(candidate.cacheMisses)) ? Number(candidate.cacheMisses) : 0,
+  };
+};
 
 const normalizeSafeNumber = (value: unknown): number => {
   const next = Number(value);
   return Number.isFinite(next) ? next : 0;
+};
+
+const deriveAnalysisSnapshotSafe = (
+  tasks: Task[],
+  courses: Course[],
+  studyPlans: StoredStudyPlan[],
+  examRecords: ExamRecord[],
+  compositeExamResults: CompositeExamResult[],
+) => {
+  try {
+    return {
+      snapshot: deriveAnalysisSnapshot(tasks, courses, studyPlans, examRecords, compositeExamResults),
+      runtimeError: null as string | null,
+    };
+  } catch (analysisError) {
+    const message = analysisError instanceof Error ? analysisError.message : 'Bilinmeyen analiz hatasi';
+    console.error('Parent analysis fallback triggered:', analysisError);
+    return {
+      snapshot: deriveAnalysisSnapshot([], courses, studyPlans, examRecords, compositeExamResults),
+      runtimeError: `Analiz gecici olarak yenileniyor: ${message}`,
+    };
+  }
 };
 
 const academicStorageKeys = [
@@ -340,6 +627,7 @@ const isRetainedRealSubject = (value: unknown) => retainedRealSubjectKeys.has(no
 
 const pruneLegacyDemoSubjects = () => {
   if (typeof window === 'undefined') return;
+  if (isE2EBulkSeedMode()) return;
   const migrationKey = 'drLegacyDemoSubjectsPrunedV1';
   if (window.localStorage.getItem(migrationKey) === 'true') return;
 
@@ -430,6 +718,7 @@ const pruneLegacyDemoSubjects = () => {
 
 const purgeLegacyDemoData = () => {
   if (typeof window === 'undefined') return;
+  if (isE2EBulkSeedMode()) return;
   const coursesPayload = parseStorageJson('courses');
   const curriculumPayload = parseStorageJson('curriculum');
   const schedulePayload = parseStorageJson('weeklySchedule');
@@ -440,6 +729,7 @@ const purgeLegacyDemoData = () => {
   if (!shouldPurge) return;
 
   academicStorageKeys.forEach((key) => window.localStorage.removeItem(key));
+  void clearIndexedDbKeys(academicStorageKeys);
   Object.keys(window.localStorage)
     .filter((key) => key.startsWith('timerState_'))
     .forEach((key) => window.localStorage.removeItem(key));
@@ -790,6 +1080,7 @@ const buildLegacyScheduleDay = (value: string): WeeklyScheduleDay => {
 
 const seedInitialRealCurriculum = () => {
   if (typeof window === 'undefined') return;
+  if (isE2EBulkSeedMode()) return;
 
   const coursesPayload = parseStorageJson('courses');
   const curriculumPayload = parseStorageJson('curriculum');
@@ -810,6 +1101,7 @@ const seedInitialRealCurriculum = () => {
   if (!shouldReplaceWithRealMath) return;
 
   academicStorageKeys.forEach((key) => window.localStorage.removeItem(key));
+  void clearIndexedDbKeys(academicStorageKeys);
   Object.keys(window.localStorage)
     .filter((key) => key.startsWith('timerState_'))
     .forEach((key) => window.localStorage.removeItem(key));
@@ -856,7 +1148,236 @@ const normalizeWeeklySchedule = (schedule: any): WeeklySchedule => {
   return normalized;
 };
 
+const getQueryParam = (key: string): string | null => {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get(key);
+};
+
+const isE2EBulkSeedMode = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const isE2E = params.get('e2e') === '1';
+  if (!isE2E) return false;
+  const qaRecordsMode = params.get('qaRecords');
+  const hasBulkSeedMarker = Boolean(window.localStorage.getItem('__bulk_seed_marker'));
+  return hasBulkSeedMarker && (!qaRecordsMode || qaRecordsMode === 'none');
+};
+
+const isE2ESeedLockActive = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('e2e') !== '1') return false;
+  return window.localStorage.getItem('__qa_seed_lock') === '1';
+};
+
+const isIdbHydrationPending = (key: string, currentValue: unknown) => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (!isIdbStorageMarker(parsed)) return false;
+    if (Array.isArray(currentValue)) return currentValue.length === 0;
+    if (currentValue && typeof currentValue === 'object') return Object.keys(currentValue as Record<string, unknown>).length === 0;
+    return currentValue === null || currentValue === undefined;
+  } catch {
+    return false;
+  }
+};
+
+const seedManualQaRecords = () => {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  const isE2EMode = params.get('e2e') === '1';
+  if (!isE2EMode) return;
+  const qaRecordsMode = params.get('qaRecords');
+  if (!qaRecordsMode || qaRecordsMode === 'none') return;
+
+  const syncQaSeedToIndexedDb = (next: {
+    tasks: Task[];
+    performanceData: PerformanceData[];
+    examRecords: ExamRecord[];
+    compositeExamResults: CompositeExamResult[];
+  }) => {
+    void Promise.all([
+      writeIndexedDbValue('tasks', next.tasks),
+      writeIndexedDbValue('performanceData', next.performanceData),
+      writeIndexedDbValue('examRecords', next.examRecords),
+      writeIndexedDbValue('compositeExamResults', next.compositeExamResults),
+    ]).catch((error) => {
+      console.error('QA IndexedDB seed sync failed:', error);
+    });
+  };
+
+  const today = new Date('2026-05-15T12:00:00');
+  const iso = (date: Date) => date.toISOString().slice(0, 10);
+  const daysAgo = (count: number) => {
+    const copy = new Date(today);
+    copy.setDate(copy.getDate() - count);
+    return iso(copy);
+  };
+  const atTime = (day: string, hour: number, minute = 0) => new Date(day + 'T' + String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0') + ':00').getTime();
+  const courseByName = new Map(INITIAL_REAL_COURSES.map((course) => [course.name, course]));
+  const pickTopic = (courseName: string, unitIndex: number, topicIndex: number) => {
+    const units = INITIAL_REAL_CURRICULUM[courseName] || [];
+    const unit = units[Math.min(unitIndex, Math.max(0, units.length - 1))];
+    const topic = unit?.topics[Math.min(topicIndex, Math.max(0, (unit?.topics.length || 1) - 1))];
+    return {
+      course: courseByName.get(courseName) || INITIAL_REAL_COURSES[0],
+      unitName: unit?.name || '1. Ünite',
+      topicName: topic?.name || 'Konu',
+    };
+  };
+
+  const specs = [
+    ['Matematik', 0, 0, 'soru çözme', 'test-cozme', 30, 18, 8, 4, 42, 58, 70, 12, 9],
+    ['Matematik', 1, 2, 'soru çözme', 'test-cozme', 24, 21, 2, 1, 88, 84, 40, 10, 16],
+    ['Matematik', 3, 5, 'ders çalışma', 'ders calisma', 0, 0, 0, 0, 76, 81, 45, 13, 18],
+    ['Matematik', 4, 4, 'ders çalışma', 'konu-tekrari', 0, 0, 0, 0, 52, 66, 35, 15, 20],
+    ['Fen Bilgisi', 0, 1, 'soru çözme', 'test-cozme', 25, 15, 7, 3, 60, 70, 35, 16, 5],
+    ['Fen Bilgisi', 1, 3, 'soru çözme', 'test-cozme', 32, 26, 4, 2, 81, 78, 40, 17, 25],
+    ['Fen Bilgisi', 3, 0, 'ders çalışma', 'ders calisma', 0, 0, 0, 0, 73, 80, 45, 18, 35],
+    ['Fen Bilgisi', 5, 7, 'ders çalışma', 'konu-tekrari', 0, 0, 0, 0, 49, 62, 30, 20, 45],
+    ['Türkçe', 0, 0, 'soru çözme', 'test-cozme', 20, 13, 5, 2, 65, 71, 30, 19, 55],
+    ['Türkçe', 1, 2, 'soru çözme', 'test-cozme', 28, 24, 3, 1, 86, 82, 35, 20, 65],
+    ['Türkçe', 3, 0, 'ders çalışma', 'ders calisma', 0, 0, 0, 0, 72, 76, 40, 21, 75],
+    ['Türkçe', 4, 2, 'ders çalışma', 'konu-tekrari', 0, 0, 0, 0, 55, 68, 35, 22, 85],
+    ['T.C. İnkılap Tarihi ve Atatürkçülük', 1, 10, 'soru çözme', 'test-cozme', 18, 10, 6, 2, 56, 65, 30, 14, 15],
+    ['T.C. İnkılap Tarihi ve Atatürkçülük', 2, 8, 'ders çalışma', 'ders calisma', 0, 0, 0, 0, 74, 78, 40, 17, 45],
+    ['T.C. İnkılap Tarihi ve Atatürkçülük', 3, 12, 'ders çalışma', 'konu-tekrari', 0, 0, 0, 0, 61, 69, 35, 19, 50],
+    ['Din Kültürü ve Ahlak Bilgisi', 0, 4, 'soru çözme', 'test-cozme', 16, 13, 2, 1, 82, 79, 25, 10, 25],
+    ['Din Kültürü ve Ahlak Bilgisi', 1, 1, 'soru çözme', 'test-cozme', 16, 9, 5, 2, 56, 64, 25, 12, 35],
+    ['Din Kültürü ve Ahlak Bilgisi', 3, 5, 'ders çalışma', 'ders calisma', 0, 0, 0, 0, 79, 83, 35, 15, 45],
+    ['Ingilizce', 0, 0, 'soru çözme', 'test-cozme', 20, 17, 2, 1, 85, 80, 30, 16, 10],
+    ['Ingilizce', 2, 0, 'soru çözme', 'test-cozme', 20, 11, 7, 2, 55, 66, 30, 18, 20],
+    ['Ingilizce', 4, 0, 'ders çalışma', 'ders calisma', 0, 0, 0, 0, 76, 82, 40, 19, 30],
+    ['Ingilizce', 6, 0, 'ders çalışma', 'konu-tekrari', 0, 0, 0, 0, 60, 72, 35, 21, 40],
+    ['Matematik', 5, 4, 'soru çözme', 'test-cozme', 40, 23, 13, 4, 58, 63, 50, 22, 50],
+    ['Fen Bilgisi', 6, 3, 'soru çözme', 'test-cozme', 36, 30, 4, 2, 83, 77, 45, 23, 55],
+  ] as const;
+
+  const tasks: Task[] = specs.map((spec, index) => {
+    const [courseName, unitIndex, topicIndex, taskType, taskGoalType, questionCount, correctCount, incorrectCount, emptyCount, successScore, focusScore, plannedDuration, hour, minute] = spec;
+    const picked = pickTopic(courseName, unitIndex, topicIndex);
+    const day = daysAgo(index + 1);
+    const isQuestion = taskType === 'soru çözme';
+    const durationMinutes = plannedDuration || (isQuestion ? 30 : 40);
+    const actualDuration = durationMinutes * 60 + ((index % 5) - 1) * 120;
+    return {
+      id: `qa_manual_${index + 1}`,
+      courseId: picked.course.id,
+      title: `${picked.course.name} - ${picked.topicName}`,
+      description: `QA gerçek kayıt: uzun konu, grafik ve analiz kontrolü ${index + 1}`,
+      dueDate: day,
+      status: 'tamamlandı',
+      taskType,
+      taskGoalType,
+      plannedDuration: durationMinutes,
+      actualDuration: Math.max(600, actualDuration),
+      breakTime: index % 4 === 0 ? 180 : 60,
+      pauseTime: index % 3 === 0 ? 120 : 30,
+      questionCount: isQuestion ? questionCount : undefined,
+      correctCount: isQuestion ? correctCount : undefined,
+      incorrectCount: isQuestion ? incorrectCount : undefined,
+      emptyCount: isQuestion ? emptyCount : undefined,
+      firstAttemptScore: isQuestion ? Math.max(20, successScore - (index % 10)) : undefined,
+      selfAssessmentScore: Math.max(20, Math.min(100, successScore + ((index % 9) - 4))),
+      confidenceGap: (index % 9) - 4,
+      conceptErrorCount: isQuestion ? index % 5 : undefined,
+      processErrorCount: isQuestion ? (index + 1) % 4 : undefined,
+      attentionErrorCount: isQuestion ? (index + 2) % 6 : undefined,
+      successScore,
+      focusScore,
+      pointsAwarded: Math.max(8, Math.round((successScore + focusScore) / 8)),
+      completionDate: day,
+      completionTimestamp: atTime(day, hour, minute),
+      isSelfAssigned: index % 6 === 0,
+      curriculumUnitName: picked.unitName,
+      curriculumTopicName: picked.topicName,
+    };
+  });
+
+  if (qaRecordsMode === 'low') {
+    const lowTasks = tasks.slice(0, 2);
+    const lowPerformance = INITIAL_REAL_PERFORMANCE.map((item) => {
+      const courseTasks = lowTasks.filter((task) => task.courseId === item.courseId);
+      return {
+        ...item,
+        correct: courseTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0),
+        incorrect: courseTasks.reduce((sum, task) => sum + (task.incorrectCount || 0), 0),
+        timeSpent: Math.round(courseTasks.reduce((sum, task) => sum + (task.actualDuration || 0), 0) / 60),
+      };
+    });
+
+    window.localStorage.setItem('tasks', JSON.stringify(lowTasks));
+    window.localStorage.setItem('performanceData', JSON.stringify(lowPerformance));
+    window.localStorage.setItem('examRecords', JSON.stringify([]));
+    window.localStorage.setItem('compositeExamResults', JSON.stringify([]));
+    window.localStorage.setItem('successPoints', String(lowTasks.reduce((sum, task) => sum + (task.pointsAwarded || 0), 0)));
+    window.localStorage.setItem('userType', JSON.stringify(UserType.Parent));
+    window.localStorage.setItem('isParentLocked', JSON.stringify(false));
+    window.localStorage.setItem('parentWorkspaceView', JSON.stringify('analysis'));
+    window.localStorage.setItem('parentDefaultView', JSON.stringify('analysis'));
+    window.localStorage.setItem('__qa_manual_records_seeded_at', new Date().toISOString());
+    syncQaSeedToIndexedDb({
+      tasks: lowTasks,
+      performanceData: lowPerformance,
+      examRecords: [],
+      compositeExamResults: [],
+    });
+    return;
+  }
+
+  if (qaRecordsMode === 'empty') {
+    window.localStorage.setItem('tasks', JSON.stringify([]));
+    window.localStorage.setItem('performanceData', JSON.stringify([]));
+    window.localStorage.setItem('examRecords', JSON.stringify([]));
+    window.localStorage.setItem('compositeExamResults', JSON.stringify([]));
+    window.localStorage.setItem('successPoints', '0');
+    window.localStorage.setItem('userType', JSON.stringify(UserType.Parent));
+    window.localStorage.setItem('isParentLocked', JSON.stringify(false));
+    window.localStorage.setItem('parentWorkspaceView', JSON.stringify('analysis'));
+    window.localStorage.setItem('parentDefaultView', JSON.stringify('analysis'));
+    window.localStorage.setItem('__qa_manual_records_seeded_at', new Date().toISOString());
+    syncQaSeedToIndexedDb({
+      tasks: [],
+      performanceData: [],
+      examRecords: [],
+      compositeExamResults: [],
+    });
+    return;
+  }
+
+  const performance = INITIAL_REAL_PERFORMANCE.map((item) => {
+    const courseTasks = tasks.filter((task) => task.courseId === item.courseId);
+    return {
+      ...item,
+      correct: courseTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0),
+      incorrect: courseTasks.reduce((sum, task) => sum + (task.incorrectCount || 0), 0),
+      timeSpent: Math.round(courseTasks.reduce((sum, task) => sum + (task.actualDuration || 0), 0) / 60),
+    };
+  });
+
+  window.localStorage.setItem('tasks', JSON.stringify(tasks));
+  window.localStorage.setItem('performanceData', JSON.stringify(performance));
+  window.localStorage.setItem('successPoints', String(tasks.reduce((sum, task) => sum + (task.pointsAwarded || 0), 0)));
+  window.localStorage.setItem('rewards', JSON.stringify([
+    { id: 'qa_reward_1', name: 'Test sonrası mini mola', cost: 90, icon: 'Gift' },
+    { id: 'qa_reward_2', name: 'Kitap seçimi', cost: 140, icon: 'Gift' },
+  ]));
+  window.localStorage.setItem('badges', JSON.stringify([
+    { id: 'qa_badge_1', name: 'Gerçek Kayıt Testi', description: 'QA kayıtları başarıyla işlendi.', icon: 'Award' },
+  ]));
+  window.localStorage.setItem('userType', JSON.stringify(UserType.Parent));
+  window.localStorage.setItem('isParentLocked', JSON.stringify(false));
+  window.localStorage.setItem('parentWorkspaceView', JSON.stringify('analysis'));
+  window.localStorage.setItem('parentDefaultView', JSON.stringify('analysis'));
+  window.localStorage.removeItem('drEnableRecharts');
+  window.localStorage.removeItem('drDisableRecharts');
+  window.localStorage.setItem('__qa_manual_records_seeded_at', new Date().toISOString());
+};
 seedInitialRealCurriculum();
+seedManualQaRecords();
 pruneLegacyDemoSubjects();
 purgeLegacyDemoData();
 
@@ -1751,13 +2272,14 @@ const pruneStudyPlanTree = (plans: StoredStudyPlan[]): StoredStudyPlan[] =>
 const parentWorkspaceItems: Array<{ id: ParentWorkspaceView; label: string; description: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }> = [
   { id: 'overview', label: 'Genel Bakış', description: 'Özet ve kontrol merkezi', icon: Home },
   { id: 'planning', label: 'Planlama', description: 'Okul programı + ev çalışma + sınav takvimi', icon: Sparkles },
-  { id: 'analysis', label: 'Analiz', description: 'Performans ve raporlar', icon: BarChart },
+  { id: 'analysis', label: 'Karar', description: 'Performans ve kararlar', icon: BarChart },
 ];
 
 const primaryParentWorkspaceIds: ParentWorkspaceView[] = ['overview', 'planning', 'analysis'];
 const secondaryParentWorkspaceIds: ParentWorkspaceView[] = [];
 
 const App: React.FC = () => {
+  const isE2EMode = getQueryParam('e2e') === '1';
   const [userType, setUserType] = useStickyState<UserType>(UserType.Parent, 'userType');
   const [courses, setCourses] = useStickyState<Course[]>([], 'courses', normalizeSafeCourses);
   const [tasks, setTasks] = useStickyState<Task[]>([], 'tasks', normalizeSafeTasks);
@@ -1799,7 +2321,37 @@ const App: React.FC = () => {
   const [themeMode, setThemeMode] = useStickyState<'light' | 'dark'>('dark', 'themeMode');
   const [showNotificationDot, setShowNotificationDot] = useStickyState<boolean>(true, 'showNotificationDot');
   const [rememberLastParentView, setRememberLastParentView] = useStickyState<boolean>(true, 'rememberLastParentView');
+  const [parentDecisionV1Enabled, setParentDecisionV1Enabled] = useStickyState<boolean>(true, 'parentDecisionV1Enabled');
+  const [parentDecisionRolloutMode, setParentDecisionRolloutMode] = useStickyState<'stable' | 'beta'>(
+    'stable',
+    'parentDecisionRolloutMode',
+    normalizeDecisionRolloutMode,
+  );
+  const [parentDecisionRuleOverrides, setParentDecisionRuleOverrides] = useStickyState<DecisionRuleOverrides>(
+    {},
+    'parentDecisionRuleOverrides',
+    normalizeDecisionRuleOverrides,
+  );
+  const [parentDecisionTuningVersion, setParentDecisionTuningVersion] = useStickyState<string>(
+    'thresholds-v1',
+    'parentDecisionTuningVersion',
+  );
   const [dismissedNotificationKeys, setDismissedNotificationKeys] = useStickyState<string[]>([], 'dismissedNotificationKeys', normalizeSafeArray<string>);
+  const [notificationCooldownMap, setNotificationCooldownMap] = useStickyState<Record<string, number>>({}, 'notificationCooldownMap', normalizeSafeNumberRecord);
+  const [observabilityEvents, setObservabilityEvents] = useStickyState<ObservabilityEvent[]>([], 'observabilityEvents', normalizeSafeObservabilityEvents);
+  const [analysisPipelineState, setAnalysisPipelineState] = useStickyState<AnalysisPipelineState>(
+    {
+      processedSourceEventIds: [],
+      lastBackgroundRecomputeAt: null,
+      lastDailySummaryAt: null,
+      lastWeeklySummaryAt: null,
+      cacheVersion: 1,
+      cacheHits: 0,
+      cacheMisses: 0,
+    },
+    'analysisPipelineState',
+    normalizeSafePipelineState,
+  );
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
@@ -1807,6 +2359,15 @@ const App: React.FC = () => {
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [globalSearchScope, setGlobalSearchScope] = useState<SearchScope>('all');
   const [curriculumEditorOpen, setCurriculumEditorOpen] = useState(false);
+  const lastObservabilitySignatureRef = useRef<string | null>(null);
+  const analysisCacheSignatureRef = useRef<string | null>(null);
+  const prevDayKeyRef = useRef<string | null>(null);
+  const prevWeekKeyRef = useRef<string | null>(null);
+  const processedEventIdsRef = useRef<Set<string>>(new Set());
+  const processedSourceTokensRef = useRef<Set<string>>(new Set());
+  const settingsTelemetryInitRef = useRef(false);
+  const rolloutTelemetryInitRef = useRef(false);
+  const tuningTelemetryInitRef = useRef(false);
 
   useEffect(() => {
     const paletteFlag = 'drDarkPaletteApplied';
@@ -1814,6 +2375,10 @@ const App: React.FC = () => {
     setThemeMode('dark');
     window.localStorage.setItem(paletteFlag, 'true');
   }, [setThemeMode]);
+
+  useEffect(() => {
+    processedSourceTokensRef.current = new Set(analysisPipelineState.processedSourceEventIds.slice(-300));
+  }, [analysisPipelineState.processedSourceEventIds]);
 
   useEffect(() => {
     if ((parentWorkspaceView as string) === 'curriculum') {
@@ -1824,6 +2389,13 @@ const App: React.FC = () => {
       setParentWorkspaceView('planning');
     }
   }, [parentWorkspaceView, setParentWorkspaceView]);
+
+  useEffect(() => {
+    if (parentWorkspaceView === 'analysis' && !parentDecisionV1Enabled) {
+      setParentWorkspaceView('overview');
+      addToast('Karar ekrani kapali oldugu icin Genel Bakis acildi.', 'success');
+    }
+  }, [parentWorkspaceView, parentDecisionV1Enabled, setParentWorkspaceView]);
 
   useEffect(() => {
     if (!notificationsOpen && !settingsOpen && !searchOpen && !quickActionsOpen && !parentControlCenterOpen) return;
@@ -1871,6 +2443,12 @@ const App: React.FC = () => {
   }, [setParentWorkspaceView, setUserType]);
 
   useEffect(() => {
+    if (!isE2EMode) return;
+    setIsParentLocked(false);
+    setLoginError(null);
+  }, [isE2EMode, setIsParentLocked]);
+
+  useEffect(() => {
     const { courses: nextCourses, courseIdAliases } = normalizeCoursesWithAliases(courses);
     const nextTasks = tasks.map((task) => {
       const normalizedTask = normalizeTask(task);
@@ -1909,6 +2487,8 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (isIdbHydrationPending('curriculum', curriculum)) return;
+    if (isIdbHydrationPending('tasks', tasks)) return;
     const subjectNames = Object.keys(curriculum || {});
     const nextCourses = subjectNames.map((subjectName, index) => {
       const matched = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(subjectName));
@@ -2008,6 +2588,12 @@ const App: React.FC = () => {
 
   const handleUserTypeChange = (nextUserType: UserType) => {
     if (nextUserType !== userType) playHaptic('selection');
+    if (isE2EMode) {
+      setIsParentLocked(false);
+      setLoginError(null);
+      setUserType(nextUserType);
+      return;
+    }
     if (nextUserType === UserType.Parent) {
       setIsParentLocked(true);
       setLoginError(null);
@@ -2135,12 +2721,13 @@ const App: React.FC = () => {
     }
   };
 
-  const generateReport = async (period: 'Haftal\u0131k' | 'Ayl\u0131k' | 'Y\u0131ll\u0131k' | 'T\u00fcm Zamanlar'): Promise<ReportData | null> => {
+  const generateReport = async (period: 'Haftal\u0131k' | 'Ayl\u0131k' | '3 Ayl\u0131k' | 'Y\u0131ll\u0131k' | 'T\u00fcm Zamanlar'): Promise<ReportData | null> => {
     const now = new Date();
     const startDate = new Date(now);
 
     if (period === 'Haftal\u0131k') startDate.setDate(now.getDate() - 7);
     if (period === 'Ayl\u0131k') startDate.setMonth(now.getMonth() - 1);
+    if (period === '3 Ayl\u0131k') startDate.setMonth(now.getMonth() - 3);
     if (period === 'Y\u0131ll\u0131k') startDate.setFullYear(now.getFullYear() - 1);
 
     const completedTasks = tasks.filter((task) => {
@@ -2533,10 +3120,228 @@ const App: React.FC = () => {
     window.setTimeout(() => rewardClaimLockRef.current.delete(rewardId), 350);
   };
 
-  const parentAnalysis = useMemo(
-    () => deriveAnalysisSnapshot(tasks, courses, studyPlans, examRecords, compositeExamResults),
+  const parentAnalysisResult = useMemo(
+    () => deriveAnalysisSnapshotSafe(tasks, courses, studyPlans, examRecords, compositeExamResults),
     [tasks, courses, studyPlans, examRecords, compositeExamResults],
   );
+  const parentAnalysis = parentAnalysisResult.snapshot;
+  const parentAnalysisRuntimeError = parentAnalysisResult.runtimeError;
+  useEffect(() => {
+    const signature = JSON.stringify({
+      tasks: tasks.length,
+      courses: courses.length,
+      sessions: parentAnalysis.sessions.length,
+      completed: parentAnalysis.overall.completedTasks,
+      weakTopics: parentAnalysis.topics.filter((topic) => topic.needsRevision).length,
+    });
+    const isHit = analysisCacheSignatureRef.current === signature;
+    analysisCacheSignatureRef.current = signature;
+    setAnalysisPipelineState((prev) => ({
+      ...prev,
+      cacheHits: prev.cacheHits + (isHit ? 1 : 0),
+      cacheMisses: prev.cacheMisses + (isHit ? 0 : 1),
+      cacheVersion: prev.cacheVersion + (isHit ? 0 : 1),
+    }));
+  }, [
+    courses.length,
+    parentAnalysis.overall.completedTasks,
+    parentAnalysis.sessions.length,
+    parentAnalysis.topics,
+    setAnalysisPipelineState,
+    tasks.length,
+  ]);
+  const pushObservabilityEvent = useCallback((event: Omit<ObservabilityEvent, 'id'> & { id?: string }) => {
+    const id = event.id || `evt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (processedEventIdsRef.current.has(id)) return;
+    processedEventIdsRef.current.add(id);
+    setObservabilityEvents((prev) => [...prev.slice(-119), { ...event, id }]);
+  }, [setObservabilityEvents]);
+  const emitPipelineEvent = useCallback(
+    (
+      sourceEventId: string,
+      type: ObservabilityEvent['type'],
+      meta: Record<string, string | number | boolean | null>,
+    ) => {
+      const token = `${sourceEventId}:${type}`;
+      if (processedSourceTokensRef.current.has(token)) return;
+      processedSourceTokensRef.current.add(token);
+      setAnalysisPipelineState((prev) => {
+        if (prev.processedSourceEventIds.includes(token)) return prev;
+        return {
+          ...prev,
+          processedSourceEventIds: [...prev.processedSourceEventIds, token].slice(-300),
+        };
+      });
+      pushObservabilityEvent({
+        ts: new Date().toISOString(),
+        type,
+        sourceEventId,
+        meta,
+      });
+    },
+    [pushObservabilityEvent, setAnalysisPipelineState],
+  );
+  const observabilitySummary = useMemo(() => {
+    const recent = observabilityEvents.slice(-30);
+    const typeMap = recent.reduce<Record<string, number>>((acc, event) => {
+      acc[event.type] = (acc[event.type] || 0) + 1;
+      return acc;
+    }, {});
+    const topTypeEntry = Object.entries(typeMap).sort((a, b) => b[1] - a[1])[0];
+    return {
+      total: observabilityEvents.length,
+      recentCount: recent.length,
+      topType: topTypeEntry?.[0] || null,
+      topTypeCount: topTypeEntry?.[1] || 0,
+      lastEventTs: observabilityEvents[observabilityEvents.length - 1]?.ts || null,
+    };
+  }, [observabilityEvents]);
+  const observabilityRecent = useMemo(() => (
+    observabilityEvents
+      .slice(-5)
+      .reverse()
+      .map((event) => ({
+        ts: event.ts,
+        type: event.type,
+        note: Object.entries(event.meta)
+          .slice(0, 2)
+          .map(([key, value]) => `${key}:${String(value)}`)
+          .join(' · '),
+      }))
+  ), [observabilityEvents]);
+  const exportObservabilityAudit = useCallback(() => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      versionMeta: getParentDecisionVersionMeta(),
+      summary: observabilitySummary,
+      pipeline: analysisPipelineState,
+      recent: observabilityRecent,
+      events: observabilityEvents,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `parent-observability-audit-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+    addToast('Audit kaydi indirildi.', 'success');
+  }, [analysisPipelineState, observabilityEvents, observabilityRecent, observabilitySummary, addToast]);
+  useEffect(() => {
+    if (!settingsTelemetryInitRef.current) {
+      settingsTelemetryInitRef.current = true;
+      return;
+    }
+    pushObservabilityEvent({
+      ts: new Date().toISOString(),
+      type: 'settings_change',
+      meta: {
+        notifications_muted: notificationsMuted,
+        haptics_enabled: hapticsEnabled,
+        theme_mode: themeMode,
+        remember_last_parent_view: rememberLastParentView,
+        decision_v1_enabled: parentDecisionV1Enabled,
+      },
+    });
+  }, [
+    hapticsEnabled,
+    notificationsMuted,
+    parentDecisionV1Enabled,
+    rememberLastParentView,
+    themeMode,
+    pushObservabilityEvent,
+  ]);
+
+  useEffect(() => {
+    if (!rolloutTelemetryInitRef.current) {
+      rolloutTelemetryInitRef.current = true;
+      return;
+    }
+    pushObservabilityEvent({
+      ts: new Date().toISOString(),
+      type: 'rollout_mode_change',
+      meta: {
+        rollout_mode: parentDecisionRolloutMode,
+        ...getParentDecisionVersionMeta(),
+      },
+    });
+  }, [parentDecisionRolloutMode, pushObservabilityEvent]);
+
+  useEffect(() => {
+    if (!tuningTelemetryInitRef.current) {
+      tuningTelemetryInitRef.current = true;
+      return;
+    }
+    pushObservabilityEvent({
+      ts: new Date().toISOString(),
+      type: 'decision_tuning_change',
+      meta: {
+        tuned: Boolean(parentDecisionRuleOverrides.thresholds || parentDecisionRuleOverrides.weights),
+        risk_critical_min: parentDecisionRuleOverrides.thresholds?.riskCriticalMin ?? null,
+        risk_warning_min: parentDecisionRuleOverrides.thresholds?.riskWarningMin ?? null,
+        weak_topic_warning: parentDecisionRuleOverrides.thresholds?.weakTopicCountWarning ?? null,
+        ...getParentDecisionVersionMeta(),
+      },
+    });
+  }, [parentDecisionRuleOverrides, pushObservabilityEvent]);
+  useEffect(() => {
+    const sourceEventId = `evt-src-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    emitPipelineEvent(sourceEventId, 'event_pipeline', {
+      trigger: 'input_change',
+      task_count: tasks.length,
+      course_count: courses.length,
+      exam_count: examRecords.length,
+      composite_exam_count: compositeExamResults.length,
+    });
+    emitPipelineEvent(sourceEventId, 'background_recompute', {
+      mode: 'on_change',
+      analysis_sessions: parentAnalysis.sessions.length,
+      weak_topic_count: parentAnalysis.topics.filter((topic) => topic.needsRevision).length,
+    });
+  }, [
+    tasks.length,
+    courses.length,
+    examRecords.length,
+    compositeExamResults.length,
+    parentAnalysis.sessions.length,
+    parentAnalysis.topics,
+    emitPipelineEvent,
+  ]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const sourceEventId = `evt-src-bg-${Date.now()}`;
+      emitPipelineEvent(sourceEventId, 'background_recompute', {
+        mode: 'scheduled',
+        interval_min: 5,
+        task_count: tasks.length,
+        analysis_sessions: parentAnalysis.sessions.length,
+      });
+      setAnalysisPipelineState((prev) => ({
+        ...prev,
+        lastBackgroundRecomputeAt: new Date().toISOString(),
+      }));
+
+      const now = new Date();
+      const todayKey = now.toISOString().slice(0, 10);
+      const weekKey = `${now.getUTCFullYear()}-W${Math.ceil((Math.floor((now.getTime() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 86400000) + 1) / 7)}`;
+      if (prevDayKeyRef.current !== todayKey) {
+        prevDayKeyRef.current = todayKey;
+        const dailySource = `evt-src-daily-${todayKey}`;
+        emitPipelineEvent(dailySource, 'background_recompute', { mode: 'daily_summary', day: todayKey });
+        setAnalysisPipelineState((prev) => ({ ...prev, lastDailySummaryAt: new Date().toISOString() }));
+      }
+      if (prevWeekKeyRef.current !== weekKey) {
+        prevWeekKeyRef.current = weekKey;
+        const weeklySource = `evt-src-weekly-${weekKey}`;
+        emitPipelineEvent(weeklySource, 'background_recompute', { mode: 'weekly_summary', week: weekKey });
+        setAnalysisPipelineState((prev) => ({ ...prev, lastWeeklySummaryAt: new Date().toISOString() }));
+      }
+    }, 5 * 60 * 1000);
+    return () => window.clearInterval(intervalId);
+  }, [tasks.length, parentAnalysis.sessions.length, emitPipelineEvent, setAnalysisPipelineState]);
   const today = getLocalDateString();
   const hasParentOperationalData = useMemo(
     () => courses.length > 0 || tasks.length > 0 || studyPlans.length > 0,
@@ -2552,9 +3357,10 @@ const App: React.FC = () => {
   const parentOverdueRate = useMemo(() => calculateOverdueRate(tasks, today), [tasks, today]);
   const parentDeterminismPassed = useMemo(() => {
     if (parentWorkspaceView !== 'analysis') return true;
-    const secondRun = deriveAnalysisSnapshot(tasks, courses, studyPlans, examRecords, compositeExamResults);
-    return JSON.stringify(parentAnalysis) === JSON.stringify(secondRun);
-  }, [tasks, courses, studyPlans, examRecords, compositeExamResults, parentAnalysis, parentWorkspaceView]);
+    if (parentAnalysisRuntimeError) return false;
+    const secondRun = deriveAnalysisSnapshotSafe(tasks, courses, studyPlans, examRecords, compositeExamResults);
+    return !secondRun.runtimeError && JSON.stringify(parentAnalysis) === JSON.stringify(secondRun.snapshot);
+  }, [tasks, courses, studyPlans, examRecords, compositeExamResults, parentAnalysis, parentWorkspaceView, parentAnalysisRuntimeError]);
   const parentSummary = useMemo(
     () => ({
       pendingCount: tasks.filter((task) => task.status === 'bekliyor').length,
@@ -2578,6 +3384,28 @@ const App: React.FC = () => {
     }),
     [tasks, parentAnalysis, today, parentOverdueRate, parentFocus7d, parentAccuracyTrend14d, parentDeterminismPassed],
   );
+  const suspiciousDataSummary = useMemo(() => {
+    const completed = tasks.filter((task) => isCompletedTask(task));
+    const suspicious = completed.filter((task) => {
+      const duration = Number(task.actualDuration || 0);
+      const questions = Number(task.questionCount || 0);
+      const hasAccuracy = Number.isFinite(task.correctCount) || Number.isFinite(task.incorrectCount);
+      const hasPayload = duration > 0 || questions > 0 || hasAccuracy;
+
+      const idleLongSession = duration >= 3 * 60 * 60 && questions <= 0 && !hasAccuracy;
+      const impossibleSpeed = questions >= 80 && duration > 0 && duration <= 120;
+      const emptyCompletion = !hasPayload;
+      return idleLongSession || impossibleSpeed || emptyCompletion;
+    });
+
+    const ratio = completed.length > 0 ? Math.round((suspicious.length / completed.length) * 100) : 0;
+    return {
+      suspiciousCount: suspicious.length,
+      completedCount: completed.length,
+      suspiciousRatio: ratio,
+      hasSuspiciousData: suspicious.length > 0,
+    };
+  }, [tasks]);
   const parentRecommendation = useMemo(() => {
     if (!hasParentAnalysisData) {
       if (hasParentOperationalData) {
@@ -2603,10 +3431,184 @@ const App: React.FC = () => {
   const overviewAnalysis = useMemo(
     () => {
       if (parentWorkspaceView !== 'overview') return parentAnalysis;
-      return deriveAnalysisSnapshot(overviewCompletedTasks, courses, studyPlans, examRecords, compositeExamResults);
+      return deriveAnalysisSnapshotSafe(overviewCompletedTasks, courses, studyPlans, examRecords, compositeExamResults).snapshot;
     },
     [overviewCompletedTasks, courses, studyPlans, examRecords, compositeExamResults, parentAnalysis, parentWorkspaceView],
   );
+  const weeklyCompletedForDecision = useMemo(() => {
+    const base = new Date(`${today}T00:00:00`);
+    const start = new Date(base);
+    start.setDate(start.getDate() - 7);
+    const startYmd = start.toISOString().split('T')[0];
+    return tasks.filter((task) => isCompletedTask(task) && !!task.completionDate && task.completionDate >= startYmd).length;
+  }, [tasks, today]);
+  const parentDecisionSummary = useMemo(() => {
+    const latestCompositeAverage = compositeExamResults[0]
+      ? Math.round(compositeExamResults[0].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[0].courses.length)
+      : null;
+    const previousCompositeAverage = compositeExamResults[1]
+      ? Math.round(compositeExamResults[1].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[1].courses.length)
+      : null;
+
+    const effectiveOverrides = parentDecisionRolloutMode === 'beta' ? parentDecisionRuleOverrides : {};
+    const ruleConfig = resolveDecisionRuleConfig(effectiveOverrides);
+    return buildParentDecision({
+      sessionsCount: parentAnalysis.sessions.length,
+      weeklyCompletedCount: weeklyCompletedForDecision,
+      weakTopicCount: parentAnalysis.topics.filter((topic) => topic.needsRevision).length,
+      averageRisk: parentAnalysis.overall.averageRisk,
+      latestCompositeAverage,
+      previousCompositeAverage,
+    }, ruleConfig);
+  }, [compositeExamResults, parentAnalysis, weeklyCompletedForDecision, parentDecisionRolloutMode, parentDecisionRuleOverrides]);
+  const parentDecisionVersionMeta = useMemo(() => getParentDecisionVersionMeta(), []);
+  useEffect(() => {
+    if (parentDecisionTuningVersion === parentDecisionVersionMeta.thresholdVersion) return;
+    setParentDecisionRuleOverrides({});
+    setParentDecisionTuningVersion(parentDecisionVersionMeta.thresholdVersion);
+    addToast('Karar motoru esik surumu degisti. Tuning ayarlari sifirlandi.', 'success');
+  }, [
+    addToast,
+    parentDecisionTuningVersion,
+    parentDecisionVersionMeta.thresholdVersion,
+    setParentDecisionRuleOverrides,
+    setParentDecisionTuningVersion,
+  ]);
+  const parentDecisionTuningMeta = useMemo(() => ({
+    rolloutMode: parentDecisionRolloutMode,
+    tuned: parentDecisionRolloutMode === 'beta' && Boolean(parentDecisionRuleOverrides.thresholds || parentDecisionRuleOverrides.weights),
+    riskCriticalMin: parentDecisionRolloutMode === 'beta' ? parentDecisionRuleOverrides.thresholds?.riskCriticalMin ?? null : null,
+    riskWarningMin: parentDecisionRolloutMode === 'beta' ? parentDecisionRuleOverrides.thresholds?.riskWarningMin ?? null : null,
+    weakTopicCountWarning: parentDecisionRolloutMode === 'beta' ? parentDecisionRuleOverrides.thresholds?.weakTopicCountWarning ?? null : null,
+  }), [parentDecisionRolloutMode, parentDecisionRuleOverrides]);
+  const goalAlertSignals = useMemo(() => {
+    const normalized = parentDecisionSummary.alerts.slice(0, 4).map((alert, index) => {
+      const idBase = `${alert.level.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-')}-${index}`;
+      const title = alert.level === 'Kritik'
+        ? 'Kritik uyarı'
+        : alert.level === 'Dikkat'
+          ? 'Dikkat uyarısı'
+          : alert.level === 'Takip et'
+            ? 'Takip sinyali'
+            : 'Durum bilgisi';
+      return {
+        id: idBase,
+        level: alert.level,
+        title,
+        description: `${alert.text} Aksiyon: ${alert.action}`,
+      };
+    });
+
+    if (parentSummary.overdueCount > 0) {
+      normalized.unshift({
+        id: 'overdue-critical',
+        level: 'Kritik',
+        title: 'Takipte gecikme var',
+        description: `${parentSummary.overdueCount} görev bekliyor, önce bunları kapatmak gerekiyor.`,
+      });
+    }
+
+    if (compositeExamResults.length === 0) {
+      normalized.push({
+        id: 'exam-low-data',
+        level: 'Takip et',
+        title: 'Deneme verisi az',
+        description: 'Deneme trendi icin en az 2 deneme kaydi gerekiyor.',
+      });
+    }
+
+    if (studyPlans.length === 0) {
+      normalized.push({
+        id: 'goal-low-data',
+        level: 'Takip et',
+        title: 'Hedef verisi eksik',
+        description: 'Ders bazli hedef girildiginde karar onerileri daha net olur.',
+      });
+    }
+
+    if (suspiciousDataSummary.hasSuspiciousData) {
+      normalized.push({
+        id: 'suspicious-data-warning',
+        level: suspiciousDataSummary.suspiciousRatio >= 25 ? 'Dikkat' : 'Takip et',
+        title: 'Veri guvenilirligi',
+        description: `${suspiciousDataSummary.suspiciousCount} kayit supheli gorunuyor. Analiz etkisi dusuk guvenle hesaplandi.`,
+      });
+    }
+
+    return normalized.slice(0, 5);
+  }, [
+    compositeExamResults.length,
+    parentDecisionSummary.alerts,
+    parentSummary.overdueCount,
+    studyPlans.length,
+    suspiciousDataSummary.hasSuspiciousData,
+    suspiciousDataSummary.suspiciousCount,
+    suspiciousDataSummary.suspiciousRatio,
+  ]);
+  const edgeCaseFlags = useMemo(() => ({
+    lowDataSessions: parentAnalysis.sessions.length < 3,
+    noExamData: compositeExamResults.length === 0,
+    noPlanData: studyPlans.length === 0,
+    suspiciousData: suspiciousDataSummary.hasSuspiciousData,
+  }), [
+    parentAnalysis.sessions.length,
+    compositeExamResults.length,
+    studyPlans.length,
+    suspiciousDataSummary.hasSuspiciousData,
+  ]);
+
+  useEffect(() => {
+    const signature = `${parentAnalysis.sessions.length}|${parentAnalysis.overall.generalScore}|${parentAnalysisRuntimeError || 'ok'}`;
+    if (lastObservabilitySignatureRef.current === signature) return;
+    lastObservabilitySignatureRef.current = signature;
+
+    if (parentAnalysisRuntimeError) {
+      pushObservabilityEvent({
+        ts: new Date().toISOString(),
+        type: 'analysis_runtime_error',
+        meta: {
+          message: parentAnalysisRuntimeError,
+          sessions: parentAnalysis.sessions.length,
+          score: parentAnalysis.overall.generalScore,
+          ...parentDecisionVersionMeta,
+          ...parentDecisionTuningMeta,
+        },
+      });
+      return;
+    }
+
+    pushObservabilityEvent({
+      ts: new Date().toISOString(),
+      type: 'analysis_snapshot',
+      meta: {
+        sessions: parentAnalysis.sessions.length,
+        score: parentAnalysis.overall.generalScore,
+        weak_topics: parentAnalysis.topics.filter((topic) => topic.needsRevision).length,
+        top_decision_level: parentDecisionSummary.topAlert.level,
+        top_decision_severity: parentDecisionSummary.topAlert.severityScore,
+        edge_low_data_sessions: edgeCaseFlags.lowDataSessions,
+        edge_no_exam_data: edgeCaseFlags.noExamData,
+        edge_no_plan_data: edgeCaseFlags.noPlanData,
+        edge_suspicious_data: edgeCaseFlags.suspiciousData,
+        suspicious_ratio: suspiciousDataSummary.suspiciousRatio,
+        ...parentDecisionVersionMeta,
+        ...parentDecisionTuningMeta,
+      },
+    });
+  }, [
+    edgeCaseFlags.lowDataSessions,
+    edgeCaseFlags.noExamData,
+    edgeCaseFlags.noPlanData,
+    edgeCaseFlags.suspiciousData,
+    parentAnalysis,
+    parentAnalysisRuntimeError,
+    parentDecisionSummary.topAlert.level,
+    parentDecisionSummary.topAlert.severityScore,
+    parentDecisionVersionMeta,
+    parentDecisionTuningMeta,
+    pushObservabilityEvent,
+    suspiciousDataSummary.suspiciousRatio,
+  ]);
   const overviewAnalyzedSessionCount = overviewAnalysis.sessions.length;
   const hasOverviewAnalysisData = useMemo(
     () => overviewAnalyzedSessionCount > 0 && overviewAnalysis.overall.completedTasks > 0,
@@ -2843,26 +3845,33 @@ const App: React.FC = () => {
     };
   }, [overviewAnalysis.school.latestStateExam, overviewUpcomingExam, today]);
   const overviewSignal = useMemo(() => {
-    if (parentSummary.overdueCount > 0) {
+    if (parentDecisionSummary.topAlert.level === 'Kritik') {
       return {
-        title: 'Dikkat gerekli',
-        text: `${parentSummary.overdueCount} geciken görev var. Önce takip listesini toparlamak gerekir.`,
+        title: 'Kritik uyarı',
+        text: parentDecisionSummary.topAlert.text,
         className: 'ios-coral text-rose-950',
       };
     }
-    if (!hasOverviewAnalysisData) {
+    if (!hasOverviewAnalysisData || parentDecisionSummary.topAlert.level === 'Takip et') {
       return {
         title: 'Veri bekleniyor',
         text: 'Tamamlanan çalışma ve sınav kaydı arttıkça analiz sinyali netleşir.',
         className: 'ios-blue text-blue-950',
       };
     }
+    if (parentDecisionSummary.topAlert.level === 'Dikkat') {
+      return {
+        title: 'Dikkat gerekli',
+        text: parentDecisionSummary.topAlert.text,
+        className: 'ios-peach text-amber-950',
+      };
+    }
     return {
-      title: 'Iyi gidiyor',
+      title: 'İyi gidiyor',
       text: overviewRecommendation,
       className: 'ios-mint text-emerald-950',
     };
-  }, [hasOverviewAnalysisData, overviewRecommendation, parentSummary.overdueCount]);
+  }, [hasOverviewAnalysisData, overviewRecommendation, parentDecisionSummary.topAlert.level, parentDecisionSummary.topAlert.text]);
 
   const handleLockParentNow = () => {
     setParentControlCenterOpen(false);
@@ -2961,6 +3970,10 @@ const App: React.FC = () => {
         title: 'Takipteki görevler',
         description: `${parentSummary.overdueCount} görev tamamlanmayı bekliyor`,
         visible: parentSummary.overdueCount > 0,
+        tier: 'critical',
+        cooldownGroup: 'overdue',
+        cooldownMs: getNotificationCooldownMs('critical'),
+        priority: 3,
         action: () => {
           setParentWorkspaceView('planning');
           addToast('Aktif plan takibi acildi.', 'success');
@@ -2971,6 +3984,10 @@ const App: React.FC = () => {
         title: 'Odak konusu bildirimi',
         description: `${parentSummary.weakTopics.length} konu tekrar istiyor`,
         visible: parentSummary.weakTopics.length > 0,
+        tier: 'normal',
+        cooldownGroup: 'weak',
+        cooldownMs: getNotificationCooldownMs('normal'),
+        priority: 2,
         action: () => {
           setParentWorkspaceView('analysis');
           addToast('Odak konulari analizi acildi.', 'success');
@@ -2981,28 +3998,106 @@ const App: React.FC = () => {
         title: 'Odak kontrolu',
         description: parentSummary.focus7d !== null ? `Son 7 gün ortalama odak: ${parentSummary.focus7d}` : 'Odak verisi oluştukça burada gösterilecek',
         visible: parentSummary.focus7d !== null,
+        tier: 'silent',
+        cooldownGroup: 'focus',
+        cooldownMs: getNotificationCooldownMs('silent'),
+        priority: 1,
         action: () => {
           setParentWorkspaceView('analysis');
           addToast('Odak analizi acildi.', 'success');
         },
       },
+      ...goalAlertSignals.map((alert) => ({
+        key: `goal:${alert.id}:${alert.level}`,
+        title: alert.title,
+        description: alert.description,
+        tier: getNotificationTierFromLevel(alert.level),
+        visible: getNotificationTierFromLevel(alert.level) !== 'silent',
+        cooldownGroup: `goal:${alert.id}`,
+        cooldownMs: getNotificationCooldownMs(getNotificationTierFromLevel(alert.level)),
+        priority: alert.level === 'Kritik' ? 4 : alert.level === 'Dikkat' ? 3 : alert.level === 'Takip et' ? 2 : 1,
+        action: () => {
+          setParentWorkspaceView('analysis');
+          addToast('Hedef ve deneme alani acildi.', 'success');
+        },
+      })),
     ];
 
-    return items.filter((item) => item.visible);
-  }, [parentSummary.overdueCount, parentSummary.weakTopics.length, parentSummary.focus7d]);
+    const now = Date.now();
+    return items
+      .filter((item) => item.visible)
+      .filter((item) => {
+        if (item.tier === 'silent') return false;
+        const lastShownAt = notificationCooldownMap[item.cooldownGroup] ?? 0;
+        const cooldownMs = item.cooldownMs ?? 24 * 60 * 60 * 1000;
+        const isInCooldown = now - lastShownAt < cooldownMs;
+        return !isInCooldown || item.priority >= 4;
+      })
+      .sort((left, right) => right.priority - left.priority);
+  }, [parentSummary.overdueCount, parentSummary.weakTopics.length, parentSummary.focus7d, goalAlertSignals, notificationCooldownMap]);
 
   const unreadNotificationItems = useMemo(
     () => notificationItems.filter((item) => !dismissedNotificationKeys.includes(item.key)),
     [notificationItems, dismissedNotificationKeys],
   );
 
+  const getNotificationGroupKey = (key: string) =>
+    key.startsWith('goal:') ? key.split(':').slice(0, 2).join(':') : key.split(':')[0];
+
+  useEffect(() => {
+    const tierCounts = notificationItems.reduce(
+      (acc, item) => {
+        const tier = item.tier || 'normal';
+        acc[tier] = (acc[tier] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    pushObservabilityEvent({
+      ts: new Date().toISOString(),
+      type: 'notification_queue',
+      meta: {
+        total: notificationItems.length,
+        unread: unreadNotificationItems.length,
+        muted: notificationsMuted,
+        critical_count: tierCounts.critical || 0,
+        normal_count: tierCounts.normal || 0,
+        silent_count: tierCounts.silent || 0,
+        top_decision_level: parentDecisionSummary.topAlert.level,
+        ...parentDecisionVersionMeta,
+        ...parentDecisionTuningMeta,
+      },
+    });
+  }, [notificationItems.length, unreadNotificationItems.length, notificationsMuted, parentDecisionSummary.topAlert.level, parentDecisionVersionMeta, parentDecisionTuningMeta, pushObservabilityEvent]);
+
   const handleNotificationAction = (item: { key: string; action: () => void }) => {
     item.action();
+    pushObservabilityEvent({
+      ts: new Date().toISOString(),
+      type: 'notification_action',
+      meta: {
+        key: item.key,
+        ...parentDecisionVersionMeta,
+        ...parentDecisionTuningMeta,
+      },
+    });
+    const groupKey = getNotificationGroupKey(item.key);
+    setNotificationCooldownMap((prev) => ({ ...prev, [groupKey]: Date.now() }));
     setDismissedNotificationKeys((prev) => (prev.includes(item.key) ? prev : [...prev, item.key]));
     setNotificationsOpen(false);
   };
 
   const handleMarkAllNotificationsRead = () => {
+    const now = Date.now();
+    setNotificationCooldownMap((prev) => {
+      const next = { ...prev };
+      notificationItems.forEach((item) => {
+        const groupKey = getNotificationGroupKey(item.key);
+        next[groupKey] = now;
+      });
+      return next;
+    });
     setDismissedNotificationKeys((prev) => {
       const keys = notificationItems.map((item) => item.key);
       return Array.from(new Set([...prev, ...keys]));
@@ -3084,65 +4179,97 @@ const App: React.FC = () => {
   ]);
 
   const renderParentDashboardMode = (viewMode: NonNullable<ParentDashboardProps['viewMode']>) => (
-    <ParentDashboard
-      {...parentDashboardProps}
-      loading={false}
-      error={null}
-      viewMode={viewMode}
-      analysisSnapshot={parentAnalysis}
-    />
+    <Suspense fallback={<WorkspaceLoadingFallback label="Analiz yukleniyor..." />}>
+      <ParentDashboard
+        {...parentDashboardProps}
+        loading={false}
+        error={parentAnalysisRuntimeError}
+        viewMode={viewMode}
+        analysisSnapshot={parentAnalysis}
+      />
+    </Suspense>
   );
 
   const renderParentWorkspace = () => {
     if (parentWorkspaceView === 'planning') {
       return (
-        <ParentPlanningWorkspace
-          curriculum={curriculum}
-          curriculumSummary={curriculumSummary}
-          weeklySchedule={weeklySchedule}
-          planningEngineSnapshot={planningEngineSnapshot}
-          examScheduleEntries={examScheduleEntries}
-          studyPlans={studyPlans}
-          courses={courses}
-          tasks={tasks}
-          addTask={addTask}
-          deleteTask={deleteTask}
-          updateTaskStatus={updateTaskStatus}
-          updateTaskFromPlan={updateTaskFromPlan}
-          onChangeSchedule={setWeeklySchedule}
-          onChangePlans={setStudyPlans}
-          onChangeExamSchedules={setExamScheduleEntries}
-          onOpenCurriculumEditor={() => setCurriculumEditorOpen(true)}
-          onReactivateCourse={reactivateCourse}
-          courseReferenceHealth={courseReferenceHealth}
-        />
+        <Suspense fallback={<WorkspaceLoadingFallback label="Planlama yukleniyor..." />}>
+          <ParentPlanningWorkspace
+            curriculum={curriculum}
+            curriculumSummary={curriculumSummary}
+            weeklySchedule={weeklySchedule}
+            planningEngineSnapshot={planningEngineSnapshot}
+            examScheduleEntries={examScheduleEntries}
+            studyPlans={studyPlans}
+            courses={courses}
+            tasks={tasks}
+            addTask={addTask}
+            deleteTask={deleteTask}
+            updateTaskStatus={updateTaskStatus}
+            updateTaskFromPlan={updateTaskFromPlan}
+            onChangeSchedule={setWeeklySchedule}
+            onChangePlans={setStudyPlans}
+            onChangeExamSchedules={setExamScheduleEntries}
+            onOpenCurriculumEditor={() => setCurriculumEditorOpen(true)}
+            onReactivateCourse={reactivateCourse}
+            courseReferenceHealth={courseReferenceHealth}
+          />
+        </Suspense>
       );
     }
 
     if (parentWorkspaceView === 'analysis') {
+      if (!parentDecisionV1Enabled) {
+        return (
+          <div className="space-y-4">
+            <div className="ios-card rounded-[24px] p-4 text-sm font-semibold text-slate-700">
+              Yeni karar ekrani kapali. Fallback olarak Genel Bakis gosteriliyor.
+            </div>
+            <Suspense fallback={<WorkspaceLoadingFallback label="Genel bakis yukleniyor..." />}>
+              <ParentOverviewWorkspace
+                parentSummary={parentSummary}
+                overviewSummary={overviewSummary}
+                overviewNextTask={overviewNextTask}
+                overviewUpcomingExam={overviewUpcomingExam}
+                overviewTodayName={overviewTodayName}
+                overviewTodaySlots={overviewTodaySlots}
+                overviewSignal={overviewSignal}
+                overviewExamDecision={overviewExamDecision}
+                lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
+                onOpenPlanning={(message) => handleQuickAction('planning', message)}
+              />
+            </Suspense>
+          </div>
+        );
+      }
       return (
-        <ParentAnalysisShell
-          analyzedSessionCount={analyzedSessionCount}
-          weakTopicCount={parentSummary.weakTopics.length}
-        >
-          {renderParentDashboardMode('analysis')}
-        </ParentAnalysisShell>
+        <Suspense fallback={<WorkspaceLoadingFallback label="Karar ekrani yukleniyor..." />}>
+          <ParentAnalysisShell
+            analyzedSessionCount={analyzedSessionCount}
+            weakTopicCount={parentSummary.weakTopics.length}
+            decisionLevel={parentDecisionSummary.topAlert.level}
+          >
+            {renderParentDashboardMode('analysis')}
+          </ParentAnalysisShell>
+        </Suspense>
       );
     }
 
     return (
-      <ParentOverviewWorkspace
-        parentSummary={parentSummary}
-        overviewSummary={overviewSummary}
-        overviewNextTask={overviewNextTask}
-        overviewUpcomingExam={overviewUpcomingExam}
-        overviewTodayName={overviewTodayName}
-        overviewTodaySlots={overviewTodaySlots}
-        overviewSignal={overviewSignal}
-        overviewExamDecision={overviewExamDecision}
-        lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
-        onOpenPlanning={(message) => handleQuickAction('planning', message)}
-      />
+      <Suspense fallback={<WorkspaceLoadingFallback label="Genel bakis yukleniyor..." />}>
+        <ParentOverviewWorkspace
+          parentSummary={parentSummary}
+          overviewSummary={overviewSummary}
+          overviewNextTask={overviewNextTask}
+          overviewUpcomingExam={overviewUpcomingExam}
+          overviewTodayName={overviewTodayName}
+          overviewTodaySlots={overviewTodaySlots}
+          overviewSignal={overviewSignal}
+          overviewExamDecision={overviewExamDecision}
+          lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
+          onOpenPlanning={(message) => handleQuickAction('planning', message)}
+        />
+      </Suspense>
     );
   };
 
@@ -3210,10 +4337,10 @@ const App: React.FC = () => {
               </div>
             )}
             <div className="dr-toolbar-group relative inline-flex shrink-0 rounded-full" aria-label="Kullanıcı modu">
-              <button onClick={() => handleUserTypeChange(UserType.Parent)} aria-pressed={userType === UserType.Parent} title="Ebeveyn modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 sm:w-24 sm:text-sm ${userType === UserType.Parent ? 'ios-button-active text-slate-900' : 'text-slate-600 hover:bg-white/50'}`}>
+              <button data-testid="switch-parent-mode-btn" onClick={() => handleUserTypeChange(UserType.Parent)} aria-pressed={userType === UserType.Parent} title="Ebeveyn modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 sm:w-24 sm:text-sm ${userType === UserType.Parent ? 'ios-button-active text-slate-900' : 'text-slate-600 hover:bg-white/50'}`}>
                 Ebeveyn
               </button>
-              <button onClick={() => handleUserTypeChange(UserType.Child)} aria-pressed={userType === UserType.Child} title="Çocuk modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 sm:w-24 sm:text-sm ${userType === UserType.Child ? 'ios-button-active text-slate-900' : 'text-slate-600 hover:bg-white/50'}`}>
+              <button data-testid="switch-child-mode-btn" onClick={() => handleUserTypeChange(UserType.Child)} aria-pressed={userType === UserType.Child} title="Çocuk modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 sm:w-24 sm:text-sm ${userType === UserType.Child ? 'ios-button-active text-slate-900' : 'text-slate-600 hover:bg-white/50'}`}>
                 Çocuk
               </button>
             </div>
@@ -3295,24 +4422,40 @@ const App: React.FC = () => {
               )}
             </div>}
             {userType === UserType.Parent && !isParentLocked && <div ref={topbarNotificationsRef} className="relative">
-              <button onClick={() => { setNotificationsOpen((prev) => !prev); setSettingsOpen(false); setQuickActionsOpen(false); }} aria-label="Bildirimleri aç veya kapat" aria-expanded={notificationsOpen} title="Bildirimler" className="ios-button relative rounded-full p-2 text-slate-500 transition hover:text-slate-800">
+              <button
+                data-testid="topbar-notifications-toggle"
+                data-unread-count={String(unreadNotificationItems.length)}
+                onClick={() => { setNotificationsOpen((prev) => !prev); setSettingsOpen(false); setQuickActionsOpen(false); }}
+                aria-label="Bildirimleri aç veya kapat"
+                aria-expanded={notificationsOpen}
+                title="Bildirimler"
+                className="ios-button relative rounded-full p-2 text-slate-500 transition hover:text-slate-800"
+              >
                 <Bell className="h-5 w-5" />
                 {showNotificationDot && !notificationsMuted && unreadNotificationItems.length > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />}
               </button>
               {notificationsOpen && (
-                <div className="ios-card absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3">
+                <div className="ios-card absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3" data-testid="notifications-popover">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="text-sm font-bold text-slate-800">Bildirimler</div>
-                    <button onClick={handleMarkAllNotificationsRead} className="ios-button rounded-full px-3 py-1 text-[11px] font-bold text-slate-700">Tümünü okundu yap</button>
+                    <button data-testid="notifications-mark-all-read-btn" onClick={handleMarkAllNotificationsRead} className="ios-button rounded-full px-3 py-1 text-[11px] font-bold text-slate-700">Tümünü okundu yap</button>
                   </div>
                   {notificationsMuted ? (
-                    <div className="ios-widget rounded-[18px] px-3 py-2 text-xs text-slate-500">Bildirimler sessizde.</div>
+                    <div data-testid="notifications-muted-state" className="ios-widget rounded-[18px] px-3 py-2 text-xs text-slate-500">Bildirimler sessizde.</div>
                   ) : unreadNotificationItems.length === 0 ? (
-                    <div className="ios-widget rounded-[18px] px-3 py-2 text-xs text-slate-500">Yeni bildirim yok.</div>
+                    <div data-testid="notifications-empty-state" className="ios-widget rounded-[18px] px-3 py-2 text-xs text-slate-500">Yeni bildirim yok.</div>
                   ) : (
                     <div className="space-y-2">
-                      {unreadNotificationItems.map((item) => (
-                        <button key={item.key} onClick={() => handleNotificationAction(item)} className="ios-widget w-full rounded-[18px] px-3 py-2 text-left transition hover:bg-white/80">
+                      {unreadNotificationItems.map((item, index) => (
+                        <button
+                          key={item.key}
+                          data-testid={`notification-item-${index}`}
+                          data-notification-key={item.key}
+                          data-cooldown-group={getNotificationGroupKey(item.key)}
+                          data-notification-tier={item.tier || 'normal'}
+                          onClick={() => handleNotificationAction(item)}
+                          className="ios-widget w-full rounded-[18px] px-3 py-2 text-left transition hover:bg-white/80"
+                        >
                           <div className="text-xs font-bold text-slate-800">{item.title}</div>
                           <div className="mt-1 text-[11px] text-slate-500">{item.description}</div>
                         </button>
@@ -3360,6 +4503,11 @@ const App: React.FC = () => {
                         <button
                           key={item.id}
                           onClick={() => {
+                            if (item.id === 'analysis' && !parentDecisionV1Enabled) {
+                              addToast('Karar ekrani su an pasif. Genel Bakis acildi.', 'success');
+                              setParentWorkspaceView('overview');
+                              return;
+                            }
                             setParentWorkspaceView(item.id);
                           }}
                           className={`flex w-full items-center gap-3 rounded-[20px] p-3 text-left transition-all ${active ? 'ios-button-active text-slate-900' : 'text-slate-500 hover:bg-white/55 hover:text-slate-800'}`}
@@ -3434,6 +4582,12 @@ const App: React.FC = () => {
                                 <button
                                   key={item.id}
                                   onClick={() => {
+                                    if (item.id === 'analysis' && !parentDecisionV1Enabled) {
+                                      addToast('Karar ekrani su an pasif. Genel Bakis acildi.', 'success');
+                                      setParentWorkspaceView('overview');
+                                      setParentMenuOpen(false);
+                                      return;
+                                    }
                                     setParentWorkspaceView(item.id);
                                     setParentMenuOpen(false);
                                   }}
@@ -3479,21 +4633,23 @@ const App: React.FC = () => {
             </>
           )
         ) : (
-          <ChildDashboard
-            tasks={tasks}
-            courses={courses}
-            performanceData={performanceData}
-            rewards={rewards}
-            badges={badges}
-            successPoints={successPoints}
-            startTask={startTask}
-            updateTaskStatus={updateTaskStatus}
-            completeTask={completeTask}
-            claimReward={claimReward}
-            addTask={addTask}
-            curriculum={curriculum}
-            ai={ai}
-          />
+          <Suspense fallback={<WorkspaceLoadingFallback label="Cocuk paneli yukleniyor..." />}>
+            <ChildDashboard
+              tasks={tasks}
+              courses={courses}
+              performanceData={performanceData}
+              rewards={rewards}
+              badges={badges}
+              successPoints={successPoints}
+              startTask={startTask}
+              updateTaskStatus={updateTaskStatus}
+              completeTask={completeTask}
+              claimReward={claimReward}
+              addTask={addTask}
+              curriculum={curriculum}
+              ai={ai}
+            />
+          </Suspense>
         )}
       </main>
       {curriculumEditorOpen && (
@@ -3513,7 +4669,9 @@ const App: React.FC = () => {
               </button>
             </div>
             <div className="dr-modal-scroll min-h-0 flex-1 overflow-y-auto p-4">
-              <CurriculumManagerPanel curriculum={curriculum} onSave={setCurriculum} />
+              <Suspense fallback={<WorkspaceLoadingFallback label="Mufredat editoru yukleniyor..." />}>
+                <CurriculumManagerPanel curriculum={curriculum} onSave={setCurriculum} />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -3557,6 +4715,151 @@ const App: React.FC = () => {
                   <span>Bildirimler</span>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${!notificationsMuted ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{notificationsMuted ? 'Kapalı' : 'Açık'}</span>
                 </button>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Karar Ekrani</div>
+                <button onClick={() => setParentDecisionV1Enabled((prev) => !prev)} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
+                  <span>Yeni karar ekrani (V1)</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${parentDecisionV1Enabled ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{parentDecisionV1Enabled ? 'Acik' : 'Kapali'}</span>
+                </button>
+                <div className="mt-2 text-[11px] leading-5 text-slate-500">Kapali oldugunda analiz secimi fallback olarak Genel Bakis'a yonlenir.</div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setParentDecisionRolloutMode('stable')}
+                    className={`rounded-[14px] px-2 py-2 text-[11px] font-bold ${parentDecisionRolloutMode === 'stable' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
+                  >
+                    Stable
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setParentDecisionRolloutMode('beta')}
+                    className={`rounded-[14px] px-2 py-2 text-[11px] font-bold ${parentDecisionRolloutMode === 'beta' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
+                  >
+                    Beta
+                  </button>
+                </div>
+                <div className="mt-2 text-[11px] leading-5 text-slate-500">
+                  Stable modda V1 varsayilan kurallar calisir. Beta modda tuning ayarlari aktif olur.
+                </div>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Karar Motoru Tuning</div>
+                <div className={`space-y-3 ${parentDecisionRolloutMode === 'stable' ? 'opacity-60' : ''}`}>
+                  <label className="block text-[11px] text-slate-600">
+                    Risk kritik eşiği: {parentDecisionRuleOverrides.thresholds?.riskCriticalMin ?? 65}
+                    <input
+                      type="range"
+                      min={50}
+                      max={90}
+                      step={1}
+                      value={parentDecisionRuleOverrides.thresholds?.riskCriticalMin ?? 65}
+                      disabled={parentDecisionRolloutMode === 'stable'}
+                      onChange={(event) => setParentDecisionRuleOverrides((prev) => ({
+                        ...prev,
+                        thresholds: { ...(prev.thresholds || {}), riskCriticalMin: Number(event.target.value) },
+                      }))}
+                      className="mt-1 w-full"
+                    />
+                  </label>
+                  <label className="block text-[11px] text-slate-600">
+                    Risk dikkat eşiği: {parentDecisionRuleOverrides.thresholds?.riskWarningMin ?? 45}
+                    <input
+                      type="range"
+                      min={30}
+                      max={70}
+                      step={1}
+                      value={parentDecisionRuleOverrides.thresholds?.riskWarningMin ?? 45}
+                      disabled={parentDecisionRolloutMode === 'stable'}
+                      onChange={(event) => setParentDecisionRuleOverrides((prev) => ({
+                        ...prev,
+                        thresholds: { ...(prev.thresholds || {}), riskWarningMin: Number(event.target.value) },
+                      }))}
+                      className="mt-1 w-full"
+                    />
+                  </label>
+                  <label className="block text-[11px] text-slate-600">
+                    Konu uyarı eşiği: {parentDecisionRuleOverrides.thresholds?.weakTopicCountWarning ?? 4}
+                    <input
+                      type="range"
+                      min={2}
+                      max={10}
+                      step={1}
+                      value={parentDecisionRuleOverrides.thresholds?.weakTopicCountWarning ?? 4}
+                      disabled={parentDecisionRolloutMode === 'stable'}
+                      onChange={(event) => setParentDecisionRuleOverrides((prev) => ({
+                        ...prev,
+                        thresholds: { ...(prev.thresholds || {}), weakTopicCountWarning: Number(event.target.value) },
+                      }))}
+                      className="mt-1 w-full"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setParentDecisionRuleOverrides({})}
+                    disabled={parentDecisionRolloutMode === 'stable'}
+                    className="ios-button w-full rounded-[14px] px-3 py-2 text-[11px] font-bold text-slate-700"
+                  >
+                    Tuning'i sıfırla (V1 varsayılan)
+                  </button>
+                </div>
+              </div>
+
+              <div className="ios-widget rounded-[20px] p-3">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Observability</div>
+                <div className="space-y-2 text-[11px] text-slate-600">
+                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
+                    <span>Toplam event</span>
+                    <strong>{observabilitySummary.total}</strong>
+                  </div>
+                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
+                    <span>Son event tipi</span>
+                    <strong>{observabilitySummary.topType || '-'}</strong>
+                  </div>
+                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
+                    <span>Son 30 event</span>
+                    <strong>{observabilitySummary.recentCount}</strong>
+                  </div>
+                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
+                    <span>Cache hit/miss</span>
+                    <strong>{analysisPipelineState.cacheHits}/{analysisPipelineState.cacheMisses}</strong>
+                  </div>
+                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
+                    <span>Son batch</span>
+                    <strong>{analysisPipelineState.lastBackgroundRecomputeAt ? new Date(analysisPipelineState.lastBackgroundRecomputeAt).toLocaleTimeString('tr-TR') : '-'}</strong>
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    Son olay: {observabilitySummary.lastEventTs ? new Date(observabilitySummary.lastEventTs).toLocaleString('tr-TR') : 'yok'}
+                  </div>
+                  <div className="rounded-[12px] bg-white/60 px-2 py-2 text-[10px] text-slate-600">
+                    <div className="mb-1 font-bold uppercase tracking-wide text-slate-500">Son 5 olay</div>
+                    {observabilityRecent.length === 0 && <div>Kayit yok.</div>}
+                    {observabilityRecent.map((event, index) => (
+                      <div key={`${event.ts}-${event.type}-${index}`} className="mb-1 last:mb-0">
+                        <div className="font-semibold">{event.type}</div>
+                        <div className="text-slate-500">
+                          {new Date(event.ts).toLocaleTimeString('tr-TR')} {event.note ? `· ${event.note}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setObservabilityEvents([])}
+                    className="ios-button w-full rounded-[14px] px-3 py-2 text-[11px] font-bold text-slate-700"
+                  >
+                    Event kaydini temizle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportObservabilityAudit}
+                    className="ios-button w-full rounded-[14px] px-3 py-2 text-[11px] font-bold text-slate-700"
+                  >
+                    Audit JSON indir
+                  </button>
+                </div>
               </div>
 
               <div className="ios-widget rounded-[20px] p-3">

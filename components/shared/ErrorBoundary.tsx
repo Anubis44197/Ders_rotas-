@@ -32,7 +32,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             }
 
             return (
-                <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4 text-slate-100">
+                <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4 text-slate-100" data-testid="fatal-error-screen">
                     <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl backdrop-blur">
                         <div className="flex items-start gap-4">
                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-500/20 text-rose-200">
@@ -43,7 +43,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                                 <p className="mt-2 text-sm leading-6 text-slate-300">
                                     Beyaz ekran yerine bu kurtarma ekranı gösteriliyor. Sayfayı yenileyebilir ya da bu tarayıcıdaki yerel DersRotası verisini temizleyip temiz başlangıç yapabilirsiniz.
                                 </p>
-                                <p className="mt-3 rounded-2xl bg-black/20 px-3 py-2 text-xs text-rose-100">
+                                <p className="mt-3 rounded-2xl bg-black/20 px-3 py-2 text-xs text-rose-100" data-testid="fatal-error-message">
                                     {this.state.error?.message || 'Bilinmeyen bir hata meydana geldi'}
                                 </p>
                                 <div className="mt-5 flex flex-wrap gap-3">

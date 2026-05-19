@@ -32,7 +32,7 @@ In-app browser kontrolunde eski HMR hata loglari gorundu, ancak planlama rotasi 
 - `git diff --check`: yalnizca mevcut CRLF uyarilari verdi, whitespace hatasi yok.
 - Browser QA: `http://127.0.0.1:3002/?quick=planning&qa=1778084200000&polishqa=fresh` rotasinda planlama yuzeyi acildi.
 - Ikinci guven turu sonrasi `npm run typecheck` tekrar gecti.
-- Ikinci guven turunda planlama dosyalari icin `Ders gir` ve `Ã/Ä/Å/�` taramasi temiz dondu.
+- Ikinci guven turunda planlama dosyalari icin `Ders gir` ve mojibake karakter taramasi temiz dondu.
 
 ## Kalan Riskler
 - Gercek "tam guven" icin yuklu lokal veriyle uzun sureli manuel senaryo testi gerekir: mufredat ekle, okul programi ekle, ev calisma penceresi ekle, sinav ekle, plan olustur, plani beklet/aktif et, cocuk gorevinde tamamla, analizde yansimasini kontrol et.

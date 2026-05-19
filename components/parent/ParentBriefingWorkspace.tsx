@@ -77,13 +77,13 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Genel Bakış</div>
-              <h3 className="mt-2 text-2xl font-black text-slate-950">Bugünkü akademik tablo</h3>
+              <h3 className="mt-2 text-2xl font-black text-slate-950">Bugünkü karar özeti</h3>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                 {weakTopic
-                  ? `${weakTopic.courseName} / ${weakTopic.topicName} öncelikli takip alanı.`
+                  ? `${weakTopic.courseName} / ${weakTopic.topicName} bu hafta takip edilmesi gereken konu.`
                   : bestCourse
                     ? `${bestCourse.courseName} şu anda en güçlü ders.`
-                    : 'Analiz verisi biriktikçe öncelikli ders ve konu burada netleşir.'}
+                    : 'Veri biriktikçe veli için sonraki adım burada netleşir.'}
               </p>
             </div>
 
@@ -110,7 +110,7 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
             Öncelik
           </div>
           <div className="mt-4 text-xl font-black leading-7">
-            {weakTopic ? 'Tekrar planı açılmalı' : analysis.overall.completedTasks > 0 ? 'Mevcut ritim korunmalı' : 'İlk çalışma verisi bekleniyor'}
+            {weakTopic ? 'Tekrar görevi açılmalı' : analysis.overall.completedTasks > 0 ? 'Mevcut ritim korunmalı' : 'İlk çalışma verisi bekleniyor'}
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-300">
             {weakTopic

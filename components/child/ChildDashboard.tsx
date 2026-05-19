@@ -221,7 +221,16 @@ const ReadingLibraryPanel: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
   );
 };
 
-const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task, timerState?: ResumeTimerState) => void; completed?: boolean; today: string; isStarting?: boolean }> = ({ task, courseName, onStart, completed = false, today, isStarting = false }) => {
+const TaskCard: React.FC<{
+  task: Task;
+  courseName: string;
+  onStart: (task: Task, timerState?: ResumeTimerState) => void;
+  onQuickComplete?: (task: Task) => void;
+  completed?: boolean;
+  today: string;
+  isStarting?: boolean;
+  isE2EMode?: boolean;
+}> = ({ task, courseName, onStart, onQuickComplete, completed = false, today, isStarting = false, isE2EMode = false }) => {
   const savedState = parseSavedTimerState(task.id);
   let isPaused = false;
   let resumeState: ResumeTimerState | undefined;
@@ -234,9 +243,15 @@ const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task,
   }
 
   const isOverdue = !completed && getTaskDateKey(task.dueDate) < today;
+  const isParentDecisionTask = task.planSource === 'manual' && ((task.planLabel || '').toLocaleLowerCase('tr-TR').includes('veli onerisi') || (task.description || '').toLocaleLowerCase('tr-TR').includes('ebeveyn karar ekranindan'));
 
   return (
-    <div className={`ios-widget rounded-[24px] p-4 transition ${isOverdue ? 'ios-coral' : ''}`}>
+    <div
+      className={`ios-widget rounded-[24px] p-4 transition ${isOverdue ? 'ios-coral' : ''}`}
+      data-testid={completed ? `child-completed-task-${task.id}` : `child-pending-task-${task.id}`}
+      data-task-id={task.id}
+      data-plan-task-id={task.planTaskId || ''}
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -244,6 +259,7 @@ const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task,
             <span className="text-slate-300">/</span>
             <span>{formatTaskType(task.taskType)}</span>
             <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] tracking-normal text-slate-600">{safeText(task.planLabel, '') || safePlanSource(task.planSource)}</span>
+            {isParentDecisionTask && <span className="rounded-full bg-sky-100 px-2 py-1 text-[11px] tracking-normal text-sky-700">Veliden geldi</span>}
             {task.isSelfAssigned && <span className="rounded-full bg-indigo-100 px-2 py-1 text-[11px] tracking-normal text-indigo-700">Serbest</span>}
             {isOverdue && <span className="rounded-full bg-rose-100 px-2 py-1 text-[11px] tracking-normal text-rose-700">Takipte</span>}
           </div>
@@ -269,6 +285,7 @@ const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task,
             <CheckCircle className="h-4 w-4" /> Tamamlandı
           </div>
         ) : (
+          <>
           <button
             onClick={() => onStart(task, resumeState)}
             disabled={isStarting}
@@ -277,6 +294,17 @@ const TaskCard: React.FC<{ task: Task; courseName: string; onStart: (task: Task,
             <Play className="mr-2 inline h-4 w-4" />
             {isStarting ? 'Başlatılıyor...' : isPaused ? 'Devam et' : 'Başlat'}
           </button>
+          {isE2EMode && onQuickComplete && (
+            <button
+              type="button"
+              onClick={() => onQuickComplete(task)}
+              data-testid={`child-quick-complete-task-${task.id}`}
+              className="ios-button self-start rounded-[14px] px-3 py-2 text-[11px] font-bold text-slate-700"
+            >
+              E2E tamamla
+            </button>
+          )}
+          </>
         )}
       </div>
     </div>
@@ -301,6 +329,10 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
   const safeRewards = useMemo(() => (Array.isArray(rewards) ? rewards.filter((reward) => reward && typeof reward.id === 'string') : []), [rewards]);
   const safeBadges = useMemo(() => (Array.isArray(badges) ? badges.filter((badge) => badge && typeof badge.id === 'string') : []), [badges]);
   const safeCurriculum = useMemo(() => (curriculum && typeof curriculum === 'object' && !Array.isArray(curriculum) ? curriculum : {}), [curriculum]);
+  const isE2EMode = useMemo(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('e2e') === '1',
+    [],
+  );
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('today');
   const [activeView, setActiveView] = useState<ChildView>('tasks');
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -462,6 +494,34 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
     setActiveTask(null);
   };
 
+  const handleQuickComplete = (task: Task) => {
+    if (isTaskCompleted(task)) return;
+    const plannedSeconds = Math.max(600, (task.plannedDuration || 30) * 60);
+    if (task.taskType === 'soru çözme') {
+      const questionCount = Math.max(1, task.questionCount || 20);
+      const correctCount = Math.max(1, Math.round(questionCount * 0.72));
+      const incorrectCount = Math.max(0, questionCount - correctCount);
+      completeTask(task.id, {
+        actualDuration: plannedSeconds,
+        breakTime: 90,
+        pauseTime: 45,
+        correctCount,
+        incorrectCount,
+        emptyCount: 0,
+        selfAssessmentScore: 78,
+      });
+      return;
+    }
+
+    completeTask(task.id, {
+      actualDuration: plannedSeconds,
+      breakTime: 60,
+      pauseTime: 30,
+      pagesRead: task.taskType === 'kitap okuma' ? Math.max(8, task.pagesRead || 12) : undefined,
+      selfAssessmentScore: 80,
+    });
+  };
+
   const handleCreateFreeStudy = async (event: React.FormEvent) => {
     event.preventDefault();
     if (creatingFreeStudy) return;
@@ -520,7 +580,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 lg:px-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 lg:px-6" data-testid="child-dashboard-root" data-e2e-mode={isE2EMode ? '1' : '0'}>
       <section className="ios-card overflow-hidden rounded-[32px] px-5 py-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
@@ -679,7 +739,16 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
                   <div className="space-y-3">
                     <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">Atanan görevler</div>
                     {visibleAssignedPendingTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} courseName={courseNameMap.get(task.courseId) || task.courseId} onStart={startSelectedTask} today={today} isStarting={startingTaskId === task.id} />
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        courseName={courseNameMap.get(task.courseId) || task.courseId}
+                        onStart={startSelectedTask}
+                        onQuickComplete={isE2EMode ? handleQuickComplete : undefined}
+                        isE2EMode={isE2EMode}
+                        today={today}
+                        isStarting={startingTaskId === task.id}
+                      />
                     ))}
                     {assignedPendingTasks.length > CHILD_TASK_PREVIEW_LIMIT && (
                       <button
@@ -696,7 +765,16 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
                   <div className="space-y-3">
                     <div className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">Serbest çalışma kayıtları</div>
                     {visibleFreePendingTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} courseName={courseNameMap.get(task.courseId) || task.courseId} onStart={startSelectedTask} today={today} isStarting={startingTaskId === task.id} />
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        courseName={courseNameMap.get(task.courseId) || task.courseId}
+                        onStart={startSelectedTask}
+                        onQuickComplete={isE2EMode ? handleQuickComplete : undefined}
+                        isE2EMode={isE2EMode}
+                        today={today}
+                        isStarting={startingTaskId === task.id}
+                      />
                     ))}
                     {freePendingTasks.length > CHILD_TASK_PREVIEW_LIMIT && (
                       <button
@@ -720,7 +798,16 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
                 </div>
                 <div className="space-y-3">
                   {visibleCompletedToday.map((task) => (
-                    <TaskCard key={task.id} task={task} courseName={courseNameMap.get(task.courseId) || task.courseId} onStart={startSelectedTask} completed today={today} />
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      courseName={courseNameMap.get(task.courseId) || task.courseId}
+                      onStart={startSelectedTask}
+                      onQuickComplete={isE2EMode ? handleQuickComplete : undefined}
+                      isE2EMode={isE2EMode}
+                      completed
+                      today={today}
+                    />
                   ))}
                   {completedToday.length > CHILD_COMPLETED_PREVIEW_LIMIT && (
                     <button

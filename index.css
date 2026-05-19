@@ -1103,6 +1103,11 @@ button svg,
   -webkit-backdrop-filter: blur(20px) saturate(1.14);
 }
 
+.dr-theme-dark .ios-chart-surface {
+  background: var(--dr-surface-strong);
+  border-color: var(--dr-border);
+}
+
 .font-black {
   font-weight: 700 !important;
 }

@@ -1,0 +1,107 @@
+{
+  "generatedAt": "2026-05-18T20:58:41.565Z",
+  "total": 20,
+  "failCount": 0,
+  "runs": [
+    {
+      "run": 1,
+      "verdict": "PASS",
+      "actual": "Analiz 498ms, ekran 2954ms, grafik 23ms, cache 0/4"
+    },
+    {
+      "run": 2,
+      "verdict": "PASS",
+      "actual": "Analiz 303ms, ekran 1285ms, grafik 10ms, cache 2/4"
+    },
+    {
+      "run": 3,
+      "verdict": "PASS",
+      "actual": "Analiz 191ms, ekran 1200ms, grafik 15ms, cache 1/4"
+    },
+    {
+      "run": 4,
+      "verdict": "PASS",
+      "actual": "Analiz 196ms, ekran 1230ms, grafik 8ms, cache 2/4"
+    },
+    {
+      "run": 5,
+      "verdict": "PASS",
+      "actual": "Analiz 202ms, ekran 1136ms, grafik 12ms, cache 0/4"
+    },
+    {
+      "run": 6,
+      "verdict": "PASS",
+      "actual": "Analiz 177ms, ekran 1153ms, grafik 16ms, cache 0/4"
+    },
+    {
+      "run": 7,
+      "verdict": "PASS",
+      "actual": "Analiz 183ms, ekran 1174ms, grafik 13ms, cache 2/4"
+    },
+    {
+      "run": 8,
+      "verdict": "PASS",
+      "actual": "Analiz 181ms, ekran 1153ms, grafik 13ms, cache 1/4"
+    },
+    {
+      "run": 9,
+      "verdict": "PASS",
+      "actual": "Analiz 184ms, ekran 1449ms, grafik 11ms, cache 0/4"
+    },
+    {
+      "run": 10,
+      "verdict": "PASS",
+      "actual": "Analiz 325ms, ekran 1167ms, grafik 12ms, cache 0/4"
+    },
+    {
+      "run": 11,
+      "verdict": "PASS",
+      "actual": "Analiz 176ms, ekran 1163ms, grafik 17ms, cache 0/4"
+    },
+    {
+      "run": 12,
+      "verdict": "PASS",
+      "actual": "Analiz 239ms, ekran 1453ms, grafik 13ms, cache 0/4"
+    },
+    {
+      "run": 13,
+      "verdict": "PASS",
+      "actual": "Analiz 334ms, ekran 1171ms, grafik 15ms, cache 1/4"
+    },
+    {
+      "run": 14,
+      "verdict": "PASS",
+      "actual": "Analiz 178ms, ekran 1132ms, grafik 9ms, cache 1/4"
+    },
+    {
+      "run": 15,
+      "verdict": "PASS",
+      "actual": "Analiz 173ms, ekran 1193ms, grafik 13ms, cache 1/4"
+    },
+    {
+      "run": 16,
+      "verdict": "PASS",
+      "actual": "Analiz 176ms, ekran 1139ms, grafik 11ms, cache 0/4"
+    },
+    {
+      "run": 17,
+      "verdict": "PASS",
+      "actual": "Analiz 322ms, ekran 1153ms, grafik 12ms, cache 1/4"
+    },
+    {
+      "run": 18,
+      "verdict": "PASS",
+      "actual": "Analiz 181ms, ekran 1176ms, grafik 13ms, cache 1/4"
+    },
+    {
+      "run": 19,
+      "verdict": "PASS",
+      "actual": "Analiz 205ms, ekran 1216ms, grafik 23ms, cache 1/4"
+    },
+    {
+      "run": 20,
+      "verdict": "PASS",
+      "actual": "Analiz 299ms, ekran 1162ms, grafik 11ms, cache 1/4"
+    }
+  ]
+}

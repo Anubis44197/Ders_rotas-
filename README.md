@@ -89,7 +89,7 @@ Normal kurulum ve kullanim icin herhangi bir API anahtari veya ortam degiskeni g
 - Beyaz ekran riskine karsi uygulama geneline hata yakalama ekrani eklendi.
 - Eski veya bozuk LocalStorage verileri normalize edilerek render hatalarinin onune gecildi.
 - Recharts kaynakli gelistirme ortami render donguleri icin `SafeResponsiveContainer` kullanilir.
-- Localhost uzerinde grafikler varsayilan olarak guvenli ozet/fallback ile acilir. Recharts renderini manuel test etmek icin tarayici konsolunda `localStorage.drEnableRecharts = 'true'` yazilip sayfa yenilenebilir.
+- Localhost uzerinde grafikler varsayilan olarak veriden uretilen hafif SVG fallback ile gosterilir; bu sayede React 19 + Recharts gelistirme dongusu uygulamayi kilitlemez. Recharts renderini manuel test etmek icin tarayici konsolunda `localStorage.drEnableRecharts = 'true'` yazilip sayfa yenilenebilir.
 - Planlama ekranindaki Haftalik Zaman Zemini kartindan cocuga hizli gorev atanabilir.
 - Gorev atama penceresi ders, unite, konu, tarih, sure, soru sayisi ve takip olcutu secimlerini mevcut gorev sistemine baglar.
 - PWA metadata uyarilari icin modern mobile web app meta etiketi eklenmistir.
@@ -136,14 +136,16 @@ Mevcut `.gitignore` bu dosyalari disarida tutacak sekilde kullanilmalidir.
 
 Bu genellikle tarayicidaki eski veya bozuk LocalStorage verisinden kaynaklanir. Kurtarma ekranindaki yeniden dene veya yerel veriyi temizle secenekleri kullanilabilir.
 
-### Localhost uzerinde grafikler fallback olarak gorunurse
+### Localhost uzerinde Recharts manuel test edilirse
 
-Bu beklenen guvenli davranistir. Recharts renderini manuel kontrol etmek icin:
+Localhost testinde grafikler varsayilan olarak veriden uretilen hafif SVG fallback ile gosterilir. Recharts renderini manuel kontrol etmek icin:
 
 ```js
 localStorage.drEnableRecharts = 'true'
 location.reload()
 ```
+
+Recharts kaynakli gelistirme ortami dongusu gorulurse bu anahtar kaldirilip sayfa yenilenmelidir.
 
 ### Port 3000 doluysa
 

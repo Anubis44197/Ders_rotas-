@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
         'process.env.GEMINI_API_KEY': JSON.stringify(env.VITE_GOOGLE_AI_API_KEY)
       },
       resolve: {
+        preserveSymlinks: true,
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
@@ -22,9 +23,18 @@ export default defineConfig(({ mode }) => {
       build: {
         rollupOptions: {
           output: {
-            manualChunks: {
-              'charts-vendor': ['recharts'],
-              'ai-vendor': ['@google/genai']
+            manualChunks(id) {
+              if (id.includes('node_modules/recharts')) return 'charts-vendor';
+              if (id.includes('node_modules/@google/genai')) return 'ai-vendor';
+              if (
+                id.includes('node_modules/react/') ||
+                id.includes('node_modules/react-dom/') ||
+                id.includes('node_modules/lucide-react/') ||
+                id.includes('node_modules/date-fns/')
+              ) {
+                return 'vendor';
+              }
+              return undefined;
             }
           }
         },

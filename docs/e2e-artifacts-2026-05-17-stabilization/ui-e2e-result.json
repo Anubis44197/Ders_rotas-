@@ -1,0 +1,461 @@
+{
+  "generatedAt": "2026-05-19T04:21:54.295Z",
+  "appUrl": "http://127.0.0.1:3000/?quick=analysis&qaRecords=manual&analysisTab=goals&e2e=1",
+  "passCount": 14,
+  "failCount": 0,
+  "isolationPassCount": 3,
+  "isolationTotal": 3,
+  "tests": [
+    {
+      "id": 1,
+      "name": "Ebeveyn ana ekran karar sinyalleri",
+      "data": "qaRecords=manual, analysisTab=overview, e2e=1",
+      "selectors": [
+        "[data-testid^=\"decision-signal-\"]",
+        "[data-testid=\"parent-analysis-workspace\"]"
+      ],
+      "expected": "Ana karar sinyal kartlari gorunmeli.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx",
+      "pass": true,
+      "actual": {
+        "signalCount": 4,
+        "workspaceReady": true
+      },
+      "actualSummary": "Karar sinyal sayisi: 4, workspace: hazir",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\01-main-signals.png"
+      ],
+      "elapsedMs": 6488
+    },
+    {
+      "id": 2,
+      "name": "Ders karti -> ders detay akisi",
+      "data": "qaRecords=manual, analysisTab=overview, e2e=1",
+      "selectors": [
+        "[data-testid^=\"course-summary-btn-\"]",
+        "[data-testid=\"course-detail-panel\"]"
+      ],
+      "expected": "Ders kartina tiklaninca ilgili ders detayi acilmali.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx",
+      "pass": true,
+      "actual": {
+        "firstButton": "course-summary-btn-course_fen_bilgisi",
+        "clicked": {
+          "clicked": true
+        },
+        "selectedCourseId": "course_fen_bilgisi",
+        "detailCourseId": "course_fen_bilgisi"
+      },
+      "actualSummary": "Secilen ders: course_fen_bilgisi, detay paneli: course_fen_bilgisi",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\02-course-detail-flow.png"
+      ],
+      "elapsedMs": 4962
+    },
+    {
+      "id": 3,
+      "name": "Zaman filtreleri",
+      "data": "qaRecords=manual, analysisTab=reports, e2e=1",
+      "selectors": [
+        "[data-testid=\"report-period-select\"]",
+        "[data-testid=\"analysis-reports-section\"]"
+      ],
+      "expected": "Haftalik/Aylik/3 Aylik/Tum Zamanlar secimleri statei dogru guncellemeli.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx, App.tsx",
+      "pass": true,
+      "actual": [
+        {
+          "period": "Haftalık",
+          "change": {
+            "ok": true,
+            "value": "Haftalık"
+          },
+          "state": "Haftalık",
+          "ok": true
+        },
+        {
+          "period": "Aylık",
+          "change": {
+            "ok": true,
+            "value": "Aylık"
+          },
+          "state": "Aylık",
+          "ok": true
+        },
+        {
+          "period": "3 Aylık",
+          "change": {
+            "ok": true,
+            "value": "3 Aylık"
+          },
+          "state": "3 Aylık",
+          "ok": true
+        },
+        {
+          "period": "Tüm Zamanlar",
+          "change": {
+            "ok": true,
+            "value": "Tüm Zamanlar"
+          },
+          "state": "Tüm Zamanlar",
+          "ok": true
+        }
+      ],
+      "actualSummary": "Filtre dogrulama: Haftalık:ok, Aylık:ok, 3 Aylık:ok, Tüm Zamanlar:ok",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\03-time-filters.png"
+      ],
+      "elapsedMs": 5134
+    },
+    {
+      "id": 4,
+      "name": "Uzun ders/konu adlari UI stabilitesi",
+      "data": "qaRecords=manual, analysisTab=insights, e2e=1",
+      "selectors": [
+        "[data-testid^=\"weak-topic-card-\"]"
+      ],
+      "expected": "Uzun adlar yatay tasma olusturmamali.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx",
+      "pass": true,
+      "actual": {
+        "rootOverflow": -15,
+        "cardOverflow": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "cardCount": 5
+      },
+      "actualSummary": "Root overflow: -15, kart sayisi: 5",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\04-long-name-overflow.png"
+      ],
+      "elapsedMs": 11629
+    },
+    {
+      "id": 5,
+      "name": "Bos veri / az veri state",
+      "data": "qaRecords=empty + qaRecords=low, analysisTab=overview, e2e=1",
+      "selectors": [
+        "[data-testid=\"analysis-state-card-overview\"]",
+        "[data-testid=\"analysis-state-text-overview\"]"
+      ],
+      "expected": "Bos ve az veri durumunda low-data mesajlari gelmeli.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx, App.tsx",
+      "pass": true,
+      "actual": {
+        "emptyState": "low-data",
+        "lowState": "low-data",
+        "emptyText": "Ilk analiz icin en az 3 tamamlanan calisma gerekli. Bu hafta veri olustukca karar onerileri netlesecek.",
+        "lowText": "Ilk analiz icin en az 3 tamamlanan calisma gerekli. Bu hafta veri olustukca karar onerileri netlesecek."
+      },
+      "actualSummary": "empty=low-data, low=low-data",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\05-empty-state.png",
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\05-low-state.png"
+      ],
+      "elapsedMs": 4523
+    },
+    {
+      "id": 6,
+      "name": "Hata/cache/sync guard",
+      "data": "bozuk localStorage + qaRecords=none, e2e=1",
+      "selectors": [
+        "[data-testid=\"parent-analysis-workspace\"]"
+      ],
+      "expected": "Bozuk cache durumunda ekran cokmeden acilmali.",
+      "related": "App.tsx",
+      "pass": true,
+      "actual": {
+        "rootVisible": true,
+        "loadingVisible": true,
+        "fatalErrorVisible": false,
+        "surface": {
+          "workspace": false,
+          "heading": true,
+          "loading": true,
+          "stateCard": false,
+          "fatal": false
+        }
+      },
+      "actualSummary": "root=true, loading=true, fatalError=false",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\06-error-guard.png"
+      ],
+      "elapsedMs": 1571
+    },
+    {
+      "id": 7,
+      "name": "Hedef karti",
+      "data": "qaRecords=manual, analysisTab=goals, e2e=1",
+      "selectors": [
+        "[data-testid=\"analysis-goals-section\"]",
+        "[data-testid=\"top-goal-alert-level\"]"
+      ],
+      "expected": "Hedef karar alani gorunmeli ve ust uyari etiketi olmali.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx",
+      "pass": true,
+      "actual": {
+        "hasSection": true,
+        "topLevel": "Stabil"
+      },
+      "actualSummary": "section=true, topLevel=Stabil",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\07-goal-panel.png"
+      ],
+      "elapsedMs": 1717
+    },
+    {
+      "id": 8,
+      "name": "Deneme/LGS karti",
+      "data": "qaRecords=manual, analysisTab=goals, e2e=1",
+      "selectors": [
+        "[data-testid=\"exam-card-school\"]",
+        "[data-testid=\"exam-card-mock\"]",
+        "[data-testid=\"exam-card-trend\"]"
+      ],
+      "expected": "Deneme/LGS ozet kartlari gorunmeli.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx",
+      "pass": true,
+      "actual": {
+        "school": true,
+        "mock": true,
+        "trend": true
+      },
+      "actualSummary": "school=true, mock=true, trend=true",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\08-exam-cards.png"
+      ],
+      "elapsedMs": 1674
+    },
+    {
+      "id": 9,
+      "name": "Uyari seviyeleri",
+      "data": "qaRecords=manual, analysisTab=goals, e2e=1",
+      "selectors": [
+        "[data-testid=\"top-goal-alert-level\"]",
+        "[data-testid^=\"goal-alert-\"]"
+      ],
+      "expected": "Uyari etiketleri sadece izinli seviye setinde olmali.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx",
+      "pass": true,
+      "actual": {
+        "topLevel": "Stabil",
+        "levels": [
+          "Takip et"
+        ],
+        "allowed": [
+          "Kritik",
+          "Dikkat",
+          "Takip et",
+          "Stabil"
+        ]
+      },
+      "actualSummary": "etiketler=Stabil, Takip et",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\09-alert-levels.png"
+      ],
+      "elapsedMs": 1620
+    },
+    {
+      "id": 10,
+      "name": "Veli aksiyonu -> ogrenci gorev zinciri",
+      "data": "qaRecords=manual, analysisTab=goals, e2e=1",
+      "selectors": [
+        "[data-testid=\"track-topic-btn\"]",
+        "[data-testid=\"switch-child-mode-btn\"]",
+        "[data-plan-task-id^=\"parent-action-\"]"
+      ],
+      "expected": "Veli aksiyonundan sonra cocuk ekraninda parent-action gorevi olusmali.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx, components/child/ChildDashboard.tsx, App.tsx",
+      "pass": true,
+      "actual": {
+        "beforePending": 0,
+        "afterPending": 1,
+        "childReady": true,
+        "childCount": 1,
+        "clicked": {
+          "clicked": true
+        }
+      },
+      "actualSummary": "pending 0 -> 1, childReady=true, childTask=1",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\10-parent-to-child-task.png"
+      ],
+      "elapsedMs": 3552
+    },
+    {
+      "id": 11,
+      "name": "Child complete -> parent refresh",
+      "data": "qaRecords=manual, analysisTab=goals, e2e=1",
+      "selectors": [
+        "[data-testid^=\"child-quick-complete-task-\"]",
+        "[data-testid=\"switch-parent-mode-btn\"]",
+        "[data-testid=\"parent-action-completed-count\"]"
+      ],
+      "expected": "Cocukta tamamlanan parent-action gorevi ebeveyn ozetine yansimali.",
+      "related": "components/child/ChildDashboard.tsx, components/parent/ParentAnalysisWorkspace.tsx, App.tsx",
+      "pass": true,
+      "actual": {
+        "childReady": true,
+        "quickDone": {
+          "clicked": true
+        },
+        "beforePending": 1,
+        "afterPending": 0,
+        "beforeDone": 0,
+        "afterDone": 1
+      },
+      "actualSummary": "childReady=true, pending 1 -> 0, done 0 -> 1",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\11-child-complete-parent.png"
+      ],
+      "elapsedMs": 5324
+    },
+    {
+      "id": 12,
+      "name": "6000 kayit performans testi",
+      "data": "npm run test:heavy",
+      "selectors": [
+        "scripts/heavy-real-data-tests.ts"
+      ],
+      "expected": "Ağir veri analizi hata vermeden tamamlanmali.",
+      "related": "scripts/heavy-real-data-tests.ts",
+      "pass": true,
+      "actual": {
+        "heavyPassed": true,
+        "analysisElapsedMs": 333,
+        "logPath": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\test-heavy.log"
+      },
+      "actualSummary": "heavyPassed=true, analysisElapsedMs=333",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\12-performance-context.png",
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\test-heavy.log"
+      ],
+      "elapsedMs": 3501
+    },
+    {
+      "id": 13,
+      "name": "Duplicate event idempotency",
+      "data": "qaRecords=manual, track-topic iki kez, e2e=1",
+      "selectors": [
+        "[data-testid=\"track-topic-btn\"]",
+        "task.planTaskId^=\"parent-action-\""
+      ],
+      "expected": "Ayni parent aksiyonu duplicate gorev olusturmamali.",
+      "related": "components/parent/ParentAnalysisWorkspace.tsx, App.tsx",
+      "pass": true,
+      "actual": {
+        "beforePending": 0,
+        "afterPending": 0,
+        "pendingDelta": 0,
+        "total": 1,
+        "unique": 1,
+        "duplicateCount": 0,
+        "atLeastOneCreated": true
+      },
+      "actualSummary": "pending 0->0 (delta=0), total=1, unique=1, duplicate=0",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\13-idempotency.png"
+      ],
+      "elapsedMs": 5303
+    },
+    {
+      "id": 14,
+      "name": "Notification cooldown UI",
+      "data": "qaRecords=low, notifications interaction, e2e=1",
+      "selectors": [
+        "[data-testid=\"topbar-notifications-toggle\"]",
+        "[data-testid^=\"notification-item-\"]",
+        "[data-cooldown-group]"
+      ],
+      "expected": "Ayni cooldown grubundaki bildirim aksiyon sonrasi tekrar listelenmemeli.",
+      "related": "App.tsx",
+      "pass": true,
+      "actual": {
+        "firstItem": {
+          "key": "weak:1",
+          "group": "weak"
+        },
+        "remainingCount": 0,
+        "cooldownValue": 1779164508510
+      },
+      "actualSummary": "group=weak, remaining=0, cooldown=1779164508510",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\14-notification-cooldown.png"
+      ],
+      "elapsedMs": 3655
+    }
+  ],
+  "isolationChecks": [
+    {
+      "id": "E1",
+      "name": "e2e=1 olmadan quick complete butonu gorunmuyor",
+      "data": "qaRecords=manual, e2e parametresi yok",
+      "selectors": [
+        "[data-testid=\"switch-child-mode-btn\"]",
+        "[data-testid^=\"child-quick-complete-task-\"]"
+      ],
+      "expected": "Test-only quick complete butonu normal modda render edilmemeli.",
+      "pass": true,
+      "actual": {
+        "childRoot": true,
+        "quickButtons": 0
+      },
+      "actualSummary": "childRoot=true, quickButtons=0",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\e1-no-e2e-quick-complete.png"
+      ],
+      "elapsedMs": 1411
+    },
+    {
+      "id": "E2",
+      "name": "e2e=1 olmadan test-seed akisi calismiyor",
+      "data": "qaRecords=manual, e2e parametresi yok, localStorage temiz baslangic",
+      "selectors": [
+        "localStorage.__qa_manual_records_seeded_at",
+        "task.id^=\"qa_manual_\""
+      ],
+      "expected": "qa seed timestamp yazilmamali ve qa_manual tasklari uretilmemeli.",
+      "pass": true,
+      "actual": {
+        "seedMarker": null,
+        "qaTaskCount": 0
+      },
+      "actualSummary": "seedMarker=null, qaTaskCount=0",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\e2-no-e2e-seed.png"
+      ],
+      "elapsedMs": 1409
+    },
+    {
+      "id": "E3",
+      "name": "Normal parent/child akisi e2e olmadan bozuk degil",
+      "data": "qaRecords=none, e2e parametresi yok",
+      "selectors": [
+        "[data-testid=\"switch-child-mode-btn\"]",
+        "[data-testid=\"switch-parent-mode-btn\"]",
+        "[data-testid=\"parent-lock-screen\"]"
+      ],
+      "expected": "Childe gecis ve parenta donuste lock screen gorunmeli; akista kirilma olmamali.",
+      "pass": true,
+      "actual": {
+        "childRoot": true,
+        "lockScreen": true,
+        "passwordInput": true
+      },
+      "actualSummary": "childRoot=true, lockScreen=true, passwordInput=true",
+      "evidence": [
+        "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\e3-no-e2e-parent-child.png"
+      ],
+      "elapsedMs": 1707
+    }
+  ],
+  "logs": {
+    "run": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\ui-e2e.log",
+    "vite": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\vite.log",
+    "heavy": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\test-heavy.log"
+  }
+}
