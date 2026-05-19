@@ -134,7 +134,6 @@ Repoya eklenmemesi gerekenler:
 - `node_modules`
 - `dist`
 - `.env` ve `.env.local`
-- `.firebase`
 - test ciktilari
 - gecici ekran goruntuleri
 - tarayici profil klasorleri
