@@ -94,6 +94,17 @@ Normal kurulum ve kullanim icin herhangi bir API anahtari veya ortam degiskeni g
 - Gorev atama penceresi ders, unite, konu, tarih, sure, soru sayisi ve takip olcutu secimlerini mevcut gorev sistemine baglar.
 - PWA metadata uyarilari icin modern mobile web app meta etiketi eklenmistir.
 
+## Son Stabilizasyon Ozetleri (2026-05)
+
+- Degisiklik + test ozet dosyasi:
+  - [degisiklik-ve-test-ozeti-2026-05-19.md](C:/Users/90535/Desktop/DersRotası/docs/degisiklik-ve-test-ozeti-2026-05-19.md)
+- UI/E2E 14 madde kanit raporu:
+  - [ebeveyn-karar-ekrani-ui-e2e-raporu-2026-05-17.md](C:/Users/90535/Desktop/DersRotası/docs/ebeveyn-karar-ekrani-ui-e2e-raporu-2026-05-17.md)
+- 6000+ guven ve yuk testi raporu:
+  - [ebeveyn-karar-ekrani-6000plus-guven-raporu-v2.md](C:/Users/90535/Desktop/DersRotası/docs/ebeveyn-karar-ekrani-6000plus-guven-raporu-v2.md)
+- 36 madde dogrulama raporu:
+  - [ebeveyn-karar-ekrani-dogrulama-raporu-2026-05-17.md](C:/Users/90535/Desktop/DersRotası/docs/ebeveyn-karar-ekrani-dogrulama-raporu-2026-05-17.md)
+
 ## Proje Yapisi
 
 ```text
@@ -157,8 +168,11 @@ Bu surum icin calistirilan kontroller:
 
 ```bash
 npm run typecheck
-npm run build
 npm run smoke
+npm run test:matrix
+npm run test:heavy
+npm run test:acceptance
+npm run build
 ```
 
-Uc komut da temiz gecmistir.
+Tum kontroller temiz gecmistir. UI/E2E tarafinda 14/14 madde PASS raporlanmistir.
