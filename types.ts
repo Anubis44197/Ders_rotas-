@@ -197,6 +197,12 @@ export interface ParentDashboardProps {
   onImportData: (file: File) => Promise<boolean>;
   onChangeExamRecords?: React.Dispatch<React.SetStateAction<ExamRecord[]>>;
   onChangeCompositeExamResults?: React.Dispatch<React.SetStateAction<CompositeExamResult[]>>;
+  overviewTodayOperational?: {
+    plannedCount: number;
+    completedTodayCount: number;
+    pendingTodayCount: number;
+    overdueCount: number;
+  };
   timeFilter?: TimeFilterValue;
   loading?: boolean;
   error?: string | null;

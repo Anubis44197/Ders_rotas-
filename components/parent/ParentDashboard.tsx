@@ -27,6 +27,7 @@ const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
   onImportData,
   examRecords = [],
   compositeExamResults = [],
+  overviewTodayOperational,
   onChangeExamRecords,
   onChangeCompositeExamResults,
   loading,
@@ -88,6 +89,7 @@ const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
           loading={loading}
           error={error}
           viewMode={viewMode}
+          overviewTodayOperational={overviewTodayOperational}
         />
       )}
 

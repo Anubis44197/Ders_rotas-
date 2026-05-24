@@ -2130,8 +2130,8 @@ const deriveReplanTriggers = (
       id: `trigger_schedule_change_week_${activePlan.week}`,
       type: 'schedule-change',
       createdAt: new Date().toISOString(),
-      severity: 'medium',
-      reasonText: `Hafta ${activePlan.week} aktif planindan sonra haftalik okul programi degisti.`,
+      severity: 'low',
+      reasonText: `Hafta ${activePlan.week} sonrasinda zaman zemini degistigi icin plan guncelleme ihtiyaci olustu.`,
     });
   }
 
@@ -3802,6 +3802,464 @@ const App: React.FC = () => {
       .filter((task) => task.status === 'bekliyor')
       .sort((left, right) => left.dueDate.localeCompare(right.dueDate) || left.title.localeCompare(right.title, 'tr'))[0];
   }, [tasks]);
+  const overviewTodayOperational = useMemo(() => {
+    const pendingToday = tasks.filter((task) => task.status === 'bekliyor' && task.dueDate <= today);
+    const completedToday = tasks.filter((task) => isCompletedTask(task) && task.completionDate === today);
+    return {
+      plannedCount: pendingToday.length + completedToday.length,
+      completedTodayCount: completedToday.length,
+      pendingTodayCount: pendingToday.length,
+      overdueCount: tasks.filter((task) => task.status === 'bekliyor' && task.dueDate < today).length,
+    };
+  }, [tasks, today]);
+  const overviewTodayCompletedTasks = useMemo(() => {
+    return tasks
+      .filter((task) => isCompletedTask(task) && task.completionDate === today)
+      .sort((left, right) => (right.completionTimestamp || 0) - (left.completionTimestamp || 0))
+      .slice(0, 3)
+      .map((task) => ({
+        id: task.id,
+        title: task.title,
+        courseName: (courses.find((course) => course.id === task.courseId)?.name) || task.courseId,
+      }));
+  }, [courses, tasks, today]);
+  const overviewWeakTopicActions = useMemo(() => {
+    return overviewAnalysis.topics.filter((topic) => topic.needsRevision).slice(0, 3).map((topic) => {
+      const linkedTask = tasks.find((task) =>
+        task.status === 'bekliyor'
+        && task.courseId === topic.courseId
+        && normalizeForLookup(task.curriculumTopicName || '') === normalizeForLookup(topic.topicName)
+      );
+      const taskStatus = linkedTask
+        ? 'Atandi · Bekliyor'
+        : 'Henuz atanmadi';
+      const reason = topic.riskScore >= 65
+        ? `Risk puani ${topic.riskScore}. Bu konuda acil destek gerekiyor.`
+        : topic.masteryScore < 70
+          ? `Kavrama puani ${topic.masteryScore}. Konu tekrarina ihtiyac var.`
+          : 'Son calismalarda istikrar dusuk, kisa tekrar gerekli.';
+      const action = linkedTask
+        ? `${Math.max(15, linkedTask.plannedDuration || 20)} dk tekrar`
+        : '20 dk tekrar + 15 soru';
+      return {
+        key: topic.key,
+        courseName: topic.courseName,
+        topicName: topic.topicName,
+        reason,
+        action,
+        taskStatus,
+      };
+    });
+  }, [overviewSummary.weakTopics, tasks]);
+  const overviewCourseNames = useMemo(
+    () => courses.filter((course) => course.active !== false).map((course) => repairedText(course.name)),
+    [courses],
+  );
+  const overviewWeeklyStats = useMemo(() => {
+    const todayDate = new Date(`${today}T00:00:00`);
+    const currentStart = new Date(todayDate);
+    currentStart.setDate(currentStart.getDate() - 6);
+    const previousEnd = new Date(currentStart);
+    previousEnd.setDate(previousEnd.getDate() - 1);
+    const previousStart = new Date(previousEnd);
+    previousStart.setDate(previousStart.getDate() - 6);
+    const toDate = (value?: string) => (value ? new Date(`${value}T00:00:00`) : null);
+    const isBetween = (value: Date | null, start: Date, end: Date) => Boolean(value && value >= start && value <= end);
+
+    const completedCurrentWeek = tasks.filter((task) => {
+      if (!isCompletedTask(task)) return false;
+      const completedAt = toDate(task.completionDate);
+      return isBetween(completedAt, currentStart, todayDate);
+    });
+    const completedPreviousWeek = tasks.filter((task) => {
+      if (!isCompletedTask(task)) return false;
+      const completedAt = toDate(task.completionDate);
+      return isBetween(completedAt, previousStart, previousEnd);
+    });
+    const minutesCurrentWeek = Math.round(completedCurrentWeek.reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0));
+    const minutesPreviousWeek = Math.round(completedPreviousWeek.reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0));
+    const completionTarget = Math.max(completedCurrentWeek.length + tasks.filter((task) => task.status === 'bekliyor' && task.dueDate <= today).length, 1);
+    const completionPercent = Math.max(0, Math.min(100, Math.round((completedCurrentWeek.length / completionTarget) * 100)));
+    const minuteChange = minutesPreviousWeek > 0
+      ? Math.round(((minutesCurrentWeek - minutesPreviousWeek) / minutesPreviousWeek) * 100)
+      : (minutesCurrentWeek > 0 ? 100 : 0);
+    const latestCompositeAverage = compositeExamResults[0]
+      ? Math.round(compositeExamResults[0].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[0].courses.length)
+      : null;
+    const previousCompositeAverage = compositeExamResults[1]
+      ? Math.round(compositeExamResults[1].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[1].courses.length)
+      : null;
+    const examDelta = latestCompositeAverage !== null && previousCompositeAverage !== null
+      ? latestCompositeAverage - previousCompositeAverage
+      : 0;
+    const hasExamTrendData = latestCompositeAverage !== null && previousCompositeAverage !== null;
+
+    const dailyAccuracyPoints = Array.from({ length: 7 }, (_, index) => {
+      const day = new Date(currentStart);
+      day.setDate(day.getDate() + index);
+      const dayIso = day.toISOString().slice(0, 10);
+      const dayTasks = completedCurrentWeek.filter((task) => task.completionDate === dayIso && task.taskType === 'soru çözme');
+      const answered = dayTasks.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
+      const correct = dayTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+      return answered > 0 ? Math.round((correct / answered) * 100) : 0;
+    });
+
+    return {
+      completedCount: completedCurrentWeek.length,
+      completionTarget,
+      completionPercent,
+      totalMinutes: minutesCurrentWeek,
+      minuteChange,
+      examDelta,
+      hasExamTrendData,
+      dailyAccuracyPoints,
+    };
+  }, [compositeExamResults, tasks, today]);
+  const overviewCourseInsights = useMemo(() => {
+    const todayDate = new Date(`${today}T00:00:00`);
+    const currentStart = new Date(todayDate);
+    currentStart.setDate(currentStart.getDate() - 6);
+    const previousEnd = new Date(currentStart);
+    previousEnd.setDate(previousEnd.getDate() - 1);
+    const previousStart = new Date(previousEnd);
+    previousEnd.setHours(0, 0, 0, 0);
+    previousStart.setHours(0, 0, 0, 0);
+    const toDate = (value?: string) => (value ? new Date(`${value}T00:00:00`) : null);
+    const isBetween = (value: Date | null, start: Date, end: Date) => Boolean(value && value >= start && value <= end);
+
+    return courses
+      .filter((course) => course.active !== false)
+      .map((course) => {
+        const courseAnalysis = overviewAnalysis.courses.find((item) => item.courseId === course.id);
+        const weakCount = overviewSummary.weakTopics.filter((topic) => topic.courseName === courseAnalysis?.courseName || topic.courseName === course.name).length;
+        const currentQuestionTasks = tasks.filter((task) => {
+          if (!isCompletedTask(task) || task.courseId !== course.id || task.taskType !== 'soru çözme') return false;
+          return isBetween(toDate(task.completionDate), currentStart, todayDate);
+        });
+        const previousQuestionTasks = tasks.filter((task) => {
+          if (!isCompletedTask(task) || task.courseId !== course.id || task.taskType !== 'soru çözme') return false;
+          return isBetween(toDate(task.completionDate), previousStart, previousEnd);
+        });
+        const calcAccuracy = (items: Task[]) => {
+          const answered = items.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
+          const correct = items.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+          return answered > 0 ? Math.round((correct / answered) * 100) : 0;
+        };
+        const currentAccuracy = calcAccuracy(currentQuestionTasks);
+        const previousAccuracy = calcAccuracy(previousQuestionTasks);
+        const hasWeeklyData = currentQuestionTasks.length > 0 || previousQuestionTasks.length > 0;
+        const change = hasWeeklyData ? (currentAccuracy - previousAccuracy) : null;
+        return {
+          courseName: repairedText(course.name),
+          progress: Math.max(0, Math.min(100, Math.round(courseAnalysis?.averageMastery ?? 0))),
+          weakCount,
+          hasWeeklyData,
+          change,
+        };
+      });
+  }, [courses, overviewAnalysis.courses, overviewSummary.weakTopics, tasks, today]);
+  const overviewTopicInsights = useMemo(() => {
+    const todayDate = new Date(`${today}T00:00:00`);
+    const currentStart = new Date(todayDate);
+    currentStart.setDate(currentStart.getDate() - 6);
+    const previousEnd = new Date(currentStart);
+    previousEnd.setDate(previousEnd.getDate() - 1);
+    const previousStart = new Date(previousEnd);
+    previousEnd.setHours(0, 0, 0, 0);
+    previousStart.setHours(0, 0, 0, 0);
+    const toDate = (value?: string) => (value ? new Date(`${value}T00:00:00`) : null);
+    const isBetween = (value: Date | null, start: Date, end: Date) => Boolean(value && value >= start && value <= end);
+
+    const courseNameById = new Map(
+      courses.map((course) => [course.id, repairedText(course.name).trim()]),
+    );
+    const topicMap = new Map<string, {
+      key: string;
+      topicName: string;
+      courseName: string;
+      currentAnswered: number;
+      currentCorrect: number;
+      previousAnswered: number;
+      previousCorrect: number;
+    }>();
+
+    Object.entries(curriculum).forEach(([rawCourseName, units]) => {
+      const courseName = repairedText(rawCourseName).trim();
+      if (!courseName || !Array.isArray(units)) return;
+      units.forEach((unit) => {
+        if (!unit || !Array.isArray(unit.topics)) return;
+        unit.topics.forEach((topic) => {
+          const topicName = repairedText(topic?.name || '').trim();
+          if (!topicName) return;
+          const key = `${normalizeForLookup(courseName)}::${normalizeForLookup(topicName)}`;
+          if (!topicMap.has(key)) {
+            topicMap.set(key, {
+              key,
+              topicName,
+              courseName,
+              currentAnswered: 0,
+              currentCorrect: 0,
+              previousAnswered: 0,
+              previousCorrect: 0,
+            });
+          }
+        });
+      });
+    });
+
+    tasks.forEach((task) => {
+      if (!isCompletedTask(task) || task.taskType !== 'soru çözme') return;
+      const topicName = repairedText(task.curriculumTopicName || '').trim();
+      if (!topicName) return;
+      const courseName = repairedText(courseNameById.get(task.courseId) || task.courseId).trim();
+      if (!courseName) return;
+      const key = `${normalizeForLookup(courseName)}::${normalizeForLookup(topicName)}`;
+      const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
+      if (answered <= 0) return;
+      const correct = task.correctCount || 0;
+      const completedAt = toDate(task.completionDate);
+      const item = topicMap.get(key) || {
+        key,
+        topicName,
+        courseName,
+        currentAnswered: 0,
+        currentCorrect: 0,
+        previousAnswered: 0,
+        previousCorrect: 0,
+      };
+      if (isBetween(completedAt, currentStart, todayDate)) {
+        item.currentAnswered += answered;
+        item.currentCorrect += correct;
+      } else if (isBetween(completedAt, previousStart, previousEnd)) {
+        item.previousAnswered += answered;
+        item.previousCorrect += correct;
+      }
+      topicMap.set(key, item);
+    });
+
+    const riskMap = new Map(
+      overviewAnalysis.topics.map((topic) => [normalizeForLookup(`${topic.courseName}::${topic.topicName}`), topic.riskScore]),
+    );
+
+    return Array.from(topicMap.values()).map((item) => {
+      const currentAccuracy = item.currentAnswered > 0 ? Math.round((item.currentCorrect / item.currentAnswered) * 100) : null;
+      const previousAccuracy = item.previousAnswered > 0 ? Math.round((item.previousCorrect / item.previousAnswered) * 100) : null;
+      const delta = currentAccuracy !== null && previousAccuracy !== null ? currentAccuracy - previousAccuracy : null;
+      const riskScore = riskMap.get(normalizeForLookup(`${item.courseName}::${item.topicName}`)) ?? null;
+      return {
+        key: item.key,
+        topicName: item.topicName,
+        courseName: item.courseName,
+        currentAccuracy,
+        previousAccuracy,
+        delta,
+        riskScore,
+      };
+    });
+  }, [courses, curriculum, overviewAnalysis.topics, tasks, today]);
+  const overviewTopicMetricsMap = useMemo(() => {
+    const completedTasks = tasks.filter((task) => isCompletedTask(task));
+    const courseNameById = new Map(
+      courses.map((course) => [course.id, repairedText(course.name)]),
+    );
+    const analysisTopicByKey = new Map(
+      overviewAnalysis.topics.map((topic) => [
+        normalizeForLookup(`${topic.courseName}::${topic.topicName}`),
+        topic,
+      ]),
+    );
+
+    const entries = overviewTopicInsights.map((topic) => {
+      const normalizedKey = normalizeForLookup(`${topic.courseName}::${topic.topicName}`);
+      const topicTasks = completedTasks.filter((task) => {
+        const topicName = repairedText(task.curriculumTopicName || '');
+        if (!topicName) return false;
+        const courseName = repairedText(courseNameById.get(task.courseId) || task.courseId);
+        return normalizeForLookup(`${courseName}::${topicName}`) === normalizedKey;
+      });
+      const solved = topicTasks.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
+      const correct = topicTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+      const minutes = Math.round(topicTasks.reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0));
+      const analysisTopic = analysisTopicByKey.get(normalizedKey);
+      const accuracyFallback = topic.currentAccuracy ?? analysisTopic?.masteryScore ?? 0;
+      const accuracy = solved > 0 ? Math.round((correct / solved) * 100) : accuracyFallback;
+      const conceptError = topicTasks.reduce((sum, task) => sum + (task.conceptErrorCount || 0), 0);
+      const processError = topicTasks.reduce((sum, task) => sum + (task.processErrorCount || 0), 0);
+      const attentionError = topicTasks.reduce((sum, task) => sum + (task.attentionErrorCount || 0), 0);
+      const otherError = Math.max(
+        0,
+        topicTasks.reduce((sum, task) => sum + (task.incorrectCount || 0), 0) - (conceptError + processError + attentionError),
+      );
+      const riskScore = topic.riskScore ?? analysisTopic?.riskScore ?? 0;
+      const avgEfficiency = analysisTopic?.averageEfficiency ?? accuracyFallback;
+      const avgFocus = analysisTopic?.averageFocus ?? accuracyFallback;
+      const masteryScore = analysisTopic?.masteryScore ?? accuracyFallback;
+
+      return [
+        topic.key,
+        {
+          minutes,
+          solved,
+          accuracy,
+          retryNeed: riskScore >= 65 ? 'Yuksek' : riskScore >= 45 ? 'Orta' : 'Dusuk',
+          practicePerf: Math.max(0, Math.min(100, Math.round((avgEfficiency * 0.45) + (accuracy * 0.55)))),
+          testPerf: Math.max(0, Math.min(100, Math.round((masteryScore * 0.7) + (avgFocus * 0.3)))),
+          dailyPerf: Math.max(0, Math.min(100, Math.round((avgFocus * 0.5) + (avgEfficiency * 0.5)))),
+          errors: [
+            { label: 'Islem Hatasi', value: conceptError },
+            { label: 'Kavram Hatasi', value: processError },
+            { label: 'Dikkat Hatasi', value: attentionError },
+            { label: 'Diger', value: otherError },
+          ],
+        },
+      ];
+    });
+
+    return Object.fromEntries(entries);
+  }, [courses, overviewAnalysis.topics, overviewTopicInsights, tasks]);
+  const overviewTopicPerformanceRows = useMemo(() => {
+    const courseNameById = new Map(
+      courses.map((course) => [course.id, repairedText(course.name)]),
+    );
+    const questionTasks = tasks.filter((task) => (
+      isCompletedTask(task)
+      && task.taskType === 'soru çözme'
+      && (typeof task.correctCount === 'number'
+        || typeof task.incorrectCount === 'number'
+        || typeof task.emptyCount === 'number'
+        || Number(task.questionCount || 0) > 0)
+    ));
+
+    const aggregate = new Map<string, {
+      key: string;
+      courseName: string;
+      unitName: string;
+      topicName: string;
+      totalQuestions: number;
+      correctCount: number;
+      incorrectCount: number;
+      emptyCount: number;
+      minutes: number;
+      taskCount: number;
+      lastCompletedAt: string;
+    }>();
+
+    Object.entries(curriculum).forEach(([rawCourseName, units]) => {
+      const courseName = repairedText(rawCourseName).trim();
+      if (!courseName || !Array.isArray(units)) return;
+      units.forEach((unit) => {
+        const unitName = repairedText(unit?.name || 'Unite belirtilmedi').trim() || 'Unite belirtilmedi';
+        if (!unit || !Array.isArray(unit.topics)) return;
+        unit.topics.forEach((topic) => {
+          const topicName = repairedText(topic?.name || 'Konu belirtilmedi').trim() || 'Konu belirtilmedi';
+          const key = `${normalizeForLookup(courseName)}::${normalizeForLookup(unitName)}::${normalizeForLookup(topicName)}`;
+          if (!aggregate.has(key)) {
+            aggregate.set(key, {
+              key,
+              courseName,
+              unitName,
+              topicName,
+              totalQuestions: 0,
+              correctCount: 0,
+              incorrectCount: 0,
+              emptyCount: 0,
+              minutes: 0,
+              taskCount: 0,
+              lastCompletedAt: '',
+            });
+          }
+        });
+      });
+    });
+
+    questionTasks.forEach((task) => {
+      const courseName = repairedText(courseNameById.get(task.courseId) || task.courseId || 'Ders').trim();
+      const unitName = repairedText(task.curriculumUnitName || 'Unite belirtilmedi').trim() || 'Unite belirtilmedi';
+      const topicName = repairedText(task.curriculumTopicName || 'Konu belirtilmedi').trim() || 'Konu belirtilmedi';
+      const key = `${normalizeForLookup(courseName)}::${normalizeForLookup(unitName)}::${normalizeForLookup(topicName)}`;
+      const record = aggregate.get(key) || {
+        key,
+        courseName,
+        unitName,
+        topicName,
+        totalQuestions: 0,
+        correctCount: 0,
+        incorrectCount: 0,
+        emptyCount: 0,
+        minutes: 0,
+        taskCount: 0,
+        lastCompletedAt: '',
+      };
+
+      const correct = Math.max(0, Number(task.correctCount || 0));
+      const incorrect = Math.max(0, Number(task.incorrectCount || 0));
+      const empty = Math.max(0, Number(task.emptyCount || 0));
+      const answeredTotal = correct + incorrect + empty;
+      const questionTotal = Math.max(answeredTotal, Number(task.questionCount || 0));
+
+      record.correctCount += correct;
+      record.incorrectCount += incorrect;
+      record.emptyCount += empty;
+      record.totalQuestions += Math.max(0, questionTotal);
+      record.minutes += Math.round((task.actualDuration || 0) / 60);
+      record.taskCount += 1;
+      if (task.completionDate && task.completionDate > record.lastCompletedAt) {
+        record.lastCompletedAt = task.completionDate;
+      }
+      aggregate.set(key, record);
+    });
+
+    return Array.from(aggregate.values())
+      .map((item) => ({
+        ...item,
+        accuracyPercent: item.totalQuestions > 0
+          ? Math.round((item.correctCount / item.totalQuestions) * 100)
+          : 0,
+      }))
+      .sort((a, b) => {
+        const dateCompare = (b.lastCompletedAt || '').localeCompare(a.lastCompletedAt || '');
+        if (dateCompare !== 0) return dateCompare;
+        const courseCompare = a.courseName.localeCompare(b.courseName, 'tr');
+        if (courseCompare !== 0) return courseCompare;
+        const unitCompare = a.unitName.localeCompare(b.unitName, 'tr');
+        if (unitCompare !== 0) return unitCompare;
+        return a.topicName.localeCompare(b.topicName, 'tr');
+      });
+  }, [courses, curriculum, tasks]);
+  const overviewReportSeries = useMemo(() => {
+    const todayDate = new Date(`${today}T00:00:00`);
+    const startOfWeek = (date: Date) => {
+      const copy = new Date(date);
+      const day = copy.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      copy.setDate(copy.getDate() - diff);
+      copy.setHours(0, 0, 0, 0);
+      return copy;
+    };
+    const coursePalette = ['#2563EB', '#16A34A', '#7C3AED', '#F59E0B', '#06B6D4', '#EC4899', '#64748B'];
+    const activeCourses = courses.filter((course) => course.active !== false);
+    return activeCourses.slice(0, 6).map((course, idx) => {
+      const points = Array.from({ length: 4 }, (_, index) => {
+        const weekStart = startOfWeek(new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() - (3 - index) * 7));
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const weekTasks = tasks.filter((task) => {
+          if (!isCompletedTask(task) || task.courseId !== course.id || !task.completionDate || task.taskType !== 'soru çözme') return false;
+          const date = new Date(`${task.completionDate}T00:00:00`);
+          return date >= weekStart && date <= weekEnd;
+        });
+        const answered = weekTasks.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
+        const correct = weekTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+        const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+        return accuracy;
+      });
+      return {
+        courseName: repairedText(course.name),
+        color: coursePalette[idx % coursePalette.length],
+        points,
+      };
+    });
+  }, [courses, tasks, today]);
   const overviewUpcomingExam = useMemo(() => {
     return [...examScheduleEntries]
       .filter((exam) => exam.date >= today)
@@ -4153,6 +4611,7 @@ const App: React.FC = () => {
     onImportData: handleImportDataNew,
     onChangeExamRecords: setExamRecords,
     onChangeCompositeExamResults: setCompositeExamResults,
+    overviewTodayOperational,
   }), [
     courses,
     tasks,
@@ -4176,6 +4635,7 @@ const App: React.FC = () => {
     handleImportDataNew,
     setExamRecords,
     setCompositeExamResults,
+    overviewTodayOperational,
   ]);
 
   const renderParentDashboardMode = (viewMode: NonNullable<ParentDashboardProps['viewMode']>) => (
@@ -4213,6 +4673,7 @@ const App: React.FC = () => {
             onOpenCurriculumEditor={() => setCurriculumEditorOpen(true)}
             onReactivateCourse={reactivateCourse}
             courseReferenceHealth={courseReferenceHealth}
+            overviewWeakTopicActions={overviewWeakTopicActions}
           />
         </Suspense>
       );
@@ -4233,6 +4694,15 @@ const App: React.FC = () => {
                 overviewUpcomingExam={overviewUpcomingExam}
                 overviewTodayName={overviewTodayName}
                 overviewTodaySlots={overviewTodaySlots}
+                overviewTodayCompletedTasks={overviewTodayCompletedTasks}
+                overviewWeakTopicActions={overviewWeakTopicActions}
+                overviewCourseNames={overviewCourseNames}
+                overviewWeeklyStats={overviewWeeklyStats}
+                overviewCourseInsights={overviewCourseInsights}
+                overviewTopicInsights={overviewTopicInsights}
+                overviewTopicMetricsMap={overviewTopicMetricsMap}
+                overviewTopicPerformanceRows={overviewTopicPerformanceRows}
+                overviewReportSeries={overviewReportSeries}
                 overviewSignal={overviewSignal}
                 overviewExamDecision={overviewExamDecision}
                 lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
@@ -4264,6 +4734,15 @@ const App: React.FC = () => {
           overviewUpcomingExam={overviewUpcomingExam}
           overviewTodayName={overviewTodayName}
           overviewTodaySlots={overviewTodaySlots}
+          overviewTodayCompletedTasks={overviewTodayCompletedTasks}
+          overviewWeakTopicActions={overviewWeakTopicActions}
+          overviewCourseNames={overviewCourseNames}
+          overviewWeeklyStats={overviewWeeklyStats}
+          overviewCourseInsights={overviewCourseInsights}
+          overviewTopicInsights={overviewTopicInsights}
+          overviewTopicMetricsMap={overviewTopicMetricsMap}
+          overviewTopicPerformanceRows={overviewTopicPerformanceRows}
+          overviewReportSeries={overviewReportSeries}
           overviewSignal={overviewSignal}
           overviewExamDecision={overviewExamDecision}
           lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
@@ -4292,7 +4771,7 @@ const App: React.FC = () => {
           </div>
           <div ref={topbarToolbarRef} onKeyDown={handleToolbarKeyDown} className="flex items-center gap-2 sm:gap-4" role="toolbar" aria-label="Uygulama komutlari">
             {userType === UserType.Parent && !isParentLocked && (
-              <div ref={topbarQuickActionsRef} className="relative hidden sm:block">
+              <div ref={topbarQuickActionsRef} className="relative hidden xl:block">
                 <button
                   type="button"
                   onClick={() => {
@@ -4316,7 +4795,8 @@ const App: React.FC = () => {
                     <div className="dr-context-menu-preview">En sık kullanılan işlemler</div>
                     <button type="button" role="menuitem" className="dr-context-menu-item" onClick={() => handleQuickAction('planning', 'Planlama açıldı.')}>
                       <ClipboardList className="h-4 w-4" />
-                      Aktif plan
+                      <span className="dr-menu-meta">1</span>
+                      Planlama ozeti
                       <span className="dr-menu-meta">Ana</span>
                     </button>
                     <button type="button" role="menuitem" className="dr-context-menu-item" onClick={() => handleQuickAction('planning', 'Akademik planlama açıldı.')}>
@@ -4325,6 +4805,7 @@ const App: React.FC = () => {
                     </button>
                     <button type="button" role="menuitem" className="dr-context-menu-item" onClick={() => handleQuickAction('planning', 'Sınav takvimi açıldı.')}>
                       <GraduationCap className="h-4 w-4" />
+                      <span className="dr-menu-meta">2</span>
                       Sınav takvimi
                     </button>
                     <div className="dr-menu-divider" />
@@ -4575,7 +5056,7 @@ const App: React.FC = () => {
                             <div>
                               <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Kritik modüller</div>
                               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            {parentWorkspaceItems.filter((item) => primaryParentWorkspaceIds.includes(item.id)).map((item) => {
+                            {parentWorkspaceItems.filter((item) => primaryParentWorkspaceIds.includes(item.id)).map((item, index) => {
                               const Icon = item.icon;
                               const active = parentWorkspaceView === item.id;
                               return (
@@ -4596,7 +5077,7 @@ const App: React.FC = () => {
                                   <div className="flex items-center gap-3">
                                     <Icon className="h-5 w-5" />
                                     <div>
-                                      <div className="font-bold">{item.label}</div>
+                                      <div className="font-bold">{`${index + 1}. ${item.label}`}</div>
                                       <div className="text-xs text-slate-500">{item.description}</div>
                                     </div>
                                   </div>
@@ -4931,7 +5412,6 @@ const App: React.FC = () => {
                 <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Hızlı Geçiş</div>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => handleQuickAction('planning', 'Akademik planlama açıldı.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Planlama</button>
-                  <button type="button" onClick={() => handleQuickAction('planning', 'Aktif plan takibi açıldı.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Aktif plan</button>
                   <button type="button" onClick={() => handleQuickAction('planning', 'Sınav takvimi açıldı.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Sınav takvimi</button>
                   <button type="button" onClick={() => handleQuickAction('analysis', 'Analiz ve raporlar açıldı.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Analiz</button>
                   <button type="button" onClick={() => handleQuickAction('overview', 'Genel bakış açıldı.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Özet</button>

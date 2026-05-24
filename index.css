@@ -431,6 +431,30 @@ button svg,
   -webkit-backdrop-filter: blur(24px) saturate(1.18);
 }
 
+.ios-card,
+.ios-panel,
+.ios-widget,
+.ios-button,
+.ios-button-active {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ios-card :is(h1, h2, h3, h4, h5, h6, p, span, a, label, li, small, strong, em),
+.ios-panel :is(h1, h2, h3, h4, h5, h6, p, span, a, label, li, small, strong, em),
+.ios-widget :is(h1, h2, h3, h4, h5, h6, p, span, a, label, li, small, strong, em),
+.ios-button,
+.ios-button-active {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ios-button,
+.ios-button-active {
+  white-space: normal;
+  text-wrap: pretty;
+}
+
 .ios-panel {
   border: 1px solid var(--dr-border);
   background: var(--dr-surface);
@@ -1854,5 +1878,46 @@ button svg,
 @media (max-width: 768px) {
   .dr-shell {
     padding-bottom: 32px;
+  }
+
+  .ios-card,
+  .ios-panel,
+  .ios-widget {
+    border-radius: 18px !important;
+  }
+
+  .ios-card {
+    padding: 1rem !important;
+  }
+
+  .ios-widget {
+    padding: 0.75rem !important;
+  }
+
+  .text-3xl {
+    font-size: 1.65rem;
+    line-height: 1.25;
+  }
+
+  .text-2xl {
+    font-size: 1.3rem;
+    line-height: 1.25;
+  }
+
+  .ios-card :is(h1, h2, h3, h4),
+  .ios-widget :is(h1, h2, h3, h4) {
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  .ios-card .uppercase,
+  .ios-widget .uppercase {
+    letter-spacing: 0.04em !important;
+  }
+
+  .ios-button,
+  .ios-button-active,
+  .dr-icon-button {
+    min-height: 42px;
   }
 }

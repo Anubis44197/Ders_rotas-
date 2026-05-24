@@ -12,6 +12,11 @@ interface StudyStatsProps {
 }
 
 const card = 'ios-card rounded-[28px] p-5';
+const getDeltaDisplay = (delta: number) => {
+  if (delta > 0) return { arrow: '↑', text: `Gecen haftaya gore +%${Math.abs(delta)}`, tone: 'text-emerald-600' };
+  if (delta < 0) return { arrow: '↓', text: `Gecen haftaya gore -%${Math.abs(delta)}`, tone: 'text-rose-600' };
+  return { arrow: '→', text: 'Gecen haftaya gore %0', tone: 'text-blue-600' };
+};
 
 const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
   const completedTasks = useMemo(() => tasks.filter((task) => isCompletedTask(task)), [tasks]);
@@ -81,6 +86,31 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
 
     return days;
   }, [completedTasks]);
+  const weeklyDelta = useMemo(() => {
+    const currentDays = Array.from({ length: 7 }, (_, index) => getLocalDateString(getDaysAgo(6 - index)));
+    const previousDays = Array.from({ length: 7 }, (_, index) => getLocalDateString(getDaysAgo(13 - index)));
+    const inCurrent = (date?: string) => Boolean(date && currentDays.includes(date));
+    const inPrevious = (date?: string) => Boolean(date && previousDays.includes(date));
+    const currentTasks = completedTasks.filter((task) => inCurrent(task.completionDate));
+    const previousTasks = completedTasks.filter((task) => inPrevious(task.completionDate));
+    const currentMinutes = Math.round(currentTasks.reduce((sum, task) => sum + (task.actualDuration || 0), 0) / 60);
+    const previousMinutes = Math.round(previousTasks.reduce((sum, task) => sum + (task.actualDuration || 0), 0) / 60);
+    const currentAvgScore = currentTasks.length > 0
+      ? Math.round(currentTasks.reduce((sum, task) => sum + (task.successScore || 0), 0) / currentTasks.length)
+      : 0;
+    const previousAvgScore = previousTasks.length > 0
+      ? Math.round(previousTasks.reduce((sum, task) => sum + (task.successScore || 0), 0) / previousTasks.length)
+      : 0;
+    const deltaPercent = (current: number, previous: number) => {
+      if (previous <= 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
+    return {
+      minutes: getDeltaDisplay(deltaPercent(currentMinutes, previousMinutes)),
+      score: getDeltaDisplay(currentAvgScore - previousAvgScore),
+      completed: getDeltaDisplay(deltaPercent(currentTasks.length, previousTasks.length)),
+    };
+  }, [completedTasks]);
 
   const courseDistribution = useMemo(() => {
     return courses
@@ -114,6 +144,11 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
         <div className="ios-widget ios-mint rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Çalışma serisi</p><p className="mt-2 text-2xl font-black">{stats.streakDays} gün</p></div><Zap className="h-7 w-7 text-emerald-600" /></div></div>
         <div className="ios-widget ios-lilac rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Ortalama puan</p><p className="mt-2 text-2xl font-black">{stats.averageSuccessScore}</p></div><Target className="h-7 w-7 text-violet-600" /></div></div>
         <div className="ios-widget ios-peach rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Tamamlanan</p><p className="mt-2 text-2xl font-black">{stats.totalTasksCompleted}</p></div><TrendingUp className="h-7 w-7 text-orange-600" /></div></div>
+      </div>
+      <div className="grid grid-cols-1 gap-2 xl:grid-cols-3">
+        <div className={`ios-widget rounded-[16px] px-3 py-2 text-xs font-bold ${weeklyDelta.minutes.tone}`}>Calisma suresi: {weeklyDelta.minutes.arrow} {weeklyDelta.minutes.text}</div>
+        <div className={`ios-widget rounded-[16px] px-3 py-2 text-xs font-bold ${weeklyDelta.score.tone}`}>Ortalama puan: {weeklyDelta.score.arrow} {weeklyDelta.score.text}</div>
+        <div className={`ios-widget rounded-[16px] px-3 py-2 text-xs font-bold ${weeklyDelta.completed.tone}`}>Tamamlanan gorev: {weeklyDelta.completed.arrow} {weeklyDelta.completed.text}</div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.25fr)_320px]">

@@ -14,6 +14,7 @@ const subtleSurface = 'ios-widget rounded-[24px] p-4';
 
 type AnalysisWorkspaceTab = 'overview' | 'insights' | 'goals' | 'reports';
 type ReportPeriod = ReportData['period'];
+type ReportViewTab = 'general' | 'course' | 'topic' | 'time';
 
 interface ParentAnalysisWorkspaceProps {
   tasks: Task[];
@@ -28,6 +29,7 @@ interface ParentAnalysisWorkspaceProps {
   loading?: ParentDashboardProps['loading'];
   error?: ParentDashboardProps['error'];
   viewMode: NonNullable<ParentDashboardProps['viewMode']>;
+  overviewTodayOperational?: ParentDashboardProps['overviewTodayOperational'];
 }
 
 const analysisWorkspaceTabs: Array<{ id: AnalysisWorkspaceTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -105,6 +107,12 @@ const getDecisionTone = (level: 'Kritik' | 'Dikkat' | 'Takip et' | 'Stabil') => 
   if (level === 'Dikkat') return 'dr-status-pill dr-status-pill-warning';
   return 'dr-status-pill dr-status-pill-success';
 };
+
+const getDeltaDisplay = (delta: number) => {
+  if (delta > 0) return { arrow: '↑', text: `Gecen haftaya gore +%${Math.abs(delta)}`, short: `+%${Math.abs(delta)}`, tone: 'text-emerald-600' };
+  if (delta < 0) return { arrow: '↓', text: `Gecen haftaya gore -%${Math.abs(delta)}`, short: `-%${Math.abs(delta)}`, tone: 'text-rose-600' };
+  return { arrow: '→', text: 'Gecen haftaya gore %0', short: '%0', tone: 'text-blue-600' };
+};
 const resolveRequestedTab = (value: string | null): AnalysisWorkspaceTab => {
   if (value === 'alignment') return 'goals';
   if (value === 'overview' || value === 'insights' || value === 'goals' || value === 'reports') return value;
@@ -162,6 +170,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   loading,
   error,
   viewMode,
+  overviewTodayOperational,
 }) => {
   const [analysisWorkspaceTab, setAnalysisWorkspaceTab] = useState<AnalysisWorkspaceTab>(() => {
     if (typeof window === 'undefined') return 'overview';
@@ -172,10 +181,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     [],
   );
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('Haftalık');
+  const [reportViewTab, setReportViewTab] = useState<ReportViewTab>('general');
   const [report, setReport] = useState<ReportData | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isCreatingAction, setIsCreatingAction] = useState(false);
   const [selectedCourseDetailId, setSelectedCourseDetailId] = useState<string | null>(null);
+  const [selectedTopicDetailKey, setSelectedTopicDetailKey] = useState<string | null>(null);
   const [goalConfig, setGoalConfig] = useState<ParentGoalConfig>(() => {
     if (typeof window === 'undefined') return DEFAULT_PARENT_GOAL_CONFIG;
     try {
@@ -218,7 +229,33 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     () => [...analysis.topics].filter((topic) => topic.trend === 'up').sort((a, b) => b.masteryScore - a.masteryScore).slice(0, 5),
     [analysis.topics],
   );
-  const topCourses = useMemo(() => analysis.courses.slice(0, 5), [analysis.courses]);
+  const hardestTopics = useMemo(
+    () => [...analysis.topics]
+      .filter((topic) => topic.riskScore >= 45 || topic.masteryScore < 70)
+      .sort((a, b) => b.riskScore - a.riskScore)
+      .slice(0, 5),
+    [analysis.topics],
+  );
+  const topCourses = useMemo(() => {
+    const activeCourses = courses.filter((course) => course.active !== false);
+    const analysisById = new Map(analysis.courses.map((course) => [course.courseId, course]));
+    return activeCourses
+      .map((course) => {
+        const fromAnalysis = analysisById.get(course.id);
+        if (fromAnalysis) return fromAnalysis;
+        return {
+          courseId: course.id,
+          courseName: course.name,
+          averageMastery: 0,
+          averageFocus: 0,
+          averageEfficiency: 0,
+          weakTopicCount: 0,
+          completionRate: 0,
+          trend: 'flat' as const,
+        };
+      })
+      .sort((a, b) => b.averageMastery - a.averageMastery);
+  }, [analysis.courses, courses]);
   React.useEffect(() => {
     if (topCourses.length === 0) {
       setSelectedCourseDetailId(null);
@@ -231,6 +268,26 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   const selectedCourseDetail = useMemo(
     () => topCourses.find((course) => course.courseId === selectedCourseDetailId) || topCourses[0] || null,
     [selectedCourseDetailId, topCourses],
+  );
+  const selectedCourseTopics = useMemo(() => {
+    if (!selectedCourseDetail) return [];
+    return analysis.topics
+      .filter((topic) => topic.courseId === selectedCourseDetail.courseId)
+      .sort((a, b) => a.masteryScore - b.masteryScore)
+      .slice(0, 6);
+  }, [analysis.topics, selectedCourseDetail]);
+  React.useEffect(() => {
+    if (selectedCourseTopics.length === 0) {
+      setSelectedTopicDetailKey(null);
+      return;
+    }
+    if (!selectedTopicDetailKey || !selectedCourseTopics.some((topic) => topic.key === selectedTopicDetailKey)) {
+      setSelectedTopicDetailKey(selectedCourseTopics[0].key);
+    }
+  }, [selectedCourseTopics, selectedTopicDetailKey]);
+  const selectedTopicDetail = useMemo(
+    () => selectedCourseTopics.find((topic) => topic.key === selectedTopicDetailKey) || selectedCourseTopics[0] || null,
+    [selectedCourseTopics, selectedTopicDetailKey],
   );
   const schoolPerformance = useMemo(() => analysis.school.coursePerformance.slice(0, 6), [analysis.school.coursePerformance]);
   const recentExamRecords = analysis.school.examRecords.slice(0, 5);
@@ -406,6 +463,24 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     parentActionCompletedTodayCount,
   ]);
   const trendLabel = decision.trend;
+  const todayOperational = overviewTodayOperational || {
+    plannedCount: 0,
+    completedTodayCount: 0,
+    pendingTodayCount: 0,
+    overdueCount: 0,
+  };
+  const todayPlanCompletion = todayOperational.plannedCount > 0
+    ? Math.round((todayOperational.completedTodayCount / todayOperational.plannedCount) * 100)
+    : 0;
+  const examDelta = latestCompositeAverage !== null && previousCompositeAverage !== null
+    ? latestCompositeAverage - previousCompositeAverage
+    : 0;
+  const examDeltaDisplay = getDeltaDisplay(examDelta);
+  const decisionTrendDisplay = trendLabel === 'Yukseliyor'
+    ? { arrow: '↑', tone: 'text-emerald-600' }
+    : trendLabel === 'Dusuyor' || trendLabel === 'Hizli dusuyor'
+      ? { arrow: '↓', tone: 'text-rose-600' }
+      : { arrow: '→', tone: 'text-blue-600' };
   const goalAlerts = decision.alerts;
   const topGoalAlert = decision.topAlert;
   const parentActionAuditLine = useMemo(() => {
@@ -632,13 +707,33 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             </div>
           )}
 
+          <div className="rounded-[24px] border border-white/50 bg-white/55 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-lg font-black text-slate-900">Rapor Sayfasi</h4>
+              <button
+                type="button"
+                onClick={() => setAnalysisWorkspaceTab('reports')}
+                className="ios-button rounded-[12px] px-3 py-1 text-xs font-bold text-slate-700"
+              >
+                Raporlari Gor
+              </button>
+            </div>
+            <div className="mb-3 grid gap-2 sm:grid-cols-4">
+              <div className="ios-widget rounded-[14px] px-3 py-2"><div className="text-[11px] text-slate-500">Ortalama Hakimiyet</div><div className="text-xl font-black text-slate-900">%{analysis.overall.averageMastery}</div></div>
+              <div className="ios-widget rounded-[14px] px-3 py-2"><div className="text-[11px] text-slate-500">Toplam Calisma</div><div className="text-xl font-black text-slate-900">{Math.floor(studiedMinutes / 60)} sa {studiedMinutes % 60} dk</div></div>
+              <div className="ios-widget rounded-[14px] px-3 py-2"><div className="text-[11px] text-slate-500">Tamamlanan Gorev</div><div className="text-xl font-black text-slate-900">{completedCount}/{Math.max(1, completedCount + pendingCount)}</div></div>
+              <div className="ios-widget rounded-[14px] px-3 py-2"><div className="text-[11px] text-slate-500">Deneme Performansi</div><div className="text-xl font-black text-slate-900">{latestCompositeAverage === null ? '-' : `%${latestCompositeAverage}`}</div></div>
+            </div>
+            <div className="text-xs text-slate-500">Raporlar haftalik olarak guncellenir.</div>
+          </div>
+
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_360px]">
           <div className="ios-card rounded-[32px] p-6">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Performans</div>
                 <div className="mt-2 flex items-start gap-2">
-                  <h3 className="text-2xl font-black text-slate-950">Karar paneli</h3>
+                  <h3 className="text-2xl font-black text-slate-950">Bugun icin durum</h3>
                   <ContextHelp title="Bu kart nasil okunur" tone="blue">
                     Bu panel son calismalara gore bugunku durumu ozetler. Once kritik konuya kisa tekrar, sonra soru adimi gelir.
                   </ContextHelp>
@@ -658,10 +753,10 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
 
             <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
               {[
-                { label: 'Genel Skor', value: analysis.overall.generalScore, tone: getScoreTone(analysis.overall.generalScore) },
-                { label: 'Odak', value: analysis.overall.averageFocus, tone: getScoreTone(analysis.overall.averageFocus) },
-                { label: 'Verim', value: analysis.overall.averageEfficiency, tone: getScoreTone(analysis.overall.averageEfficiency) },
-                { label: 'Doğruluk', value: analysis.overall.averageAccuracy ?? '-', tone: getScoreTone(analysis.overall.averageAccuracy ?? 0) },
+                { label: 'Genel durum', value: analysis.overall.generalScore, tone: getScoreTone(analysis.overall.generalScore) },
+                { label: 'Derse odak', value: analysis.overall.averageFocus, tone: getScoreTone(analysis.overall.averageFocus) },
+                { label: 'Calisma kalitesi', value: analysis.overall.averageEfficiency, tone: getScoreTone(analysis.overall.averageEfficiency) },
+                { label: 'Soru basarisi', value: analysis.overall.averageAccuracy ?? '-', tone: getScoreTone(analysis.overall.averageAccuracy ?? 0) },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -678,7 +773,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               <div className={subtleSurface}>
                 <div className="mb-4 flex items-center gap-2">
                   <Target className="h-5 w-5 text-slate-700" />
-                  <h4 className="font-black text-slate-950">Calisma ozeti</h4>
+                  <h4 className="font-black text-slate-950">Haftalik kisa ozet</h4>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="ios-widget ios-blue rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Tamamlanan</div><div className="mt-1 text-2xl font-black">{completedCount}</div></div>
@@ -693,7 +788,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               <div className={subtleSurface}>
                 <div className="mb-4 flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-slate-700" />
-                  <h4 className="font-black text-slate-950">Ders durumu</h4>
+                  <h4 className="font-black text-slate-950">Derslerde genel durum</h4>
                 </div>
                 <div className="space-y-4">
                   {topCourses.length === 0 && <div className="ios-widget rounded-[22px] p-4 text-sm text-slate-500">Ders analizi icin yeterli veri yok.</div>}
@@ -719,7 +814,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                       data-course-id={selectedCourseDetail.courseId}
                     >
                       <div className="break-words font-bold text-slate-800">Ders detayi: {selectedCourseDetail.courseName}</div>
-                      <div className="mt-1">Hakimiyet {selectedCourseDetail.averageMastery} / Verim {selectedCourseDetail.averageEfficiency} / Acik konu {selectedCourseDetail.weakTopicCount}</div>
+                      <div className="mt-1">Kavrama {selectedCourseDetail.averageMastery} / Calisma kalitesi {selectedCourseDetail.averageEfficiency} / Destek isteyen konu {selectedCourseDetail.weakTopicCount}</div>
                     </div>
                   )}
                 </div>
@@ -832,8 +927,8 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                   </div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     <div><div className="mb-1 text-xs font-bold uppercase text-slate-400">Hakimiyet</div><ProgressBar value={topic.masteryScore} tone="bg-[#C4B5FD]" /></div>
-                    <div><div className="mb-1 text-xs font-bold uppercase text-slate-400">Odak</div><ProgressBar value={topic.averageFocus} tone="bg-[#8AB4FF]" /></div>
-                    <div><div className="mb-1 text-xs font-bold uppercase text-slate-400">Verim</div><ProgressBar value={topic.averageEfficiency} tone="bg-[#7EE7C7]" /></div>
+                    <div><div className="mb-1 text-xs font-bold uppercase text-slate-400">Derse odak</div><ProgressBar value={topic.averageFocus} tone="bg-[#8AB4FF]" /></div>
+                    <div><div className="mb-1 text-xs font-bold uppercase text-slate-400">Calisma kalitesi</div><ProgressBar value={topic.averageEfficiency} tone="bg-[#7EE7C7]" /></div>
                   </div>
                 </div>
               ))}
@@ -858,7 +953,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             </div>
 
             <div className={surface}>
-              <h3 className="text-xl font-black text-slate-950">Kisa yorum</h3>
+              <h3 className="text-xl font-black text-slate-950">Ebeveyn yorumu</h3>
               <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
                 <div className="ios-widget rounded-[22px] p-4">Toplam tamamlanan gorev <strong>{completedCount}</strong>, cozulen soru <strong>{solvedQuestionCount}</strong>.</div>
                 <div className="ios-widget rounded-[22px] p-4">
@@ -876,7 +971,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
           <div className={surface}>
             <div className="mb-5 flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-slate-700" />
-              <h3 className="text-xl font-black text-slate-950">Hedef ve deneme durumu</h3>
+              <h3 className="text-xl font-black text-slate-950">Hedefe yakinlik ve deneme</h3>
               <p className="mt-2 text-sm text-slate-600">Bu bolum hedefe yakinlik ve deneme gidisatini net gosterir.</p>
             </div>
             <div className="mb-4 rounded-[24px] border border-white/65 bg-white/55 p-4">
@@ -898,14 +993,13 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 </div>
                 <div className="rounded-[16px] bg-white/70 px-3 py-2">
                   <div className="font-bold text-slate-500">Deneme trendi</div>
-                  <div className="mt-1 text-lg font-black text-slate-900">
+                  <div className={`mt-1 flex items-center gap-1 text-lg font-black ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-slate-900' : examDeltaDisplay.tone}`}>
                     {latestCompositeAverage === null || previousCompositeAverage === null
                       ? '-'
-                      : latestCompositeAverage > previousCompositeAverage
-                        ? 'Yukseliyor'
-                        : latestCompositeAverage < previousCompositeAverage
-                          ? 'Dusuyor'
-                          : 'Stabil'}
+                      : `${examDeltaDisplay.arrow} ${examDeltaDisplay.short}`}
+                  </div>
+                  <div className={`mt-1 text-xs font-semibold ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-slate-500' : examDeltaDisplay.tone}`}>
+                    {latestCompositeAverage === null || previousCompositeAverage === null ? 'Yetersiz deneme verisi' : examDeltaDisplay.text}
                   </div>
                 </div>
                 <div className="rounded-[16px] bg-white/70 px-3 py-2">
@@ -1002,7 +1096,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               <div className="grid gap-3 md:grid-cols-4">
               <div className={subtleSurface} data-testid="exam-card-school"><div className="text-xs font-bold uppercase text-slate-400">Okul sinavi</div><div className="mt-2 text-3xl font-black">{examRecords.length}</div></div>
               <div className={subtleSurface} data-testid="exam-card-mock"><div className="text-xs font-bold uppercase text-slate-400">Deneme</div><div className="mt-2 text-3xl font-black">{compositeExamResults.length}</div></div>
-              <div className={subtleSurface} data-testid="exam-card-trend"><div className="text-xs font-bold uppercase text-slate-400">Gidisat</div><div className="mt-2 text-base font-black">{trendLabel}</div></div>
+              <div className={subtleSurface} data-testid="exam-card-trend"><div className="text-xs font-bold uppercase text-slate-400">Gidisat</div><div className={`mt-2 text-base font-black ${decisionTrendDisplay.tone}`}>{decisionTrendDisplay.arrow} {trendLabel}</div></div>
               </div>
 
             {latestStateExam && (
@@ -1085,7 +1179,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{topGoalAlert.text}</p>
               <div className="mt-3 text-xs font-bold text-slate-500">Aksiyon: {topGoalAlert.action}</div>
               <div className="mt-2 text-[11px] font-semibold text-slate-400">
-                Dayanak: Son 7 gün verisine göre · Güven: {topGoalAlert.confidence}
+                Dayanak: Son 7 gun verisine gore · Guven: {topGoalAlert.confidence}
               </div>
               <div className="mt-1 text-[11px] font-semibold text-slate-400">
                 Motor: {decision.diagnostics.rulesVersion} / {decision.diagnostics.thresholdVersion}
@@ -1157,6 +1251,56 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
       {showSection('reports') && (
         <div className="space-y-6" data-testid="analysis-reports-section" data-report-period={reportPeriod}>
           {renderStateCard('reports')}
+          <div className={surface}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-xl font-black text-slate-950">Raporlar</h3>
+              <div className="ios-button rounded-[14px] px-3 py-1 text-xs font-bold text-slate-700">Son 4 Hafta</div>
+            </div>
+            <div className="mb-4 flex flex-wrap gap-2">
+              {[
+                { id: 'general', label: 'Genel Rapor' },
+                { id: 'course', label: 'Ders Raporu' },
+                { id: 'topic', label: 'Konu Raporu' },
+                { id: 'time', label: 'Zaman Raporu' },
+              ].map((tab) => (
+                <button
+                  key={`report-tab-${tab.id}`}
+                  type="button"
+                  onClick={() => setReportViewTab(tab.id as ReportViewTab)}
+                  className={`rounded-[12px] px-3 py-1.5 text-xs font-bold ${reportViewTab === tab.id ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="ios-widget rounded-[18px] p-4">
+                <div className="text-xs font-bold text-slate-500">Ortalama Hakimiyet</div>
+                <div className="mt-2 text-3xl font-black text-slate-900">%{analysis.overall.averageMastery}</div>
+                <div className="mt-1 text-xs font-semibold text-emerald-600">Canli guncel</div>
+              </div>
+              <div className="ios-widget rounded-[18px] p-4">
+                <div className="text-xs font-bold text-slate-500">Toplam Calisma</div>
+                <div className="mt-2 text-3xl font-black text-slate-900">{Math.floor(studiedMinutes / 60)} sa {studiedMinutes % 60} dk</div>
+                <div className="mt-1 text-xs font-semibold text-emerald-600">+%{Math.max(1, Math.round((weeklyStats.minutes / Math.max(1, studiedMinutes)) * 100))} haftalik etki</div>
+              </div>
+              <div className="ios-widget rounded-[18px] p-4">
+                <div className="text-xs font-bold text-slate-500">Tamamlanan Gorev</div>
+                <div className="mt-2 text-3xl font-black text-slate-900">{completedCount}/{Math.max(1, completedCount + pendingCount)}</div>
+                <div className="mt-1 text-xs font-semibold text-emerald-600">%{Math.round((completedCount / Math.max(1, completedCount + pendingCount)) * 100)} tamamlandi</div>
+              </div>
+              <div className="ios-widget rounded-[18px] p-4">
+                <div className="text-xs font-bold text-slate-500">Deneme Performansi</div>
+                <div className="mt-2 text-3xl font-black text-slate-900">{latestCompositeAverage === null ? '-' : `%${latestCompositeAverage}`}</div>
+                <div className={`mt-1 text-xs font-semibold ${latestCompositeAverage !== null && previousCompositeAverage !== null ? examDeltaDisplay.tone : 'text-slate-500'}`}>
+                  {latestCompositeAverage !== null && previousCompositeAverage !== null
+                    ? `${examDeltaDisplay.arrow} ${examDeltaDisplay.text}`
+                    : 'Yetersiz deneme verisi'}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
             <div className={surface}>
               <div className="mb-5 flex items-start justify-between gap-3">
@@ -1189,24 +1333,45 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             </div>
 
             <div className={surface}>
-              <h3 className="text-xl font-black text-slate-950">Hizli karar ozeti</h3>
+              <h3 className="text-xl font-black text-slate-950">Kisa karar ozeti</h3>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <div className="ios-widget ios-blue rounded-[22px] p-4">
-                  <div className="text-xs font-bold uppercase text-slate-500">Durum</div>
+                  <div className="text-xs font-bold uppercase text-slate-500">Genel durum</div>
                   <div className="mt-2 text-lg font-black">{topGoalAlert.level}</div>
                 </div>
                 <div className="ios-widget ios-coral rounded-[22px] p-4">
-                  <div className="text-xs font-bold uppercase text-slate-500">Uyari sayisi</div>
+                  <div className="text-xs font-bold uppercase text-slate-500">Destek isteyen konu</div>
                   <div className="mt-2 text-2xl font-black">{goalAlerts.length}</div>
                 </div>
                 <div className="ios-widget ios-lilac rounded-[22px] p-4">
-                  <div className="text-xs font-bold uppercase text-slate-500">Guven</div>
+                  <div className="text-xs font-bold uppercase text-slate-500">Guven duzeyi</div>
                   <div className="mt-2 text-lg font-black">{topGoalAlert.confidence}</div>
+                </div>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="ios-widget rounded-[14px] bg-white/70 px-3 py-2">
+                  <div className="text-[11px] font-bold uppercase text-slate-400">Bugun tamamlandi</div>
+                  <div className="mt-1 text-xl font-black text-slate-900">{todayOperational.completedTodayCount}</div>
+                </div>
+                <div className="ios-widget rounded-[14px] bg-white/70 px-3 py-2">
+                  <div className="text-[11px] font-bold uppercase text-slate-400">Bugun bekliyor</div>
+                  <div className="mt-1 text-xl font-black text-slate-900">{todayOperational.pendingTodayCount}</div>
+                </div>
+                <div className="ios-widget rounded-[14px] bg-white/70 px-3 py-2">
+                  <div className="text-[11px] font-bold uppercase text-slate-400">Bugun gecikiyor</div>
+                  <div className="mt-1 text-xl font-black text-slate-900">{todayOperational.overdueCount}</div>
+                </div>
+                <div className="ios-widget rounded-[14px] bg-white/70 px-3 py-2">
+                  <div className="text-[11px] font-bold uppercase text-slate-400">Plan gerceklesen</div>
+                  <div className="mt-1 text-xl font-black text-slate-900">%{todayPlanCompletion}</div>
+                  <div className="text-[11px] font-semibold text-slate-500">
+                    ({todayOperational.completedTodayCount}/{Math.max(todayOperational.plannedCount, 1)})
+                  </div>
                 </div>
               </div>
 
               <div className="mt-4 ios-widget rounded-[20px] p-4">
-                <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Aksiyon etkisi</div>
+                <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Veli aksiyon etkisi</div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   <div className="rounded-[14px] bg-white/70 px-3 py-2">
                     <div className="text-[11px] font-bold uppercase text-slate-400">Bekleyen</div>
@@ -1227,21 +1392,21 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
 
               <div className="mt-4 ios-widget rounded-[20px] p-4">
-                <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">V2 izleme</div>
+                <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Sistem notu</div>
                 <div className="mt-2 text-xs font-semibold text-slate-600">
                   {decision.diagnostics.rulesVersion} / {decision.diagnostics.thresholdVersion}
                 </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs">
                   <div className="rounded-[14px] bg-white/70 px-3 py-2">
-                    <div className="font-bold text-slate-500">Risk kritik</div>
+                    <div className="font-bold text-slate-500">Kritik risk esigi</div>
                     <div className="mt-1 font-black text-slate-900">{decision.diagnostics.thresholds.riskCriticalMin}</div>
                   </div>
                   <div className="rounded-[14px] bg-white/70 px-3 py-2">
-                    <div className="font-bold text-slate-500">Risk dikkat</div>
+                    <div className="font-bold text-slate-500">Dikkat esigi</div>
                     <div className="mt-1 font-black text-slate-900">{decision.diagnostics.thresholds.riskWarningMin}</div>
                   </div>
                   <div className="rounded-[14px] bg-white/70 px-3 py-2">
-                    <div className="font-bold text-slate-500">Konu uyari</div>
+                    <div className="font-bold text-slate-500">Konu uyari esigi</div>
                     <div className="mt-1 font-black text-slate-900">{decision.diagnostics.thresholds.weakTopicCountWarning}</div>
                   </div>
                 </div>
@@ -1252,7 +1417,47 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             </div>
           </div>
 
-          <AnalysisGraphCenter tasks={tasks} courses={courses} curriculum={curriculum} analysis={analysis} loading={loading} error={error} />
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_360px]">
+            <div className={surface}>
+              <div className="mb-4 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                {reportViewTab === 'general' && 'Derslere Gore Hakimiyet Trendi'}
+                {reportViewTab === 'course' && 'Ders Raporu Trendi'}
+                {reportViewTab === 'topic' && 'Konu Raporu Trendi'}
+                {reportViewTab === 'time' && 'Zaman Raporu Trendi'}
+              </div>
+              <AnalysisGraphCenter tasks={tasks} courses={courses} curriculum={curriculum} analysis={analysis} loading={loading} error={error} />
+            </div>
+            <div className="space-y-4">
+              <div className={surface}>
+                <div className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500">En Cok Gelisen Konular</div>
+                <div className="space-y-2">
+                  {improvingTopics.slice(0, 5).map((topic, index) => (
+                    <div key={`impr-${topic.key}`} className="ios-widget flex items-center justify-between rounded-[14px] px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold text-slate-800">{index + 1}. {topic.topicName}</div>
+                        <div className="text-xs text-slate-500">{topic.courseName}</div>
+                      </div>
+                      <div className="text-xs font-black text-emerald-600">%{topic.masteryScore} hakimiyet</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className={surface}>
+                <div className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Zorlanilan Konular</div>
+                <div className="space-y-2">
+                  {hardestTopics.slice(0, 5).map((topic, index) => (
+                    <div key={`hard-${topic.key}`} className="ios-widget flex items-center justify-between rounded-[14px] px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold text-slate-800">{index + 1}. {topic.topicName}</div>
+                        <div className="text-xs text-slate-500">{topic.courseName}</div>
+                      </div>
+                      <div className="text-xs font-black text-rose-600">risk {topic.riskScore}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </section>

@@ -432,8 +432,12 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
     () => (showAllCompletedToday ? completedToday : completedToday.slice(0, CHILD_COMPLETED_PREVIEW_LIMIT)),
     [completedToday, showAllCompletedToday],
   );
-  const assignedTodayCount = useMemo(() => safeTasks.filter((task) => !task.isSelfAssigned && getTaskDateKey(task.dueDate) <= today).length, [safeTasks, today]);
+  const assignedPendingTodayCount = useMemo(
+    () => safeTasks.filter((task) => !task.isSelfAssigned && task.status === 'bekliyor' && getTaskDateKey(task.dueDate) <= today).length,
+    [safeTasks, today],
+  );
   const waitingTodayCount = useMemo(() => safeTasks.filter((task) => task.status === 'bekliyor' && getTaskDateKey(task.dueDate) <= today).length, [safeTasks, today]);
+  const completedTaskCount = useMemo(() => safeTasks.filter((task) => isTaskCompleted(task)).length, [safeTasks]);
   const completedTasksForSummary = useMemo(() => safeTasks.filter(isTaskCompleted), [safeTasks]);
   const solvedQuestionCount = useMemo(() => completedTasksForSummary
     .filter((task) => task.taskType === 'soru \u00e7\u00f6zme')
@@ -624,7 +628,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
       )}
 
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div className={`${card} ios-blue`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bugün atanan</div><div className="mt-2 text-2xl font-black text-slate-900">{assignedTodayCount}</div><div className="mt-1 text-sm text-slate-500">Planlanan görev</div></div>
+        <div className={`${card} ios-blue`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Atanan bekleyen</div><div className="mt-2 text-2xl font-black text-slate-900">{assignedPendingTodayCount}</div><div className="mt-1 text-sm text-slate-500">Bugün + takipte</div></div>
         <div className={`${card} ios-mint`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bugün biten</div><div className="mt-2 text-2xl font-black text-emerald-700">{completedToday.length}</div><div className="mt-1 text-sm text-slate-500">Tamamlanan oturum</div></div>
         <div className={`${card} ios-lilac`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Odak</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageFocus}</div><div className="mt-1 text-sm text-slate-500">Genel ortalama</div></div>
         <div className={`${card} ios-peach`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hâkimiyet</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageMastery}</div><div className="mt-1 text-sm text-slate-500">Konu tabanlı skor</div></div>
@@ -831,7 +835,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
                 <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Çözülen soru</span><strong>{solvedQuestionCount}</strong></div>
                 <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Çalışma süresi</span><strong>{studiedMinutes} dk</strong></div>
                 <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Okunan sayfa</span><strong>{readPages}</strong></div>
-                <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Toplam tamamlanan</span><strong>{analysis.overall.completedTasks}</strong></div>
+                <div className="ios-widget flex items-center justify-between rounded-[18px] px-3 py-2.5"><span>Toplam tamamlanan</span><strong>{completedTaskCount}</strong></div>
               </div>
             </div>
 
@@ -930,6 +934,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
 };
 
 export default ChildDashboard;
+
 
 
 

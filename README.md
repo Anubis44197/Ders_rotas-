@@ -94,6 +94,22 @@ Normal kurulum ve kullanim icin herhangi bir API anahtari veya ortam degiskeni g
 - Gorev atama penceresi ders, unite, konu, tarih, sure, soru sayisi ve takip olcutu secimlerini mevcut gorev sistemine baglar.
 - PWA metadata uyarilari icin modern mobile web app meta etiketi eklenmistir.
 
+## Son UX ve Raporlama Guncellemeleri (2026-05-24)
+
+- `Rapor Sayfasi > Ders Raporu` akisinda ders ozeti sadeletildi:
+  - Ayrik `Derslerin durumu` karti kaldirildi.
+  - Ders ozeti `Ders Raporu` sekmesi icine tasindi.
+- `Ders Raporu` grafikleri sadece gercek veri ile calisir:
+  - Ders trendi icin fallback/sahte seri uretimi kaldirildi.
+  - Haftalik gercek seri yoksa grafik yerine acik "veri yok" mesaji gosterilir.
+- `Ders Durumu` bolumu grafiklestirildi:
+  - Ders bazli yuzde degerleri cizgi grafikte gosterilir.
+  - Veli icin grafik altina aciklama metni eklendi.
+- Null kontrol guvenligi arttirildi:
+  - `Ders Raporu` sekmelerinde `null` kaynakli `change` hatalari giderildi.
+- Bozuk karakter/encoding duzeltmeleri yapildi:
+  - Ok sembolleri (`↑ ↓ →`) ve metin ayiraclari normalize edildi.
+
 ## Son Stabilizasyon Ozetleri (2026-05)
 
 - Degisiklik + test ozet dosyasi:

@@ -3,6 +3,7 @@ import type { Course, ExamScheduleEntry, PlanningEngineSnapshot, StoredStudyPlan
 import { BookOpen, PlusCircle } from '../icons';
 import WeeklySchedulePanel from './WeeklySchedulePanel';
 import PlanningPanel from './PlanningPanel';
+import { getTodayString } from '../../utils/dateUtils';
 
 interface CurriculumSummary {
   subjects: string[];
@@ -39,6 +40,14 @@ interface ParentPlanningWorkspaceProps {
   onOpenCurriculumEditor: () => void;
   onReactivateCourse: (courseId: string) => void;
   courseReferenceHealth: CourseReferenceHealth;
+  overviewWeakTopicActions?: Array<{
+    key: string;
+    courseName: string;
+    topicName: string;
+    reason: string;
+    action: string;
+    taskStatus: string;
+  }>;
 }
 
 const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
@@ -67,6 +76,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
     performanceCount: 0,
     scheduleBlockCount: 0,
   },
+  overviewWeakTopicActions = [],
 }) => {
   const safeCourses = Array.isArray(courses) ? courses : [];
   const safeCurriculumSummary = {
@@ -86,13 +96,33 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
   const activeCourses = safeCourses.filter((course) => course.active !== false);
   const inactiveCourses = safeCourses.filter((course) => course.active === false);
   const brokenReferenceTotal = Object.values(safeCourseReferenceHealth).reduce((sum, count) => sum + count, 0);
+  const hasScheduleBlocks = Object.values(weeklySchedule || {}).some((day) => Array.isArray(day?.slots) && day.slots.length > 0);
+  const hasStudyWindows = Object.values(weeklySchedule || {}).some((day) => Array.isArray(day?.availableWindows) && day.availableWindows.length > 0);
+  const hasExamPlan = Array.isArray(examScheduleEntries) && examScheduleEntries.length > 0;
+  const today = getTodayString();
+  const todaySlots = Object.values(weeklySchedule || {})
+    .flatMap((day) => (Array.isArray(day?.slots) ? day.slots : []))
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    .slice(0, 4);
+  const todayPendingTasks = tasks
+    .filter((task) => task.status === 'bekliyor' && task.dueDate <= today)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.title.localeCompare(b.title))
+    .slice(0, 4);
+
+  const firstPlanningAction = !hasScheduleBlocks
+    ? 'Okul programina en az bir ders blogu ekleyin.'
+    : !hasStudyWindows
+      ? 'Ev calisma zamani penceresi ekleyin.'
+      : !hasExamPlan
+        ? 'Sinav takvimi girerek plan motorunu netlestirin.'
+        : 'Plan zemini hazir. Haftalik plan olusturma adimina gecebilirsiniz.';
 
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-900">Akademik Planlama</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">Kayıtlı akademik yapıları özetle, gerektiğinde düzenleme ekranlarını aç.</p>
+          <h2 className="text-3xl font-black tracking-tight text-slate-900">Planlama Modu</h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">Burada sadece plan kurulur. Karar ve yorumlar analiz ekraninda kalir.</p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-sm text-slate-600">
           <div className="ios-widget rounded-2xl px-4 py-3"><span className="block text-xs font-bold uppercase text-slate-500">Aktif ders</span><span className="text-xl font-black text-slate-900">{activeCourses.length}</span></div>
@@ -116,6 +146,81 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
           </div>
         </section>
       )}
+
+      <section className="ios-widget rounded-[24px] p-5">
+        <div className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Bugun once bunu yapin</div>
+        <h3 className="mt-2 text-lg font-black text-slate-900">{firstPlanningAction}</h3>
+        <p className="mt-2 text-sm text-slate-500">Planlama sade tutuldu: once okul blogu, sonra calisma zamani, sonra sinav takvimi.</p>
+        <div className="mt-4 grid gap-2 text-xs font-bold text-slate-600 sm:grid-cols-3">
+          <div className={`rounded-[14px] px-3 py-2 ${hasScheduleBlocks ? 'ios-mint text-emerald-900' : 'ios-button'}`}>1. Okul blogu {hasScheduleBlocks ? 'hazir' : 'bekliyor'}</div>
+          <div className={`rounded-[14px] px-3 py-2 ${hasStudyWindows ? 'ios-mint text-emerald-900' : 'ios-button'}`}>2. Calisma zamani {hasStudyWindows ? 'hazir' : 'bekliyor'}</div>
+          <div className={`rounded-[14px] px-3 py-2 ${hasExamPlan ? 'ios-mint text-emerald-900' : 'ios-button'}`}>3. Sinav takvimi {hasExamPlan ? 'hazir' : 'opsiyonel'}</div>
+        </div>
+      </section>
+
+      <section className="ios-card rounded-[24px] p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <BookOpen className="h-4.5 w-4.5 text-amber-500" />
+          <h3 className="text-base font-black text-slate-900">One cikan risk alanlari</h3>
+        </div>
+        <div className="space-y-2">
+          {overviewWeakTopicActions.length === 0 && (
+            <div className="ios-widget rounded-[14px] p-3 text-xs font-semibold text-slate-500">
+              Risk listesi icin daha fazla calisma verisi bekleniyor.
+            </div>
+          )}
+          {overviewWeakTopicActions.slice(0, 3).map((item, index) => (
+            <div key={item.key} className="ios-widget rounded-[14px] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-50 text-xs font-black text-amber-700">{index + 1}</span>
+                  <span className="text-sm font-black text-slate-900">{item.topicName}</span>
+                </div>
+                <span className="rounded-full bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700">Risk</span>
+              </div>
+              <div className="mt-1 text-xs font-semibold text-slate-500">{item.courseName}</div>
+              <div className="mt-2 text-[11px] font-semibold text-slate-600">Neden: {item.reason}</div>
+              <div className="text-[11px] font-semibold text-slate-600">Bugun yapilacak: {item.action}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="ios-card rounded-[24px] p-5">
+        <div className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Bugun ne yapilmali</div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {(todaySlots.length > 0
+            ? todaySlots.map((slot) => ({
+                id: slot.id,
+                title: slot.courseName,
+                detail: slot.note || `${slot.startTime} - ${slot.endTime}`,
+                time: `${slot.startTime} - ${slot.endTime}`,
+              }))
+            : todayPendingTasks.map((task) => ({
+                id: task.id,
+                title: task.title,
+                detail: task.planLabel || task.courseId,
+                time: task.dueDate,
+              }))
+          ).map((item) => (
+            <div key={item.id} className="ios-widget flex min-h-28 items-start gap-3 rounded-[18px] p-4 text-left">
+              <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+                <BookOpen className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-black text-slate-900">{item.title}</div>
+                <div className="mt-1 line-clamp-2 text-xs font-semibold text-slate-500">{item.detail}</div>
+                <div className="mt-2 text-xs font-semibold text-slate-400">{item.time}</div>
+              </div>
+            </div>
+          ))}
+          {todaySlots.length === 0 && todayPendingTasks.length === 0 && (
+            <div className="ios-widget rounded-[18px] p-4 text-xs font-semibold text-slate-500">
+              Bugun icin planli veya bekleyen gorev yok.
+            </div>
+          )}
+        </div>
+      </section>
 
     <div className="space-y-6">
       <section className="ios-card rounded-[28px] p-6">
