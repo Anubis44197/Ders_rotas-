@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:stable": "powershell -ExecutionPolicy Bypass -File scripts/start-dev-stable.ps1",
     "typecheck": "tsc --noEmit",
     "smoke": "tsx scripts/smoke-tests.ts",
     "test:heavy": "tsx scripts/heavy-real-data-tests.ts",

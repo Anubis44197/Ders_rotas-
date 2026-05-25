@@ -128,7 +128,7 @@ interface ToastMessage {
 }
 
 type ParentWorkspaceView = 'overview' | 'planning' | 'analysis';
-type OverviewStudyPeriod = 'month' | 'quarter' | 'total';
+type OverviewStudyPeriod = 'week1' | 'week3' | 'week6' | 'month' | 'quarter' | 'total';
 type SearchScope = 'all' | 'tasks' | 'courses' | 'topics' | 'exams' | 'rewards';
 
 interface AppSearchResult {
@@ -864,8 +864,40 @@ const getOverviewPeriodStartDate = (period: OverviewStudyPeriod, today: string) 
   const endDate = toDate(today);
   if (!endDate) return null;
   const startDate = new Date(endDate);
-  startDate.setDate(startDate.getDate() - (period === 'month' ? 29 : 89));
+  const lookbackDays = period === 'week1'
+    ? 6
+    : period === 'week3'
+      ? 20
+      : period === 'week6'
+        ? 41
+        : period === 'month'
+          ? 29
+          : 89;
+  startDate.setDate(startDate.getDate() - lookbackDays);
   return startDate;
+};
+
+const getOverviewPeriodLookbackDays = (period: OverviewStudyPeriod) => {
+  if (period === 'week1') return 7;
+  if (period === 'week3') return 21;
+  if (period === 'week6') return 42;
+  if (period === 'month') return 30;
+  if (period === 'quarter') return 90;
+  return 0;
+};
+
+const getOverviewComparisonLabel = (period: OverviewStudyPeriod) => {
+  if (period === 'month') return 'aya';
+  if (period === 'quarter') return '3 aya';
+  if (period === 'total') return 'eş döneme';
+  return 'haftaya';
+};
+
+const getOverviewSparklinePointCount = (period: OverviewStudyPeriod) => {
+  if (period === 'week1' || period === 'week3') return 7;
+  if (period === 'week6') return 8;
+  if (period === 'month') return 10;
+  return 12;
 };
 
 const isTaskWithinRange = (task: Task, startDate: Date | null, endDate: Date | null) => {
@@ -2300,7 +2332,7 @@ const App: React.FC = () => {
   const [showDeleteCourseModal, setShowDeleteCourseModal] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [parentWorkspaceView, setParentWorkspaceView] = useStickyState<ParentWorkspaceView>('overview', 'parentWorkspaceView', normalizeParentWorkspaceView);
-  const [overviewStudyPeriod] = useStickyState<OverviewStudyPeriod>('month', 'parentOverviewStudyPeriod');
+  const [overviewStudyPeriod, setOverviewStudyPeriod] = useStickyState<OverviewStudyPeriod>('month', 'parentOverviewStudyPeriod');
   const [parentDefaultView, setParentDefaultView] = useStickyState<ParentWorkspaceView>('overview', 'parentDefaultView', normalizeParentWorkspaceView);
   const rewardClaimLockRef = useRef<Set<string>>(new Set());
   const completeTaskLockRef = useRef<Set<string>>(new Set());
@@ -3857,50 +3889,104 @@ const App: React.FC = () => {
   );
   const overviewWeeklyStats = useMemo(() => {
     const todayDate = new Date(`${today}T00:00:00`);
-    const currentStart = new Date(todayDate);
-    currentStart.setDate(currentStart.getDate() - 6);
-    const previousEnd = new Date(currentStart);
-    previousEnd.setDate(previousEnd.getDate() - 1);
-    const previousStart = new Date(previousEnd);
-    previousStart.setDate(previousStart.getDate() - 6);
     const toDate = (value?: string) => (value ? new Date(`${value}T00:00:00`) : null);
     const isBetween = (value: Date | null, start: Date, end: Date) => Boolean(value && value >= start && value <= end);
+    const completedWithDate = tasks
+      .filter((task) => isCompletedTask(task) && task.completionDate)
+      .map((task) => ({ task, completedAt: toDate(task.completionDate) }))
+      .filter((item): item is { task: Task; completedAt: Date } => Boolean(item.completedAt))
+      .filter((item) => item.completedAt <= todayDate)
+      .sort((a, b) => a.completedAt.getTime() - b.completedAt.getTime());
 
-    const completedCurrentWeek = tasks.filter((task) => {
-      if (!isCompletedTask(task)) return false;
-      const completedAt = toDate(task.completionDate);
-      return isBetween(completedAt, currentStart, todayDate);
-    });
-    const completedPreviousWeek = tasks.filter((task) => {
-      if (!isCompletedTask(task)) return false;
-      const completedAt = toDate(task.completionDate);
-      return isBetween(completedAt, previousStart, previousEnd);
-    });
+    const fallbackStart = new Date(todayDate);
+    fallbackStart.setDate(fallbackStart.getDate() - 6);
+    let currentStart = fallbackStart;
+    let currentEnd = todayDate;
+    let previousStart = new Date(fallbackStart);
+    let previousEnd = new Date(fallbackStart);
+
+    if (overviewStudyPeriod === 'total') {
+      if (completedWithDate.length > 0) {
+        currentStart = new Date(completedWithDate[0].completedAt);
+      }
+      const rangeDays = Math.max(1, Math.floor((currentEnd.getTime() - currentStart.getTime()) / 86400000) + 1);
+      previousEnd = new Date(currentStart);
+      previousEnd.setDate(previousEnd.getDate() - 1);
+      previousStart = new Date(previousEnd);
+      previousStart.setDate(previousStart.getDate() - (rangeDays - 1));
+    } else {
+      const lookbackDays = getOverviewPeriodLookbackDays(overviewStudyPeriod);
+      currentStart = new Date(todayDate);
+      currentStart.setDate(currentStart.getDate() - Math.max(0, lookbackDays - 1));
+      previousEnd = new Date(currentStart);
+      previousEnd.setDate(previousEnd.getDate() - 1);
+      previousStart = new Date(previousEnd);
+      previousStart.setDate(previousStart.getDate() - Math.max(0, lookbackDays - 1));
+    }
+
+    const completedCurrentWeek = completedWithDate
+      .filter((item) => isBetween(item.completedAt, currentStart, currentEnd))
+      .map((item) => item.task);
+    const completedPreviousWeek = completedWithDate
+      .filter((item) => isBetween(item.completedAt, previousStart, previousEnd))
+      .map((item) => item.task);
     const minutesCurrentWeek = Math.round(completedCurrentWeek.reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0));
     const minutesPreviousWeek = Math.round(completedPreviousWeek.reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0));
-    const completionTarget = Math.max(completedCurrentWeek.length + tasks.filter((task) => task.status === 'bekliyor' && task.dueDate <= today).length, 1);
+    const completionTarget = Math.max(
+      completedCurrentWeek.length + tasks.filter((task) => task.status === 'bekliyor' && isBetween(toDate(task.dueDate), currentStart, currentEnd)).length,
+      1,
+    );
     const completionPercent = Math.max(0, Math.min(100, Math.round((completedCurrentWeek.length / completionTarget) * 100)));
     const minuteChange = minutesPreviousWeek > 0
       ? Math.round(((minutesCurrentWeek - minutesPreviousWeek) / minutesPreviousWeek) * 100)
       : (minutesCurrentWeek > 0 ? 100 : 0);
-    const latestCompositeAverage = compositeExamResults[0]
-      ? Math.round(compositeExamResults[0].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[0].courses.length)
-      : null;
-    const previousCompositeAverage = compositeExamResults[1]
-      ? Math.round(compositeExamResults[1].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[1].courses.length)
-      : null;
+    const compositeWithDate = compositeExamResults
+      .map((exam) => ({ exam, date: toDate(exam.date) }))
+      .filter((item): item is { exam: CompositeExamResult; date: Date } => Boolean(item.date));
+    const periodCompositeAverage = (start: Date, end: Date) => {
+      const periodExams = compositeWithDate.filter((item) => isBetween(item.date, start, end));
+      if (periodExams.length === 0) return null;
+      const periodCourseScores = periodExams.flatMap((item) => item.exam.courses.map((course) => course.score));
+      if (periodCourseScores.length === 0) return null;
+      return Math.round(periodCourseScores.reduce((sum, score) => sum + score, 0) / periodCourseScores.length);
+    };
+    const latestCompositeAverage = periodCompositeAverage(currentStart, currentEnd);
+    const previousCompositeAverage = periodCompositeAverage(previousStart, previousEnd);
     const examDelta = latestCompositeAverage !== null && previousCompositeAverage !== null
       ? latestCompositeAverage - previousCompositeAverage
       : 0;
     const hasExamTrendData = latestCompositeAverage !== null && previousCompositeAverage !== null;
+    const solvedCurrent = completedCurrentWeek.reduce((sum, task) => {
+      const fallbackAnswered = (task.correctCount || 0) + (task.incorrectCount || 0) + (task.emptyCount || 0);
+      return sum + Math.max(task.questionCount || 0, fallbackAnswered);
+    }, 0);
+    const solvedPrevious = completedPreviousWeek.reduce((sum, task) => {
+      const fallbackAnswered = (task.correctCount || 0) + (task.incorrectCount || 0) + (task.emptyCount || 0);
+      return sum + Math.max(task.questionCount || 0, fallbackAnswered);
+    }, 0);
+    const solvedQuestionChange = solvedPrevious > 0
+      ? Math.round(((solvedCurrent - solvedPrevious) / solvedPrevious) * 100)
+      : (solvedCurrent > 0 ? 100 : 0);
 
-    const dailyAccuracyPoints = Array.from({ length: 7 }, (_, index) => {
-      const day = new Date(currentStart);
-      day.setDate(day.getDate() + index);
-      const dayIso = day.toISOString().slice(0, 10);
-      const dayTasks = completedCurrentWeek.filter((task) => task.completionDate === dayIso && task.taskType === 'soru çözme');
-      const answered = dayTasks.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
-      const correct = dayTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+    const dayMs = 86400000;
+    const pointCount = getOverviewSparklinePointCount(overviewStudyPeriod);
+    const totalRangeDays = Math.max(1, Math.floor((currentEnd.getTime() - currentStart.getTime()) / dayMs) + 1);
+    const bucketSize = Math.max(1, Math.ceil(totalRangeDays / pointCount));
+    const dailyAccuracyPoints = Array.from({ length: pointCount }, (_, bucketIndex) => {
+      const bucketStart = new Date(currentStart);
+      bucketStart.setDate(bucketStart.getDate() + (bucketIndex * bucketSize));
+      const bucketEnd = new Date(bucketStart);
+      bucketEnd.setDate(bucketEnd.getDate() + bucketSize - 1);
+      if (bucketEnd > currentEnd) bucketEnd.setTime(currentEnd.getTime());
+
+      const bucketTasks = completedCurrentWeek.filter((task) => {
+        const completionDate = toDate(task.completionDate);
+        const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
+        const hasQuestionPayload = (task.questionCount || 0) > 0 || answered > 0;
+        return hasQuestionPayload && isBetween(completionDate, bucketStart, bucketEnd);
+      });
+      const answered = bucketTasks.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
+      const correct = bucketTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
       return answered > 0 ? Math.round((correct / answered) * 100) : 0;
     });
 
@@ -3910,11 +3996,39 @@ const App: React.FC = () => {
       completionPercent,
       totalMinutes: minutesCurrentWeek,
       minuteChange,
+      solvedQuestionCount: solvedCurrent,
+      solvedQuestionChange,
+      comparisonLabel: getOverviewComparisonLabel(overviewStudyPeriod),
       examDelta,
       hasExamTrendData,
       dailyAccuracyPoints,
     };
-  }, [compositeExamResults, tasks, today]);
+  }, [compositeExamResults, overviewStudyPeriod, tasks, today]);
+  const [overviewWeeklyStatsFromWorker, setOverviewWeeklyStatsFromWorker] = useState<typeof overviewWeeklyStats | null>(null);
+
+  useEffect(() => {
+    const shouldUseWorker = parentWorkspaceView === 'overview' && tasks.length >= 1200;
+    if (!shouldUseWorker) {
+      setOverviewWeeklyStatsFromWorker(null);
+      return;
+    }
+
+    const worker = new Worker(new URL('./workers/overview-metrics.worker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (event: MessageEvent<typeof overviewWeeklyStats>) => {
+      setOverviewWeeklyStatsFromWorker(event.data);
+    };
+    worker.postMessage({
+      period: overviewStudyPeriod,
+      today,
+      tasks,
+      compositeExamResults,
+    });
+
+    return () => {
+      worker.terminate();
+    };
+  }, [compositeExamResults, overviewStudyPeriod, parentWorkspaceView, tasks, today]);
+  const overviewWeeklyStatsForView = overviewWeeklyStatsFromWorker ?? overviewWeeklyStats;
   const overviewCourseInsights = useMemo(() => {
     const todayDate = new Date(`${today}T00:00:00`);
     const currentStart = new Date(todayDate);
@@ -4697,12 +4811,14 @@ const App: React.FC = () => {
                 overviewTodayCompletedTasks={overviewTodayCompletedTasks}
                 overviewWeakTopicActions={overviewWeakTopicActions}
                 overviewCourseNames={overviewCourseNames}
-                overviewWeeklyStats={overviewWeeklyStats}
+                overviewWeeklyStats={overviewWeeklyStatsForView}
                 overviewCourseInsights={overviewCourseInsights}
                 overviewTopicInsights={overviewTopicInsights}
                 overviewTopicMetricsMap={overviewTopicMetricsMap}
                 overviewTopicPerformanceRows={overviewTopicPerformanceRows}
                 overviewReportSeries={overviewReportSeries}
+                overviewStudyPeriod={overviewStudyPeriod}
+                onOverviewStudyPeriodChange={setOverviewStudyPeriod}
                 overviewSignal={overviewSignal}
                 overviewExamDecision={overviewExamDecision}
                 lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
@@ -4737,12 +4853,14 @@ const App: React.FC = () => {
           overviewTodayCompletedTasks={overviewTodayCompletedTasks}
           overviewWeakTopicActions={overviewWeakTopicActions}
           overviewCourseNames={overviewCourseNames}
-          overviewWeeklyStats={overviewWeeklyStats}
+          overviewWeeklyStats={overviewWeeklyStatsForView}
           overviewCourseInsights={overviewCourseInsights}
           overviewTopicInsights={overviewTopicInsights}
           overviewTopicMetricsMap={overviewTopicMetricsMap}
           overviewTopicPerformanceRows={overviewTopicPerformanceRows}
           overviewReportSeries={overviewReportSeries}
+          overviewStudyPeriod={overviewStudyPeriod}
+          onOverviewStudyPeriodChange={setOverviewStudyPeriod}
           overviewSignal={overviewSignal}
           overviewExamDecision={overviewExamDecision}
           lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}

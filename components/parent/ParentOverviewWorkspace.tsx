@@ -63,6 +63,9 @@ interface ParentOverviewWorkspaceProps {
     completionPercent: number;
     totalMinutes: number;
     minuteChange: number;
+    solvedQuestionCount: number;
+    solvedQuestionChange: number;
+    comparisonLabel: string;
     examDelta: number;
     hasExamTrendData: boolean;
     dailyAccuracyPoints: number[];
@@ -115,6 +118,8 @@ interface ParentOverviewWorkspaceProps {
     color: string;
     points: number[];
   }>;
+  overviewStudyPeriod: 'week1' | 'week3' | 'week6' | 'month' | 'quarter' | 'total';
+  onOverviewStudyPeriodChange: (period: 'week1' | 'week3' | 'week6' | 'month' | 'quarter' | 'total') => void;
   overviewSignal: {
     title: string;
     text: string;
@@ -165,10 +170,10 @@ const formatMinutes = (minutes: number) => {
   return `${hours} sa ${rest} dk`;
 };
 
-const getDeltaDisplay = (delta: number) => {
-  if (delta > 0) return { arrow: '↑', text: `Gecen haftaya gore +%${Math.abs(delta)}`, short: `+%${Math.abs(delta)}`, tone: 'text-emerald-600' };
-  if (delta < 0) return { arrow: '↓', text: `Gecen haftaya gore -%${Math.abs(delta)}`, short: `-%${Math.abs(delta)}`, tone: 'text-rose-600' };
-  return { arrow: '→', text: 'Gecen haftaya gore %0', short: '%0', tone: 'text-blue-600' };
+const getDeltaDisplay = (delta: number, comparisonLabel = 'haftaya') => {
+  if (delta > 0) return { arrow: '↑', text: `Geçen ${comparisonLabel} göre +%${Math.abs(delta)}`, short: `+%${Math.abs(delta)}`, tone: 'text-emerald-600' };
+  if (delta < 0) return { arrow: '↓', text: `Geçen ${comparisonLabel} göre -%${Math.abs(delta)}`, short: `-%${Math.abs(delta)}`, tone: 'text-rose-600' };
+  return { arrow: '→', text: `Geçen ${comparisonLabel} göre %0`, short: '%0', tone: 'text-blue-600' };
 };
 
 const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
@@ -188,11 +193,28 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   overviewTopicMetricsMap,
   overviewTopicPerformanceRows,
   overviewReportSeries,
+  overviewStudyPeriod,
+  onOverviewStudyPeriodChange,
   overviewSignal,
   overviewExamDecision,
   lastCompletedTaskLabel,
   onOpenPlanning,
 }) => {
+  const periodOptions: Array<{ value: 'week1' | 'week3' | 'week6' | 'month' | 'quarter' | 'total'; label: string }> = [
+    { value: 'week1', label: '1H' },
+    { value: 'week3', label: '3H' },
+    { value: 'week6', label: '6H' },
+    { value: 'month', label: '1A' },
+    { value: 'quarter', label: '3A' },
+    { value: 'total', label: 'Genel' },
+  ];
+  const periodSummaryTitle = overviewStudyPeriod === 'month'
+    ? 'Aylık özet'
+    : overviewStudyPeriod === 'quarter'
+      ? '3 Aylık özet'
+      : overviewStudyPeriod === 'total'
+        ? 'Genel özet'
+        : 'Haftalık özet';
   const [reportCardTab, setReportCardTab] = useState<'general' | 'course' | 'topic' | 'time'>('general');
   const [selectedOverviewCourse, setSelectedOverviewCourse] = useState<string | null>(null);
   const [selectedOverviewTopic, setSelectedOverviewTopic] = useState<string | null>(null);
@@ -236,8 +258,23 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
 
   const weeklyCompletionTarget = Math.max(overviewWeeklyStats.completionTarget, 1);
   const weeklyCompletionPercent = Math.max(0, Math.min(100, overviewWeeklyStats.completionPercent));
-  const minuteDelta = getDeltaDisplay(overviewWeeklyStats.minuteChange);
+  const minuteDelta = getDeltaDisplay(overviewWeeklyStats.minuteChange, overviewWeeklyStats.comparisonLabel);
+  const solvedDelta = getDeltaDisplay(overviewWeeklyStats.solvedQuestionChange, overviewWeeklyStats.comparisonLabel);
   const examDelta = getDeltaDisplay(overviewWeeklyStats.examDelta);
+  const accuracySparklinePath = useMemo(() => {
+    const points = overviewWeeklyStats.dailyAccuracyPoints || [];
+    if (points.length === 0) return '';
+    const minX = 2;
+    const maxX = 118;
+    const step = points.length > 1 ? (maxX - minX) / (points.length - 1) : 0;
+    return points
+      .map((point, index) => {
+        const x = minX + (step * index);
+        const y = 28 - Math.min(24, Math.max(2, (point || 0) / 4));
+        return `${index === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
+      })
+      .join(' ');
+  }, [overviewWeeklyStats.dailyAccuracyPoints]);
   const normalizedReportSeries = useMemo(
     () => overviewReportSeries
       .filter((series) => series && typeof series.courseName === 'string')
@@ -499,12 +536,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
         {
           label: 'En guclu ders',
           value: bestCourse ? bestCourse.courseName : 'Veri yok',
-          hint: bestCourse && bestCourse.change !== null ? `${bestCourse.change > 0 ? '+' : ''}%${bestCourse.change}` : 'haftalik veri yok',
+          hint: bestCourse && bestCourse.change !== null ? `${bestCourse.change > 0 ? '+' : ''}%${bestCourse.change}` : 'Bu periyotta ders verisi yok',
         },
         {
           label: 'Destek onceligi',
           value: weakestCourse ? weakestCourse.courseName : 'Veri yok',
-          hint: weakestCourse && weakestCourse.change !== null ? `${weakestCourse.change > 0 ? '+' : ''}%${weakestCourse.change}` : 'haftalik veri yok',
+          hint: weakestCourse && weakestCourse.change !== null ? `${weakestCourse.change > 0 ? '+' : ''}%${weakestCourse.change}` : 'Bu periyotta ders verisi yok',
         },
         {
           label: 'Veri olan ders',
@@ -540,14 +577,14 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           hint: `${safeReportSeriesForChart[0]?.points?.length || 0} veri noktasi`,
         },
         {
-          label: 'Haftalik calisma',
+          label: 'Haftalık çalışma',
           value: formatMinutes(overviewWeeklyStats.totalMinutes),
           hint: minuteDelta.text,
         },
         {
           label: 'Deneme degisimi',
           value: overviewWeeklyStats.hasExamTrendData ? `${examDelta.short}` : 'Veri yok',
-          hint: overviewWeeklyStats.hasExamTrendData ? examDelta.text : 'en az 2 deneme gerekli',
+          hint: overviewWeeklyStats.hasExamTrendData ? examDelta.text : 'Karşılaştırma için seçili periyotta en az 2 deneme gerekli',
         },
       ];
     }
@@ -593,18 +630,75 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       description="Bugunku ogrenme durumu"
       spacing="wide"
       actions={(
-        <div className="ios-panel flex items-center gap-2 rounded-[20px] p-1">
-          <button type="button" onClick={() => onOpenPlanning('Planlama ozeti acildi.')} className="ios-button rounded-[16px] px-4 py-2 text-xs font-black text-slate-700">Planlama ozeti</button>
+        <div className="ios-panel flex items-center gap-1 rounded-[20px] p-1">
+          {periodOptions.map((option) => (
+            <button
+              key={`top-period-${option.value}`}
+              type="button"
+              onClick={() => onOverviewStudyPeriodChange(option.value)}
+              className={`rounded-[12px] px-3 py-2 text-xs font-black ${overviewStudyPeriod === option.value ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       )}
     >
       <section className="grid grid-cols-12 gap-5">
         <div className="col-span-12 space-y-5 xl:col-span-8">
+          <div className="ios-card rounded-[26px] p-5">
+            <div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{periodSummaryTitle}</div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="ios-widget rounded-[18px] p-4">
+                <div className="text-xs font-bold text-slate-500">Tamamlanan Gorev</div>
+                <div className="mt-2 text-3xl font-black text-slate-900">{overviewWeeklyStats.completedCount}</div>
+                <div className="mt-1 text-xs font-semibold text-slate-500">/ {weeklyCompletionTarget} gorev</div>
+                <div className="mt-2 h-2 rounded-full bg-slate-200">
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${weeklyCompletionPercent}%` }} />
+                </div>
+                <div className="mt-1 text-xs font-semibold text-slate-500">%{weeklyCompletionPercent}</div>
+              </div>
+              <div className="ios-widget rounded-[18px] p-4">
+                <div className="text-xs font-bold text-slate-500">Çalışma Süresi</div>
+                <div className="mt-2 text-3xl font-black text-slate-900">{formatMinutes(overviewWeeklyStats.totalMinutes)}</div>
+                <div className={`mt-2 flex items-center gap-1 text-xs font-semibold ${minuteDelta.tone}`}>
+                  <span className="text-sm leading-none">{minuteDelta.arrow}</span>
+                  {minuteDelta.text}
+                </div>
+              </div>
+              <div className="ios-widget rounded-[18px] p-4">
+                <div className="text-xs font-bold text-slate-500">Çözülen Soru</div>
+                <div className="mt-2 text-3xl font-black text-slate-900">{overviewWeeklyStats.solvedQuestionCount}</div>
+                <div className={`mt-2 flex items-center gap-1 text-xs font-semibold ${solvedDelta.tone}`}>
+                  <span className="text-sm leading-none">{solvedDelta.arrow}</span>
+                  {solvedDelta.text}
+                </div>
+              </div>
+              <div className="ios-widget rounded-[18px] p-4">
+                <div className="text-xs font-bold text-slate-500">Deneme Performansi</div>
+                <div className={`mt-2 flex items-center gap-2 text-3xl font-black ${examDelta.tone}`}>
+                  <span className="text-xl leading-none">{examDelta.arrow}</span>
+                  <span>{examDelta.short}</span>
+                </div>
+                <div className={`mt-1 text-xs font-semibold ${overviewWeeklyStats.hasExamTrendData ? examDelta.tone : 'text-slate-500'}`}>
+                  {overviewWeeklyStats.hasExamTrendData
+                    ? examDelta.text
+                    : 'Karşılaştırma için seçili periyotta en az 2 deneme gerekir'}
+                </div>
+                <div className="mt-2 h-8">
+                  <svg viewBox="0 0 120 30" className="h-full w-full text-violet-500" aria-hidden="true">
+                    <path d={accuracySparklinePath} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {selectedCourseDetail && (
             <div className="ios-card rounded-[26px] p-5" data-testid="overview-course-deep-dive-panel">
               <div className="mb-4 flex items-center justify-between">
                 <h4 className="text-lg font-black text-slate-900">Ders Detay Sayfasi ({selectedCourseDetail.courseName})</h4>
-                <div className="ios-button rounded-[12px] px-3 py-1 text-xs font-bold text-slate-700">Bu hafta</div>
+                <div className="text-[11px] font-semibold text-slate-500">Periyot: {periodOptions.find((option) => option.value === overviewStudyPeriod)?.label || '1A'}</div>
               </div>
               <div className="mb-4 flex flex-wrap gap-2">
                 {overviewCoursesForDetail.map((course) => (
@@ -637,7 +731,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       <div className="font-black text-slate-900">%{selectedCourseDetail.progress}</div>
                     </div>
                     <div className="border-b border-white/50 pb-2">
-                      <span className="text-slate-500">Haftalik degisim</span>
+                      <span className="text-slate-500">Haftalık değişim</span>
                       <div className={`font-black ${selectedCourseDelta ? selectedCourseDelta.tone : 'text-slate-500'}`}>
                         {selectedCourseDelta ? `${selectedCourseDelta.arrow} ${selectedCourseDelta.short}` : 'veri yok'}
                       </div>
@@ -655,7 +749,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               </div>
 
               <div className="ios-widget mt-4 rounded-[18px] p-4">
-                <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-slate-300">Son 4 Haftalik Trend</div>
+                <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-slate-300">Son 4 Haftalık Trend</div>
                 {selectedCourseTrend.length === 4 ? (
                   <div className="rounded-[14px] border border-white/10 bg-slate-900/30 p-3">
                     <svg viewBox="0 0 520 180" className="h-44 w-full" role="img" aria-label="Son 4 haftalik ders trendi">
@@ -690,7 +784,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   </div>
                 ) : (
                   <div className="rounded-[14px] border border-white/10 bg-slate-900/30 p-3 text-sm text-slate-400">
-                    Bu ders icin haftalik trend cizimi yapacak yeterli veri yok.
+                    Bu periyotta ders trend verisi yok. Planlama ekranından bu ders için soru çözümü veya tekrar görevi ekleyin.
                   </div>
                 )}
               </div>
@@ -756,6 +850,9 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   </select>
                 </label>
               </div>
+              <div className="mb-4 rounded-[12px] bg-slate-100 px-3 py-2 text-[11px] font-semibold text-slate-600">
+                Filtreler "Tüm" seçimindeyken son aktif ders/konu verisi gösterilir. Daha net takip için ders ve ünite seçin.
+              </div>
               <div className="grid gap-4 lg:grid-cols-[170px_minmax(0,1fr)]">
                 <div className="ios-widget rounded-[18px] p-4">
                   <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border-[8px] border-rose-300/80 bg-white text-center">
@@ -770,7 +867,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 <div className="ios-widget rounded-[18px] p-4">
                   <div className="grid gap-2 text-sm sm:grid-cols-2">
                     <div className="border-b border-white/50 pb-2">
-                      <span className="text-slate-500">Calisma</span>
+                      <span className="text-slate-500">Çalışma</span>
                       <div className="font-black text-slate-900">{Math.floor((selectedTopicTaskMetrics?.minutes ?? 0) / 60)} sa {(selectedTopicTaskMetrics?.minutes ?? 0) % 60} dk</div>
                     </div>
                     <div className="border-b border-white/50 pb-2">
@@ -805,7 +902,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   <div className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-300">Konu Performansi</div>
                   <div className="space-y-3 text-sm">
                     <div className="grid grid-cols-[110px_minmax(0,1fr)_42px] items-center gap-2">
-                      <span className="text-slate-200">Calisma</span>
+                      <span className="text-slate-200">Çalışma</span>
                       <div className="h-2 rounded-full bg-white/15">
                         <div className="h-full rounded-full bg-rose-400" style={{ width: `${Math.max(10, Math.min(100, Math.round(((selectedTopicTaskMetrics?.minutes ?? 0) / 240) * 100)))}%` }} />
                       </div>
@@ -865,7 +962,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       <div className="mt-1 text-lg font-black text-slate-100">%{aggregatedPerformanceMetrics.accuracyPercent}</div>
                     </div>
                     <div className="rounded-[12px] border border-white/10 bg-slate-900/30 px-3 py-2 text-xs">
-                      <div className="text-slate-400">Calisma Suresi</div>
+                      <div className="text-slate-400">Çalışma Süresi</div>
                       <div className="mt-1 text-lg font-black text-slate-100">{formatMinutes(aggregatedPerformanceMetrics.minutes)}</div>
                     </div>
                   </div>
@@ -883,51 +980,9 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           )}
 
           <div className="ios-card rounded-[26px] p-5">
-            <div className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Haftalik ozet</div>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
-              <div className="ios-widget rounded-[18px] p-4">
-                <div className="text-xs font-bold text-slate-500">Tamamlanan Gorev</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{overviewWeeklyStats.completedCount}</div>
-                <div className="mt-1 text-xs font-semibold text-slate-500">/ {weeklyCompletionTarget} gorev</div>
-                <div className="mt-2 h-2 rounded-full bg-slate-200">
-                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${weeklyCompletionPercent}%` }} />
-                </div>
-                <div className="mt-1 text-xs font-semibold text-slate-500">%{weeklyCompletionPercent}</div>
-              </div>
-              <div className="ios-widget rounded-[18px] p-4">
-                <div className="text-xs font-bold text-slate-500">Calisma Suresi</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{formatMinutes(overviewWeeklyStats.totalMinutes)}</div>
-                <div className={`mt-2 flex items-center gap-1 text-xs font-semibold ${minuteDelta.tone}`}>
-                  <span className="text-sm leading-none">{minuteDelta.arrow}</span>
-                  {minuteDelta.text}
-                </div>
-              </div>
-              <div className="ios-widget rounded-[18px] p-4">
-                <div className="text-xs font-bold text-slate-500">Deneme Performansi</div>
-                <div className={`mt-2 flex items-center gap-2 text-3xl font-black ${examDelta.tone}`}>
-                  <span className="text-xl leading-none">{examDelta.arrow}</span>
-                  <span>{examDelta.short}</span>
-                </div>
-                <div className={`mt-1 text-xs font-semibold ${overviewWeeklyStats.hasExamTrendData ? examDelta.tone : 'text-slate-500'}`}>
-                  {overviewWeeklyStats.hasExamTrendData
-                    ? examDelta.text
-                    : 'Yorum icin en az 2 deneme gerekir'}
-                </div>
-                <div className="mt-2 h-8">
-                  <svg viewBox="0 0 120 30" className="h-full w-full text-violet-500" aria-hidden="true">
-                    <path d={`M2 ${28 - Math.min(24, Math.max(2, (overviewWeeklyStats.dailyAccuracyPoints[0] || 0) / 4))} C18 ${28 - Math.min(24, Math.max(2, (overviewWeeklyStats.dailyAccuracyPoints[1] || 0) / 4))}, 32 ${28 - Math.min(24, Math.max(2, (overviewWeeklyStats.dailyAccuracyPoints[2] || 0) / 4))}, 48 ${28 - Math.min(24, Math.max(2, (overviewWeeklyStats.dailyAccuracyPoints[3] || 0) / 4))} C64 ${28 - Math.min(24, Math.max(2, (overviewWeeklyStats.dailyAccuracyPoints[4] || 0) / 4))}, 78 ${28 - Math.min(24, Math.max(2, (overviewWeeklyStats.dailyAccuracyPoints[5] || 0) / 4))}, 118 ${28 - Math.min(24, Math.max(2, (overviewWeeklyStats.dailyAccuracyPoints[6] || 0) / 4))}`} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="ios-card rounded-[26px] p-5">
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-lg font-black text-slate-900">Rapor Sayfasi</h4>
-                    <button type="button" onClick={() => onOpenPlanning?.('Raporlar acildi.')} className="ios-button rounded-[12px] px-3 py-1 text-xs font-bold text-slate-700">
-                Tumunu gor
-              </button>
+              <div className="text-[11px] font-semibold text-slate-500">Periyot: {periodOptions.find((option) => option.value === overviewStudyPeriod)?.label || '1A'}</div>
             </div>
             <div className="mb-3 flex flex-wrap gap-2">
               <button type="button" onClick={() => setReportCardTab('general')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold ${reportCardTab === 'general' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Genel Rapor</button>

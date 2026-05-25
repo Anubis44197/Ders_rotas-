@@ -39,17 +39,19 @@ Bagimliliklari kurun:
 npm install
 ```
 
-Gelistirme sunucusunu baslatin:
+Gelistirme sunucusunu baslatin (onerilen):
 
 ```bash
-npm run dev
+npm run dev:stable
 ```
 
-Vite varsayilan olarak uygulamayi su adreste acar:
+Sunucu acildiginda uygulama:
 
 ```text
-http://localhost:3000
+http://127.0.0.1:3000
 ```
+
+Not: `dev:stable` foreground calisir. Terminal penceresini kapatirsaniz sunucu kapanir.
 
 ## Dogrulama Komutlari
 
@@ -65,6 +67,7 @@ Komutlarin amaci:
 
 | Komut | Aciklama |
 | --- | --- |
+| `npm run dev:stable` | Windows icin en stabil dev baslatma (foreground, strict port). |
 | `npm run typecheck` | TypeScript tip kontrolu yapar. |
 | `npm run build` | Production build uretir ve Vite derlemesini dogrular. |
 | `npm run smoke` | Temel veri ve uygulama davranisi icin smoke testleri calistirir. |
@@ -158,6 +161,28 @@ Mevcut `.gitignore` bu dosyalari disarida tutacak sekilde kullanilmalidir.
 
 ## Sorun Giderme
 
+### Uygulama acilmiyorsa (ERR_CONNECTION_REFUSED)
+
+1. Proje klasorunde yeni bir PowerShell acin.
+2. Asagidaki komutla dev server'i baslatin:
+
+```bash
+npm run dev:stable
+```
+
+3. Sunucu acik kaldigi surece su adresten girin:
+
+```text
+http://127.0.0.1:3000
+```
+
+4. Sunucuyu kapatmak icin ayni terminalde `Ctrl + C` kullanin.
+
+Ek not:
+- Ayrica arka planda calistirip terminali kapatmak dev server'in dusmesine neden olabilir.
+- Her oturumda tekrar `npm run dev:stable` calistirin.
+- Vite tarama girisleri `index.html` ile sinirlandirildi; `docs/e2e-artifacts` altindaki test dosyalari dev acilisini etkilemez.
+
 ### Uygulama beyaz ekran yerine kurtarma ekrani acarsa
 
 Bu genellikle tarayicidaki eski veya bozuk LocalStorage verisinden kaynaklanir. Kurtarma ekranindaki yeniden dene veya yerel veriyi temizle secenekleri kullanilabilir.
@@ -176,6 +201,19 @@ Recharts kaynakli gelistirme ortami dongusu gorulurse bu anahtar kaldirilip sayf
 ### Port 3000 doluysa
 
 Vite baska bir port onerebilir. Terminalde verilen lokal adres kullanilmalidir.
+
+Zorunlu olarak 3000 portunu temizlemek isterseniz (PowerShell):
+
+```powershell
+$pid = (Get-NetTCPConnection -LocalPort 3000 -State Listen).OwningProcess
+Stop-Process -Id $pid -Force
+```
+
+Ardindan tekrar:
+
+```bash
+npm run dev:stable
+```
 
 ## Son Dogrulanan Durum
 

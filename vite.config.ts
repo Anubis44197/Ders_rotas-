@@ -8,6 +8,11 @@ export default defineConfig(() => {
         port: 3000,
         host: '0.0.0.0',
       },
+      optimizeDeps: {
+        // Limit dependency scanning to the real app entry.
+        // Prevents Vite from crawling docs/e2e artifact folders.
+        entries: ['index.html'],
+      },
       plugins: [react()],
       resolve: {
         preserveSymlinks: true,
