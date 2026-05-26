@@ -6,7 +6,7 @@ import ActiveReadingSession from './ActiveReadingSession';
 import StudyStats from './StudyStats';
 import { Trophy, PlusCircle, Play, Gift, BadgeCheck, Target, BarChart, Brain, BookMarked, Calendar, CheckCircle } from '../icons';
 import { getTodayString, getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
-import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
+import { deriveAnalysisSnapshot, type AnalysisSnapshot } from '../../utils/analysisEngine';
 import { isCompletedTask as isTaskCompleted } from '../../utils/taskStatus';
 import { ChartTooltip, chartAxisProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 import ContextHelp from '../shared/ContextHelp';
@@ -221,6 +221,10 @@ const ReadingLibraryPanel: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
   );
 };
 
+type ChildDashboardInternalProps = ChildDashboardProps & {
+  analysisSnapshot?: AnalysisSnapshot;
+};
+
 const TaskCard: React.FC<{
   task: Task;
   courseName: string;
@@ -311,7 +315,7 @@ const TaskCard: React.FC<{
   );
 };
 
-const ChildDashboard: React.FC<ChildDashboardProps> = ({
+const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
   tasks,
   courses,
   rewards,
@@ -323,6 +327,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
   addTask,
   curriculum,
   ai,
+  analysisSnapshot,
 }) => {
   const safeTasks = useMemo(() => (Array.isArray(tasks) ? tasks.filter((task) => task && typeof task.id === 'string') : []), [tasks]);
   const safeCourses = useMemo(() => (Array.isArray(courses) ? courses.filter((course) => course && typeof course.id === 'string') : []), [courses]);
@@ -350,6 +355,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
   const [freeGoalType, setFreeGoalType] = useState('ders calisma');
   const [claimingRewardId, setClaimingRewardId] = useState<string | null>(null);
   const [creatingFreeStudy, setCreatingFreeStudy] = useState(false);
+  const [freeStudyError, setFreeStudyError] = useState<string | null>(null);
   const [startingTaskId, setStartingTaskId] = useState<string | null>(null);
   const [showAllAssignedTasks, setShowAllAssignedTasks] = useState(false);
   const [showAllFreeTasks, setShowAllFreeTasks] = useState(false);
@@ -357,7 +363,7 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
 
   const today = getTodayString();
   const courseNameMap = useMemo(() => new Map(safeCourses.map((course) => [course.id, safeText(course.name, course.id)])), [safeCourses]);
-  const analysis = useMemo(() => deriveAnalysisSnapshot(safeTasks, safeCourses), [safeTasks, safeCourses]);
+  const analysis = useMemo(() => analysisSnapshot || deriveAnalysisSnapshot(safeTasks, safeCourses), [analysisSnapshot, safeTasks, safeCourses]);
   const selectedCourseName = courseNameMap.get(freeCourseId) || '';
   const activeUnits = useMemo<CurriculumUnit[]>(() => {
     if (!selectedCourseName) return [];
@@ -529,19 +535,53 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
   const handleCreateFreeStudy = async (event: React.FormEvent) => {
     event.preventDefault();
     if (creatingFreeStudy) return;
-    if (!freeTitle.trim() || !freeCourseId || !freeDuration) return;
+    const selectedCourseExists = safeCourses.some((course) => course.id === freeCourseId);
+    const plannedDuration = Number(freeDuration);
+    const questionCount = Number(freeQuestionCount);
+    const requiresTopic = freeType !== 'kitap okuma' && activeUnits.length > 0;
+
+    if (!freeTitle.trim()) {
+      setFreeStudyError('Calisma basligi gerekli.');
+      return;
+    }
+
+    if (!freeCourseId || !selectedCourseExists) {
+      setFreeStudyError('Gecerli bir ders sec.');
+      return;
+    }
+
+    if (!Number.isFinite(plannedDuration) || plannedDuration < 5 || plannedDuration > 240) {
+      setFreeStudyError('Sure 5 ile 240 dakika arasinda olmali.');
+      return;
+    }
+
+    if (requiresTopic && (!freeUnitName || !freeTopicName)) {
+      setFreeStudyError('Analizin bozulmamasi icin unite ve konu sec.');
+      return;
+    }
+
+    if (freeType === 'soru çözme' && (!Number.isFinite(questionCount) || questionCount < 1 || questionCount > 500)) {
+      setFreeStudyError('Soru sayisi 1 ile 500 arasinda olmali.');
+      return;
+    }
+
+    if (freeType === 'kitap okuma' && !freeBookTitle.trim()) {
+      setFreeStudyError('Kitap okuma icin kitap adi gerekli.');
+      return;
+    }
 
     setCreatingFreeStudy(true);
+    setFreeStudyError(null);
     try {
       const created = await addTask({
         title: freeTitle.trim(),
         courseId: freeCourseId,
         dueDate: today,
         taskType: freeType,
-        plannedDuration: Number(freeDuration),
+        plannedDuration: Math.round(plannedDuration),
         isSelfAssigned: true,
-        ...(freeType === 'soru \u00e7\u00f6zme' ? { questionCount: Number(freeQuestionCount) } : {}),
-        ...(freeType === 'kitap okuma' ? { bookTitle: freeBookTitle, readingType: 'serbest', bookGenre: 'Hikaye' } : {}),
+        ...(freeType === 'soru \u00e7\u00f6zme' ? { questionCount: Math.round(questionCount) } : {}),
+        ...(freeType === 'kitap okuma' ? { bookTitle: freeBookTitle.trim(), readingType: 'serbest', bookGenre: 'Hikaye' } : {}),
         ...(freeUnitName ? { curriculumUnitName: freeUnitName } : {}),
         ...(freeTopicName ? { curriculumTopicName: freeTopicName } : {}),
         ...(freeType !== 'kitap okuma' ? { taskGoalType: freeGoalType || undefined } : {}),
@@ -557,7 +597,10 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
       setFreeUnitName('');
       setFreeTopicName('');
       setFreeGoalType('ders calisma');
+      setFreeStudyError(null);
       startSelectedTask(created);
+    } catch {
+      setFreeStudyError('Serbest calisma olusturulamadi.');
     } finally {
       setCreatingFreeStudy(false);
     }
@@ -728,6 +771,11 @@ const ChildDashboard: React.FC<ChildDashboardProps> = ({
                         <div className="ios-widget mt-4 rounded-[18px] px-3 py-3 text-xs leading-5 text-slate-600">
                           {selectedCourseName || 'Ders'} {freeUnitName ? `/ ${freeUnitName}` : ''} {freeTopicName ? `/ ${freeTopicName}` : ''}
                         </div>
+                        {freeStudyError && (
+                          <div className="mt-3 rounded-[18px] bg-rose-50 px-3 py-2 text-xs font-bold leading-5 text-rose-700">
+                            {freeStudyError}
+                          </div>
+                        )}
                       </div>
                       <button type="submit" disabled={creatingFreeStudy} className={`mt-4 rounded-[18px] px-5 py-3 text-sm font-black ${creatingFreeStudy ? 'ios-button cursor-not-allowed text-slate-500 opacity-60' : 'ios-button-active text-slate-900'}`}>
                         {creatingFreeStudy ? 'Oluşturuluyor...' : 'Oluştur ve başlat'}

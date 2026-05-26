@@ -13,6 +13,7 @@ import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
 import { getTodayString } from '../../utils/dateUtils';
 import { ClipboardList, Download, MoreHorizontal, PlusCircle, Settings, Trash2, Upload, X } from '../icons';
 import ContextHelp from '../shared/ContextHelp';
+import VirtualScroll from '../shared/VirtualScroll';
 import {
   alignmentLabelMap,
   alignmentToneMap,
@@ -477,6 +478,90 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
     onChangeCompositeExamResults((prev) => prev.filter((item) => item.id !== examId));
   };
 
+  const renderTaskCard = (task: Task) => {
+    const isOverdue = task.status === 'bekliyor' && getTaskDateKey(task.dueDate) < today;
+    const normalizedSelectedMetrics = Array.isArray(task.selectedMetrics)
+      ? task.selectedMetrics.filter((metric): metric is AssignmentMetricKey => metric in assignmentMetricLabelMap)
+      : [];
+    const legacySelectedMetrics = legacyMetricMap
+      .filter(({ field }) => typeof task[field] === 'number' && Number(task[field]) > 0)
+      .map(({ key }) => key);
+    const taskMetrics = Array.from(new Set([...normalizedSelectedMetrics, ...legacySelectedMetrics]));
+
+    return (
+      <div key={task.id} className={`ios-widget rounded-[22px] p-4 ${isOverdue ? 'ios-coral' : ''}`}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+              <span>{courseNameMap.get(task.courseId) || task.courseId}</span>
+              <span>/</span>
+              <span>{task.plannedDuration} dk</span>
+              {typeof task.questionCount === 'number' && task.questionCount > 0 && <><span>/</span><span>{task.questionCount} soru</span></>}
+              <span>/</span>
+              <span>{task.dueDate}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">{formatPlanSource(task.planSource, task.planLabel)}</span>
+              {task.isSelfAssigned && <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">Serbest</span>}
+              {isOverdue && <span className="rounded-full bg-rose-100 px-2 py-1 text-rose-700">Takipte</span>}
+            </div>
+            <div className="mt-2 font-semibold text-slate-900">{task.title}</div>
+            <div className="mt-2 text-xs leading-5 text-slate-500">
+              {[task.curriculumUnitName, task.curriculumTopicName, task.taskGoalType ? formatTaskGoal(task.taskGoalType) : '', typeof task.questionCount === 'number' && task.questionCount > 0 ? `${task.questionCount} soru` : '', taskMetrics[0] ? assignmentMetricLabelMap[taskMetrics[0]] : '']
+                .filter(Boolean)
+                .join(' / ') || 'Detay eklenmedi'}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isCompletedTask(task) ? 'bg-green-100 text-green-700' : isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-yellow-100 text-yellow-700'}`}>
+              {isCompletedTask(task) ? 'TamamlandÄ±' : isOverdue ? 'Takipte' : 'Bekliyor'}
+            </span>
+            <div className="dr-context-menu-shell" ref={openTaskMenuId === task.id ? taskMenuRef : null}>
+              <button
+                type="button"
+                onClick={() => setOpenTaskMenuId((current) => (current === task.id ? null : task.id))}
+                className="dr-icon-button"
+                aria-label={`${task.title} gÃ¶rev iÅŸlemleri`}
+                aria-haspopup="menu"
+                aria-expanded={openTaskMenuId === task.id}
+                title="GÃ¶rev iÅŸlemleri"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+              {openTaskMenuId === task.id && (
+                <div className="dr-context-menu" role="menu" aria-label={`${task.title} gÃ¶rev iÅŸlemleri`}>
+                  <div className="dr-context-menu-preview truncate">{task.title}</div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="dr-context-menu-item dr-context-menu-item-destructive"
+                    onClick={() => {
+                      setOpenTaskMenuId(null);
+                      deleteTask(task.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    GÃ¶revi sil
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const shouldVirtualizeTaskList = showAllVisibleTasks && visibleTasks.length > 150;
+  const taskListContent = shouldVirtualizeTaskList ? (
+    <VirtualScroll
+      items={visibleTasks}
+      itemHeight={156}
+      height={620}
+      getKey={(task) => task.id}
+      renderItem={(task) => renderTaskCard(task)}
+      className="rounded-[22px] pr-2"
+    />
+  ) : visibleTaskPage.map((task) => renderTaskCard(task));
+
   return (
     <>
       {showLegacyTaskTabs && <section className="ios-panel rounded-[30px] p-2">
@@ -664,77 +749,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         </div>
         <div className="space-y-3">
           {visibleTasks.length === 0 && <div className="ios-widget rounded-[22px] p-5 text-sm text-slate-500">Bu filtreye uygun görev yok.</div>}
-          {visibleTaskPage.map((task) => {
-            const isOverdue = task.status === 'bekliyor' && getTaskDateKey(task.dueDate) < today;
-            const normalizedSelectedMetrics = Array.isArray(task.selectedMetrics)
-              ? task.selectedMetrics.filter((metric): metric is AssignmentMetricKey => metric in assignmentMetricLabelMap)
-              : [];
-            const legacySelectedMetrics = legacyMetricMap
-              .filter(({ field }) => typeof task[field] === 'number' && Number(task[field]) > 0)
-              .map(({ key }) => key);
-            const taskMetrics = Array.from(new Set([...normalizedSelectedMetrics, ...legacySelectedMetrics]));
-            const taskMetricTargetScore = task.metricTargetScore || (taskMetrics.length > 0 ? 100 : undefined);
-            return (
-              <div key={task.id} className={`ios-widget rounded-[22px] p-4 ${isOverdue ? 'ios-coral' : ''}`}>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
-                      <span>{courseNameMap.get(task.courseId) || task.courseId}</span>
-                      <span>/</span>
-                      <span>{task.plannedDuration} dk</span>
-                      {typeof task.questionCount === 'number' && task.questionCount > 0 && <><span>/</span><span>{task.questionCount} soru</span></>}
-                      <span>/</span>
-                      <span>{task.dueDate}</span>
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">{formatPlanSource(task.planSource, task.planLabel)}</span>
-                      {task.isSelfAssigned && <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">Serbest</span>}
-                      {isOverdue && <span className="rounded-full bg-rose-100 px-2 py-1 text-rose-700">Takipte</span>}
-                    </div>
-                    <div className="mt-2 font-semibold text-slate-900">{task.title}</div>
-                    <div className="mt-2 text-xs leading-5 text-slate-500">
-                      {[task.curriculumUnitName, task.curriculumTopicName, task.taskGoalType ? formatTaskGoal(task.taskGoalType) : '', typeof task.questionCount === 'number' && task.questionCount > 0 ? `${task.questionCount} soru` : '', taskMetrics[0] ? assignmentMetricLabelMap[taskMetrics[0]] : '']
-                        .filter(Boolean)
-                        .join(' / ') || 'Detay eklenmedi'}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isCompletedTask(task) ? 'bg-green-100 text-green-700' : isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {isCompletedTask(task) ? 'Tamamlandı' : isOverdue ? 'Takipte' : 'Bekliyor'}
-                    </span>
-                    <div className="dr-context-menu-shell" ref={openTaskMenuId === task.id ? taskMenuRef : null}>
-                      <button
-                        type="button"
-                        onClick={() => setOpenTaskMenuId((current) => (current === task.id ? null : task.id))}
-                        className="dr-icon-button"
-                        aria-label={`${task.title} görev işlemleri`}
-                        aria-haspopup="menu"
-                        aria-expanded={openTaskMenuId === task.id}
-                        title="Görev işlemleri"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                      {openTaskMenuId === task.id && (
-                        <div className="dr-context-menu" role="menu" aria-label={`${task.title} görev işlemleri`}>
-                          <div className="dr-context-menu-preview truncate">{task.title}</div>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            className="dr-context-menu-item dr-context-menu-item-destructive"
-                            onClick={() => {
-                              setOpenTaskMenuId(null);
-                              deleteTask(task.id);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Görevi sil
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {taskListContent}
           {visibleTasks.length > PARENT_TASK_PREVIEW_LIMIT && (
             <button
               type="button"
@@ -770,37 +785,37 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         <input ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleImportFileChange} className="hidden" />
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <section className="ios-widget ios-mint rounded-[26px] p-5">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] bg-white/70 text-emerald-700">
+          <section className="ios-widget rounded-[26px] border border-emerald-400/20 bg-slate-900/30 p-5">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-emerald-400/25 bg-emerald-500/10 text-emerald-300">
               <Download className="h-5 w-5" />
             </div>
             <h4 className="text-lg font-black text-slate-900">Yedek oluştur</h4>
             <p className="mt-2 min-h-[60px] text-sm text-slate-600">Bugünkü verileri indirilebilir bir dosyaya kaydeder. Dosya adı tarihli gelir.</p>
-            <button onClick={handleExportData} disabled={isExporting || !onExportData} className={`ios-button-active mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold ${isExporting || !onExportData ? 'cursor-not-allowed opacity-50' : ''}`}>
+            <button onClick={handleExportData} disabled={isExporting || !onExportData} className={`ios-button mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold text-slate-100 ${isExporting || !onExportData ? 'cursor-not-allowed opacity-50' : ''}`}>
               <Download className="h-4 w-4" />
               {isExporting ? 'Yedek hazırlanıyor...' : 'Yedek indir'}
             </button>
           </section>
 
-          <section className="ios-widget ios-blue rounded-[26px] p-5">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] bg-white/70 text-blue-700">
+          <section className="ios-widget rounded-[26px] border border-blue-400/20 bg-slate-900/30 p-5">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-blue-400/25 bg-blue-500/10 text-blue-300">
               <Upload className="h-5 w-5" />
             </div>
             <h4 className="text-lg font-black text-slate-900">Yedekten yükle</h4>
             <p className="mt-2 min-h-[60px] text-sm text-slate-600">Seçilen dosya önce incelenir. Onay vermeden mevcut veri değişmez.</p>
-            <button onClick={handleImportClick} disabled={isImporting} className={`ios-button mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold text-slate-700 ${isImporting ? 'cursor-not-allowed opacity-50' : ''}`}>
+            <button onClick={handleImportClick} disabled={isImporting} className={`ios-button mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold text-slate-100 ${isImporting ? 'cursor-not-allowed opacity-50' : ''}`}>
               <Upload className="h-4 w-4" />
               Dosya seç
             </button>
           </section>
 
-          <section className="ios-widget ios-coral rounded-[26px] p-5">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] bg-white/70 text-rose-700">
+          <section className="ios-widget rounded-[26px] border border-rose-400/20 bg-slate-900/30 p-5">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-rose-400/25 bg-rose-500/10 text-rose-300">
               <Trash2 className="h-5 w-5" />
             </div>
             <h4 className="text-lg font-black text-slate-900">Veriyi temizle</h4>
             <p className="mt-2 min-h-[60px] text-sm text-slate-600">Tüm yerel kayıtları siler. Bu adımdan önce yedek almak en güvenli akıştır.</p>
-            <button onClick={handleDeleteAllData} disabled={isDeletingAllData} className={`dr-destructive-button mt-4 flex w-full items-center justify-center gap-2 px-4 py-3 font-bold ${isDeletingAllData ? 'cursor-not-allowed opacity-50' : ''}`}>
+            <button onClick={handleDeleteAllData} disabled={isDeletingAllData} className={`mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] border border-rose-400/35 bg-rose-500/15 px-4 py-3 font-bold text-rose-200 transition hover:bg-rose-500/25 ${isDeletingAllData ? 'cursor-not-allowed opacity-50' : ''}`}>
               <Trash2 className="h-4 w-4" />
               {isDeletingAllData ? 'Siliniyor...' : 'Tüm veriyi sil'}
             </button>
@@ -841,7 +856,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                 <Trash2 className="h-5 w-5" />
               </div>
               <div>
-                <h3 id="delete-data-title" className="text-xl font-black text-slate-900">Tüm veriyi sil</h3>
+                <h3 id="delete-data-title" className="text-xl font-black text-slate-900">Son Uyarı - Tüm veriyi sil</h3>
                 <p className="mt-1 text-sm leading-6 text-slate-500">Bu işlem ders, görev, sınav, ödül ve plan kayıtlarını bu cihazdan kalıcı olarak kaldırır.</p>
               </div>
             </div>

@@ -33,7 +33,7 @@ import {
   PlanBlockType,
   ParentDashboardProps,
 } from './types';
-import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown, PlusCircle, Search, Lightbulb, BookOpen } from './components/icons';
+import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown, PlusCircle, Search, BookOpen } from './components/icons';
 import { ALL_ICONS } from './constants';
 import { INITIAL_REAL_COURSES, INITIAL_REAL_CURRICULUM, INITIAL_REAL_PERFORMANCE } from './initialRealCurriculum';
 import { calculateTaskPoints } from './utils/scoringAlgorithm';
@@ -43,7 +43,6 @@ import {
   buildParentDecision,
   resolveDecisionRuleConfig,
   getNotificationCooldownMs,
-  getNotificationTierFromLevel,
   getParentDecisionVersionMeta,
   type DecisionRuleOverrides,
 } from './utils/parentDecisionEngine';
@@ -51,11 +50,27 @@ import { isCompletedTask } from './utils/taskStatus';
 import { playHaptic } from './utils/haptics';
 import { GoogleGenAI } from '@google/genai';
 
-const ParentDashboard = lazy(() => import('./components/parent/ParentDashboard'));
-const ChildDashboard = lazy(() => import('./components/child/ChildDashboard'));
-const CurriculumManagerPanel = lazy(() => import('./components/parent/CurriculumManagerPanel'));
-const ParentOverviewWorkspace = lazy(() => import('./components/parent/ParentOverviewWorkspace'));
-const ParentPlanningWorkspace = lazy(() => import('./components/parent/ParentPlanningWorkspace'));
+const lazyWithRetry = <T extends { default: React.ComponentType<any> }>(
+  loader: () => Promise<T>,
+  retries = 2,
+  retryDelayMs = 400,
+) => {
+  const attempt = (remaining: number): Promise<T> => loader().catch((error) => {
+    if (remaining <= 0) {
+      throw error;
+    }
+    return new Promise<T>((resolve) => {
+      setTimeout(() => resolve(attempt(remaining - 1)), retryDelayMs);
+    });
+  });
+  return lazy(() => attempt(retries));
+};
+
+const ParentDashboard = lazyWithRetry(() => import('./components/parent/ParentDashboard'));
+const ChildDashboard = lazyWithRetry(() => import('./components/child/ChildDashboard'));
+const CurriculumManagerPanel = lazyWithRetry(() => import('./components/parent/CurriculumManagerPanel'));
+const ParentOverviewWorkspace = lazyWithRetry(() => import('./components/parent/ParentOverviewWorkspace'));
+const ParentPlanningWorkspace = lazyWithRetry(() => import('./components/parent/ParentPlanningWorkspace'));
 
 const SCHEDULE_DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
 const legacyScheduleDayMap: Record<string, string> = {
@@ -413,14 +428,16 @@ const normalizeSafeCourses = (value: unknown): Course[] => {
 
 const normalizeSafeTasks = (value: unknown): Task[] => {
   if (!Array.isArray(value)) return [];
-  return value.filter((task): task is Task => {
-    if (!task || typeof task !== 'object') return false;
-    const candidate = task as Task;
-    return typeof candidate.id === 'string'
-      && typeof candidate.title === 'string'
-      && typeof candidate.courseId === 'string'
-      && typeof candidate.dueDate === 'string';
-  });
+  return value
+    .filter((task): task is Task => {
+      if (!task || typeof task !== 'object') return false;
+      const candidate = task as Task;
+      return typeof candidate.id === 'string'
+        && typeof candidate.title === 'string'
+        && typeof candidate.courseId === 'string'
+        && typeof candidate.dueDate === 'string';
+    })
+    .map(normalizeTask);
 };
 
 const normalizeSafeRewards = (value: unknown): Reward[] => {
@@ -1021,16 +1038,28 @@ const getRiskLevel = ({ overdueRate, focus7d, accuracyDelta, weakTopicCount }: {
   return 'dusuk';
 };
 
+const normalizeTaskType = (value: unknown): Task['taskType'] => {
+  if (value === 'soru cozme' || value === 'soru çözme') return 'soru çözme';
+  if (value === 'ders calisma' || value === 'ders çalışma') return 'ders çalışma';
+  if (value === 'kitap okuma') return 'kitap okuma';
+  return 'ders çalışma';
+};
+
+const normalizeOptionalNumber = (value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number | undefined => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return undefined;
+  return Math.max(min, Math.min(max, numeric));
+};
+
+const normalizeOptionalInteger = (value: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number | undefined => {
+  const numeric = normalizeOptionalNumber(value, min, max);
+  return typeof numeric === 'number' ? Math.round(numeric) : undefined;
+};
+
 const normalizeTask = (task: any): Task => {
   const rawStatus = task?.status as string | undefined;
   const normalizedStatus = rawStatus === 'tamamland\u0131' || rawStatus === 'tamamlandi' ? 'tamamland\u0131' : 'bekliyor';
-  const normalizedType = task?.taskType === 'soru cozme'
-    ? 'soru \u00e7\u00f6zme'
-    : task?.taskType === 'ders calisma' || task?.taskType === 'ders \u00e7al\u0131\u015fma'
-      ? 'ders \u00e7al\u0131\u015fma'
-      : task?.taskType === 'kitap okuma'
-        ? 'kitap okuma'
-        : task?.taskType;
+  const normalizedType = normalizeTaskType(task?.taskType);
   const normalizedBookGenre = task?.bookGenre === 'Siir' ? '\u015eiir' : task?.bookGenre === 'Diger' ? 'Di\u011fer' : task?.bookGenre;
   const rawSelectedMetrics = Array.isArray(task?.selectedMetrics)
     ? task.selectedMetrics.filter((value: unknown): value is NonNullable<Task['selectedMetrics']>[number] => (
@@ -1044,6 +1073,14 @@ const normalizeTask = (task: any): Task => {
   ].filter((value): value is NonNullable<Task['selectedMetrics']>[number] => value !== null);
   const normalizedSelectedMetrics = Array.from(new Set([...(rawSelectedMetrics || []), ...(legacySelectedMetrics || [])]));
   const normalizedMetricTargetScore = normalizedSelectedMetrics.length > 0 ? 100 : undefined;
+  const plannedDuration = normalizeOptionalInteger(task?.plannedDuration, 1, 600) ?? 30;
+  const questionCount = normalizeOptionalInteger(task?.questionCount, 0, 1000);
+  const correctCount = normalizeOptionalInteger(task?.correctCount, 0, questionCount || 1000);
+  const incorrectCount = normalizeOptionalInteger(task?.incorrectCount, 0, questionCount || 1000);
+  const emptyCount = normalizeOptionalInteger(task?.emptyCount, 0, questionCount || 1000);
+  const actualDuration = normalizeOptionalInteger(task?.actualDuration, 0, 24 * 60 * 60);
+  const breakTime = normalizeOptionalInteger(task?.breakTime, 0, 24 * 60 * 60);
+  const pauseTime = normalizeOptionalInteger(task?.pauseTime, 0, 24 * 60 * 60);
 
   return {
     ...task,
@@ -1051,6 +1088,14 @@ const normalizeTask = (task: any): Task => {
     description: repairText(task?.description),
     status: normalizedStatus,
     taskType: normalizedType,
+    plannedDuration,
+    questionCount: normalizedType === 'soru çözme' ? questionCount : undefined,
+    correctCount,
+    incorrectCount,
+    emptyCount,
+    actualDuration,
+    breakTime,
+    pauseTime,
     bookGenre: normalizedBookGenre,
     bookTitle: repairText(task?.bookTitle),
     planSource: task?.planSource ?? (task?.isSelfAssigned ? 'free-study' : undefined),
@@ -1524,6 +1569,15 @@ const normalizeCompositeExamResults = (items: any[], courses: Course[]): Composi
     })
     .filter((item): item is CompositeExamResult => Boolean(item))
     .sort((left, right) => right.date.localeCompare(left.date));
+};
+
+const getCompositeExamAverage = (result?: CompositeExamResult): number | null => {
+  if (!result || !Array.isArray(result.courses) || result.courses.length === 0) return null;
+  const scores = result.courses
+    .map((course) => Number(course.score))
+    .filter((score) => Number.isFinite(score));
+  if (scores.length === 0) return null;
+  return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
 };
 
 const normalizeRewards = (items: Reward[]): Reward[] => items.map((item) => ({ ...item, name: repairText(item.name) || item.name }));
@@ -2342,11 +2396,8 @@ const App: React.FC = () => {
   const topbarSearchRef = useRef<HTMLDivElement | null>(null);
   const topbarQuickActionsRef = useRef<HTMLDivElement | null>(null);
   const settingsPopoverRef = useRef<HTMLDivElement | null>(null);
-  const parentControlButtonRef = useRef<HTMLDivElement | null>(null);
-  const parentControlCenterRef = useRef<HTMLDivElement | null>(null);
   const topbarToolbarRef = useRef<HTMLDivElement | null>(null);
   const [parentMenuOpen, setParentMenuOpen] = useState(false);
-  const [parentControlCenterOpen, setParentControlCenterOpen] = useState(false);
   const [parentSidebarOpen, setParentSidebarOpen] = useStickyState<boolean>(true, 'parentSidebarOpen');
   const [notificationsMuted, setNotificationsMuted] = useStickyState<boolean>(false, 'notificationsMuted');
   const [hapticsEnabled, setHapticsEnabled] = useStickyState<boolean>(true, 'hapticsEnabled');
@@ -2369,6 +2420,7 @@ const App: React.FC = () => {
     'parentDecisionTuningVersion',
   );
   const [dismissedNotificationKeys, setDismissedNotificationKeys] = useStickyState<string[]>([], 'dismissedNotificationKeys', normalizeSafeArray<string>);
+  const [dismissedNotificationAtMap, setDismissedNotificationAtMap] = useStickyState<Record<string, number>>({}, 'dismissedNotificationAtMap', normalizeSafeNumberRecord);
   const [notificationCooldownMap, setNotificationCooldownMap] = useStickyState<Record<string, number>>({}, 'notificationCooldownMap', normalizeSafeNumberRecord);
   const [observabilityEvents, setObservabilityEvents] = useStickyState<ObservabilityEvent[]>([], 'observabilityEvents', normalizeSafeObservabilityEvents);
   const [analysisPipelineState, setAnalysisPipelineState] = useStickyState<AnalysisPipelineState>(
@@ -2391,6 +2443,10 @@ const App: React.FC = () => {
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [globalSearchScope, setGlobalSearchScope] = useState<SearchScope>('all');
   const [curriculumEditorOpen, setCurriculumEditorOpen] = useState(false);
+  const [dataAccessModalOpen, setDataAccessModalOpen] = useState(false);
+  const [dataAccessPassword, setDataAccessPassword] = useState('');
+  const [dataAccessGranted, setDataAccessGranted] = useState(false);
+  const [dataAccessError, setDataAccessError] = useState<string | null>(null);
   const lastObservabilitySignatureRef = useRef<string | null>(null);
   const analysisCacheSignatureRef = useRef<string | null>(null);
   const prevDayKeyRef = useRef<string | null>(null);
@@ -2430,7 +2486,7 @@ const App: React.FC = () => {
   }, [parentWorkspaceView, parentDecisionV1Enabled, setParentWorkspaceView]);
 
   useEffect(() => {
-    if (!notificationsOpen && !settingsOpen && !searchOpen && !quickActionsOpen && !parentControlCenterOpen) return;
+    if (!notificationsOpen && !settingsOpen && !searchOpen && !quickActionsOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -2439,23 +2495,20 @@ const App: React.FC = () => {
       if (settingsPopoverRef.current?.contains(target)) return;
       if (topbarSearchRef.current?.contains(target)) return;
       if (topbarQuickActionsRef.current?.contains(target)) return;
-      if (parentControlButtonRef.current?.contains(target)) return;
-      if (parentControlCenterRef.current?.contains(target)) return;
       setNotificationsOpen(false);
       setSettingsOpen(false);
       setSearchOpen(false);
       setQuickActionsOpen(false);
-      setParentControlCenterOpen(false);
     };
 
     document.addEventListener('mousedown', handlePointerDown);
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
     };
-  }, [notificationsOpen, settingsOpen, searchOpen, quickActionsOpen, parentControlCenterOpen]);
+  }, [notificationsOpen, settingsOpen, searchOpen, quickActionsOpen]);
 
   useEffect(() => {
-    if (!settingsOpen && !parentControlCenterOpen) return;
+    if (!settingsOpen) return;
     const previousOverflow = document.body.style.overflow;
     const previousOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = 'hidden';
@@ -2464,7 +2517,7 @@ const App: React.FC = () => {
       document.body.style.overflow = previousOverflow;
       document.body.style.overscrollBehavior = previousOverscroll;
     };
-  }, [settingsOpen, parentControlCenterOpen]);
+  }, [settingsOpen]);
 
   useEffect(() => {
     const quickView = new URLSearchParams(window.location.search).get('quick');
@@ -2618,6 +2671,33 @@ const App: React.FC = () => {
     setLoginError('Sifre eslesmedi. Lutfen tekrar deneyin.');
   };
 
+  const handleOpenDataManagement = () => {
+    setDataAccessModalOpen(true);
+    setDataAccessPassword('');
+    setDataAccessGranted(false);
+    setDataAccessError(null);
+  };
+
+  useEffect(() => {
+    if (!dataAccessModalOpen || dataAccessGranted) return;
+    const candidate = dataAccessPassword.trim();
+    if (candidate.length === 0) {
+      setDataAccessError(null);
+      return;
+    }
+    if (candidate === '1234') {
+      playHaptic('success');
+      setDataAccessGranted(true);
+      setDataAccessError(null);
+      return;
+    }
+    if (candidate.length >= 4) {
+      setDataAccessError('Sifre eslesmedi. Tekrar deneyin.');
+    } else {
+      setDataAccessError(null);
+    }
+  }, [dataAccessModalOpen, dataAccessGranted, dataAccessPassword]);
+
   const handleUserTypeChange = (nextUserType: UserType) => {
     if (nextUserType !== userType) playHaptic('selection');
     if (isE2EMode) {
@@ -2705,16 +2785,16 @@ const App: React.FC = () => {
       },
       appData,
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `ders-rotasi-yedek-${getLocalDateString()}.json`;
     document.body.appendChild(link);
-    link.click();
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    addToast('Veriler başarıyla dışa aktarıldı.', 'success');
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    addToast('Yedek indirildi. Dosya indirilenler klasörünü kontrol et.', 'success');
   };
 
   const handleDeleteAllData = async (): Promise<void> => {
@@ -3475,12 +3555,8 @@ const App: React.FC = () => {
     return tasks.filter((task) => isCompletedTask(task) && !!task.completionDate && task.completionDate >= startYmd).length;
   }, [tasks, today]);
   const parentDecisionSummary = useMemo(() => {
-    const latestCompositeAverage = compositeExamResults[0]
-      ? Math.round(compositeExamResults[0].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[0].courses.length)
-      : null;
-    const previousCompositeAverage = compositeExamResults[1]
-      ? Math.round(compositeExamResults[1].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[1].courses.length)
-      : null;
+    const latestCompositeAverage = getCompositeExamAverage(compositeExamResults[0]);
+    const previousCompositeAverage = getCompositeExamAverage(compositeExamResults[1]);
 
     const effectiveOverrides = parentDecisionRolloutMode === 'beta' ? parentDecisionRuleOverrides : {};
     const ruleConfig = resolveDecisionRuleConfig(effectiveOverrides);
@@ -3513,70 +3589,6 @@ const App: React.FC = () => {
     riskWarningMin: parentDecisionRolloutMode === 'beta' ? parentDecisionRuleOverrides.thresholds?.riskWarningMin ?? null : null,
     weakTopicCountWarning: parentDecisionRolloutMode === 'beta' ? parentDecisionRuleOverrides.thresholds?.weakTopicCountWarning ?? null : null,
   }), [parentDecisionRolloutMode, parentDecisionRuleOverrides]);
-  const goalAlertSignals = useMemo(() => {
-    const normalized = parentDecisionSummary.alerts.slice(0, 4).map((alert, index) => {
-      const idBase = `${alert.level.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-')}-${index}`;
-      const title = alert.level === 'Kritik'
-        ? 'Kritik uyarı'
-        : alert.level === 'Dikkat'
-          ? 'Dikkat uyarısı'
-          : alert.level === 'Takip et'
-            ? 'Takip sinyali'
-            : 'Durum bilgisi';
-      return {
-        id: idBase,
-        level: alert.level,
-        title,
-        description: `${alert.text} Aksiyon: ${alert.action}`,
-      };
-    });
-
-    if (parentSummary.overdueCount > 0) {
-      normalized.unshift({
-        id: 'overdue-critical',
-        level: 'Kritik',
-        title: 'Takipte gecikme var',
-        description: `${parentSummary.overdueCount} görev bekliyor, önce bunları kapatmak gerekiyor.`,
-      });
-    }
-
-    if (compositeExamResults.length === 0) {
-      normalized.push({
-        id: 'exam-low-data',
-        level: 'Takip et',
-        title: 'Deneme verisi az',
-        description: 'Deneme trendi icin en az 2 deneme kaydi gerekiyor.',
-      });
-    }
-
-    if (studyPlans.length === 0) {
-      normalized.push({
-        id: 'goal-low-data',
-        level: 'Takip et',
-        title: 'Hedef verisi eksik',
-        description: 'Ders bazli hedef girildiginde karar onerileri daha net olur.',
-      });
-    }
-
-    if (suspiciousDataSummary.hasSuspiciousData) {
-      normalized.push({
-        id: 'suspicious-data-warning',
-        level: suspiciousDataSummary.suspiciousRatio >= 25 ? 'Dikkat' : 'Takip et',
-        title: 'Veri guvenilirligi',
-        description: `${suspiciousDataSummary.suspiciousCount} kayit supheli gorunuyor. Analiz etkisi dusuk guvenle hesaplandi.`,
-      });
-    }
-
-    return normalized.slice(0, 5);
-  }, [
-    compositeExamResults.length,
-    parentDecisionSummary.alerts,
-    parentSummary.overdueCount,
-    studyPlans.length,
-    suspiciousDataSummary.hasSuspiciousData,
-    suspiciousDataSummary.suspiciousCount,
-    suspiciousDataSummary.suspiciousRatio,
-  ]);
   const edgeCaseFlags = useMemo(() => ({
     lowDataSessions: parentAnalysis.sessions.length < 3,
     noExamData: compositeExamResults.length === 0,
@@ -4446,7 +4458,6 @@ const App: React.FC = () => {
   }, [hasOverviewAnalysisData, overviewRecommendation, parentDecisionSummary.topAlert.level, parentDecisionSummary.topAlert.text]);
 
   const handleLockParentNow = () => {
-    setParentControlCenterOpen(false);
     setSettingsOpen(false);
     setIsParentLocked(true);
     addToast('Ebeveyn paneli kilitlendi.', 'success');
@@ -4466,17 +4477,7 @@ const App: React.FC = () => {
     addToast('Arayuz ayarlari varsayilana donduruldu.', 'success');
   };
 
-  const handleThemeToggle = () => {
-    setThemeMode((current) => current === 'dark' ? 'light' : 'dark');
-    setNotificationsOpen(false);
-    setSettingsOpen(false);
-    setQuickActionsOpen(false);
-    setSearchOpen(false);
-    setParentControlCenterOpen(false);
-  };
-
   const handleOpenScheduleSettings = () => {
-    setParentControlCenterOpen(false);
     setSettingsOpen(false);
     setParentWorkspaceView('planning');
     addToast('Ders programı düzenleme ekranına yönlendirildi.', 'success');
@@ -4488,7 +4489,6 @@ const App: React.FC = () => {
     setNotificationsOpen(false);
     setSettingsOpen(false);
     setSearchOpen(false);
-    setParentControlCenterOpen(false);
     setParentWorkspaceView(view);
     addToast(message, 'success');
   };
@@ -4499,7 +4499,6 @@ const App: React.FC = () => {
     setNotificationsOpen(false);
     setSettingsOpen(false);
     setQuickActionsOpen(false);
-    setParentControlCenterOpen(false);
   };
 
   const handleToolbarKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -4536,85 +4535,172 @@ const App: React.FC = () => {
   };
 
   const notificationItems = useMemo(() => {
-    const items = [
+    const completedTodayCount = tasks.filter((task) => isCompletedTask(task) && task.completionDate === today).length;
+    const pendingTodayCount = tasks.filter((task) => task.status === 'bekliyor' && task.dueDate === today).length;
+    const pendingAllCount = tasks.filter((task) => task.status === 'bekliyor').length;
+    const upcomingExamDays = overviewUpcomingExam
+      ? Math.ceil(
+          (new Date(`${overviewUpcomingExam.date}T00:00:00`).getTime() - new Date(`${today}T00:00:00`).getTime())
+          / (1000 * 60 * 60 * 24),
+        )
+      : null;
+    const upcomingExamDayText = upcomingExamDays === null
+      ? ''
+      : upcomingExamDays <= 0
+        ? 'bugun'
+        : `${upcomingExamDays} gun kaldi`;
+    const hasPerformanceDrop = Number(parentSummary.accuracyTrend14d?.delta || 0) <= -5;
+    const hasGoalDrift = parentSummary.overdueRate >= 40;
+
+    const parentItems = [
       {
-        key: `overdue:${parentSummary.overdueCount}`,
-        title: 'Takipteki görevler',
-        description: `${parentSummary.overdueCount} görev tamamlanmayı bekliyor`,
-        visible: parentSummary.overdueCount > 0,
-        tier: 'critical',
-        cooldownGroup: 'overdue',
-        cooldownMs: getNotificationCooldownMs('critical'),
-        priority: 3,
-        action: () => {
-          setParentWorkspaceView('planning');
-          addToast('Aktif plan takibi acildi.', 'success');
-        },
-      },
-      {
-        key: `weak:${parentSummary.weakTopics.length}`,
-        title: 'Odak konusu bildirimi',
-        description: `${parentSummary.weakTopics.length} konu tekrar istiyor`,
-        visible: parentSummary.weakTopics.length > 0,
+        key: `parent:completed:${completedTodayCount}:${today}`,
+        title: 'Gorev tamamlandi',
+        description: `${completedTodayCount} gorev bugun tamamlandi`,
+        visible: completedTodayCount > 0,
         tier: 'normal',
-        cooldownGroup: 'weak',
+        cooldownGroup: 'parent:completed',
         cooldownMs: getNotificationCooldownMs('normal'),
         priority: 2,
-        action: () => {
-          setParentWorkspaceView('analysis');
-          addToast('Odak konulari analizi acildi.', 'success');
-        },
+        action: () => setParentWorkspaceView('overview'),
       },
       {
-        key: `focus:${parentSummary.focus7d ?? -1}`,
-        title: 'Odak kontrolu',
-        description: parentSummary.focus7d !== null ? `Son 7 gün ortalama odak: ${parentSummary.focus7d}` : 'Odak verisi oluştukça burada gösterilecek',
-        visible: parentSummary.focus7d !== null,
-        tier: 'silent',
-        cooldownGroup: 'focus',
-        cooldownMs: getNotificationCooldownMs('silent'),
-        priority: 1,
-        action: () => {
-          setParentWorkspaceView('analysis');
-          addToast('Odak analizi acildi.', 'success');
-        },
+        key: `parent:overdue:${parentSummary.overdueCount}`,
+        title: 'Gorev gecikti',
+        description: `${parentSummary.overdueCount} gorev gecikmede`,
+        visible: parentSummary.overdueCount > 0,
+        tier: 'critical',
+        cooldownGroup: 'parent:overdue',
+        cooldownMs: getNotificationCooldownMs('critical'),
+        priority: 4,
+        action: () => setParentWorkspaceView('planning'),
       },
-      ...goalAlertSignals.map((alert) => ({
-        key: `goal:${alert.id}:${alert.level}`,
-        title: alert.title,
-        description: alert.description,
-        tier: getNotificationTierFromLevel(alert.level),
-        visible: getNotificationTierFromLevel(alert.level) !== 'silent',
-        cooldownGroup: `goal:${alert.id}`,
-        cooldownMs: getNotificationCooldownMs(getNotificationTierFromLevel(alert.level)),
-        priority: alert.level === 'Kritik' ? 4 : alert.level === 'Dikkat' ? 3 : alert.level === 'Takip et' ? 2 : 1,
-        action: () => {
-          setParentWorkspaceView('analysis');
-          addToast('Hedef ve deneme alani acildi.', 'success');
-        },
-      })),
+      {
+        key: `parent:notasktoday:${today}:${pendingTodayCount}`,
+        title: 'Bugun gorev yok',
+        description: 'Bugun icin atanmis gorev gorunmuyor',
+        visible: pendingTodayCount === 0,
+        tier: 'normal',
+        cooldownGroup: 'parent:notasktoday',
+        cooldownMs: getNotificationCooldownMs('normal'),
+        priority: 2,
+        action: () => setParentWorkspaceView('planning'),
+      },
+      {
+        key: `parent:exam:${overviewUpcomingExam?.examName || 'none'}:${upcomingExamDays ?? -1}`,
+        title: 'Sinav yaklasiyor',
+        description: overviewUpcomingExam ? `${overviewUpcomingExam.examName} - ${upcomingExamDayText}` : '',
+        visible: Boolean(overviewUpcomingExam && upcomingExamDays !== null && upcomingExamDays >= 0 && upcomingExamDays <= 7),
+        tier: 'normal',
+        cooldownGroup: 'parent:exam',
+        cooldownMs: getNotificationCooldownMs('normal'),
+        priority: 3,
+        action: () => setParentWorkspaceView('planning'),
+      },
+      {
+        key: `parent:drop:${parentSummary.accuracyTrend14d?.delta ?? 0}`,
+        title: 'Performans dususu',
+        description: `Son 14 gun dogruluk degisimi ${parentSummary.accuracyTrend14d?.delta ?? 0}%`,
+        visible: hasPerformanceDrop,
+        tier: 'normal',
+        cooldownGroup: 'parent:drop',
+        cooldownMs: getNotificationCooldownMs('normal'),
+        priority: 3,
+        action: () => setParentWorkspaceView('analysis'),
+      },
+      {
+        key: `parent:goaldrift:${parentSummary.overdueRate}`,
+        title: 'Hedef sapmasi',
+        description: `Bekleyen/geciken gorev orani %${parentSummary.overdueRate}`,
+        visible: hasGoalDrift,
+        tier: 'normal',
+        cooldownGroup: 'parent:goaldrift',
+        cooldownMs: getNotificationCooldownMs('normal'),
+        priority: 2,
+        action: () => setParentWorkspaceView('planning'),
+      },
     ];
 
+    const childItems = [
+      {
+        key: `child:newtask:${pendingAllCount}`,
+        title: 'Yeni gorevlerin var',
+        description: `${pendingAllCount} bekleyen gorev seni bekliyor`,
+        visible: pendingAllCount > 0,
+        tier: 'normal',
+        cooldownGroup: 'child:newtask',
+        cooldownMs: getNotificationCooldownMs('normal'),
+        priority: 2,
+        action: () => addToast('Gorev listeni kontrol et.', 'success'),
+      },
+      {
+        key: `child:today:${pendingTodayCount}:${today}`,
+        title: 'Bugun kalan gorevler',
+        description: `${pendingTodayCount} gorev bugun tamamlanmali`,
+        visible: pendingTodayCount > 0,
+        tier: 'normal',
+        cooldownGroup: 'child:today',
+        cooldownMs: getNotificationCooldownMs('normal'),
+        priority: 3,
+        action: () => addToast('Once bugunku gorevleri bitir.', 'success'),
+      },
+      {
+        key: `child:completed:${completedTodayCount}:${today}`,
+        title: 'Tebrikler',
+        description: `${completedTodayCount} gorevi bugun tamamladin`,
+        visible: completedTodayCount > 0,
+        tier: 'normal',
+        cooldownGroup: 'child:completed',
+        cooldownMs: getNotificationCooldownMs('normal'),
+        priority: 2,
+        action: () => addToast('Harika gidiyorsun, devam et!', 'success'),
+      },
+      {
+        key: `child:exam:${overviewUpcomingExam?.examName || 'none'}:${upcomingExamDays ?? -1}`,
+        title: 'Sinav hatirlatmasi',
+        description: overviewUpcomingExam ? `${overviewUpcomingExam.examName} - ${upcomingExamDayText}` : '',
+        visible: Boolean(overviewUpcomingExam && upcomingExamDays !== null && upcomingExamDays >= 0 && upcomingExamDays <= 3),
+        tier: 'normal',
+        cooldownGroup: 'child:exam',
+        cooldownMs: getNotificationCooldownMs('normal'),
+        priority: 3,
+        action: () => addToast('Sinav icin kisa tekrar yap.', 'success'),
+      },
+    ];
+
+    const baseItems = userType === UserType.Child ? childItems : parentItems;
     const now = Date.now();
-    return items
+    return baseItems
       .filter((item) => item.visible)
       .filter((item) => {
-        if (item.tier === 'silent') return false;
         const lastShownAt = notificationCooldownMap[item.cooldownGroup] ?? 0;
         const cooldownMs = item.cooldownMs ?? 24 * 60 * 60 * 1000;
         const isInCooldown = now - lastShownAt < cooldownMs;
         return !isInCooldown || item.priority >= 4;
       })
       .sort((left, right) => right.priority - left.priority);
-  }, [parentSummary.overdueCount, parentSummary.weakTopics.length, parentSummary.focus7d, goalAlertSignals, notificationCooldownMap]);
+  }, [
+    tasks,
+    today,
+    overviewUpcomingExam,
+    parentSummary.overdueCount,
+    parentSummary.overdueRate,
+    parentSummary.accuracyTrend14d,
+    notificationCooldownMap,
+    userType,
+  ]);
 
-  const unreadNotificationItems = useMemo(
-    () => notificationItems.filter((item) => !dismissedNotificationKeys.includes(item.key)),
-    [notificationItems, dismissedNotificationKeys],
-  );
+  const NOTIFICATION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+  const unreadNotificationItems = useMemo(() => {
+    const now = Date.now();
+    return notificationItems.filter((item) => {
+      if (!dismissedNotificationKeys.includes(item.key)) return true;
+      const dismissedAt = dismissedNotificationAtMap[item.key] ?? 0;
+      return now - dismissedAt > NOTIFICATION_RETENTION_MS;
+    });
+  }, [notificationItems, dismissedNotificationKeys, dismissedNotificationAtMap]);
 
-  const getNotificationGroupKey = (key: string) =>
-    key.startsWith('goal:') ? key.split(':').slice(0, 2).join(':') : key.split(':')[0];
+  const getNotificationGroupKey = (key: string) => key.split(':').slice(0, 2).join(':');
 
   useEffect(() => {
     const tierCounts = notificationItems.reduce(
@@ -4654,9 +4740,11 @@ const App: React.FC = () => {
         ...parentDecisionTuningMeta,
       },
     });
+    const now = Date.now();
     const groupKey = getNotificationGroupKey(item.key);
-    setNotificationCooldownMap((prev) => ({ ...prev, [groupKey]: Date.now() }));
+    setNotificationCooldownMap((prev) => ({ ...prev, [groupKey]: now }));
     setDismissedNotificationKeys((prev) => (prev.includes(item.key) ? prev : [...prev, item.key]));
+    setDismissedNotificationAtMap((prev) => ({ ...prev, [item.key]: now }));
     setNotificationsOpen(false);
   };
 
@@ -4674,8 +4762,49 @@ const App: React.FC = () => {
       const keys = notificationItems.map((item) => item.key);
       return Array.from(new Set([...prev, ...keys]));
     });
+    setDismissedNotificationAtMap((prev) => {
+      const next = { ...prev };
+      notificationItems.forEach((item) => {
+        next[item.key] = now;
+      });
+      return next;
+    });
     addToast('Tüm bildirimler okundu olarak işaretlendi.', 'success');
   };
+
+  useEffect(() => {
+    const now = Date.now();
+    const maxAge = 7 * 24 * 60 * 60 * 1000;
+
+    const validDismissed = dismissedNotificationKeys.filter((key) => {
+      const ts = dismissedNotificationAtMap[key] ?? 0;
+      return now - ts <= maxAge;
+    });
+    if (validDismissed.length !== dismissedNotificationKeys.length) {
+      setDismissedNotificationKeys(validDismissed);
+    }
+
+    const validDismissedMap = Object.fromEntries(
+      Object.entries(dismissedNotificationAtMap).filter(([, ts]) => now - Number(ts || 0) <= maxAge),
+    ) as Record<string, number>;
+    if (Object.keys(validDismissedMap).length !== Object.keys(dismissedNotificationAtMap).length) {
+      setDismissedNotificationAtMap(validDismissedMap);
+    }
+
+    const validCooldownMap = Object.fromEntries(
+      Object.entries(notificationCooldownMap).filter(([, ts]) => now - Number(ts || 0) <= maxAge),
+    ) as Record<string, number>;
+    if (Object.keys(validCooldownMap).length !== Object.keys(notificationCooldownMap).length) {
+      setNotificationCooldownMap(validCooldownMap);
+    }
+  }, [
+    dismissedNotificationKeys,
+    dismissedNotificationAtMap,
+    notificationCooldownMap,
+    setDismissedNotificationKeys,
+    setDismissedNotificationAtMap,
+    setNotificationCooldownMap,
+  ]);
 
   useEffect(() => {
     const handleKeyboardCommands = (event: KeyboardEvent) => {
@@ -4760,6 +4889,7 @@ const App: React.FC = () => {
         error={parentAnalysisRuntimeError}
         viewMode={viewMode}
         analysisSnapshot={parentAnalysis}
+        decisionSummary={parentDecisionSummary}
       />
     </Suspense>
   );
@@ -4822,7 +4952,7 @@ const App: React.FC = () => {
                 overviewSignal={overviewSignal}
                 overviewExamDecision={overviewExamDecision}
                 lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
-                onOpenPlanning={(message) => handleQuickAction('planning', message)}
+                onOpenPlanning={(message: string) => handleQuickAction('planning', message)}
               />
             </Suspense>
           </div>
@@ -4864,7 +4994,7 @@ const App: React.FC = () => {
           overviewSignal={overviewSignal}
           overviewExamDecision={overviewExamDecision}
           lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
-          onOpenPlanning={(message) => handleQuickAction('planning', message)}
+          onOpenPlanning={(message: string) => handleQuickAction('planning', message)}
         />
       </Suspense>
     );
@@ -4943,17 +5073,6 @@ const App: React.FC = () => {
                 Çocuk
               </button>
             </div>
-            <button
-              type="button"
-              onClick={handleThemeToggle}
-              aria-label={themeMode === 'dark' ? 'Açık temaya geç' : 'Koyu temaya geç'}
-              aria-pressed={themeMode === 'dark'}
-              title={themeMode === 'dark' ? 'Tema: Koyu' : 'Tema: Açık'}
-              className="ios-button flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-slate-600 transition hover:text-slate-900"
-            >
-              <Lightbulb className="h-5 w-5" />
-              <span className="hidden text-xs font-bold md:inline">{themeMode === 'dark' ? 'Koyu' : 'Açık'}</span>
-            </button>
             <div className="dr-toolbar-group" aria-label="Yardımcı komutlar">
             {(userType === UserType.Child || (userType === UserType.Parent && !isParentLocked)) && <div ref={topbarSearchRef} className="relative">
               <div className={`ios-button flex h-11 items-center gap-2 rounded-full px-3 transition-all ${searchOpen ? 'w-[22rem]' : 'w-11 justify-center'}`}>
@@ -5020,7 +5139,7 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>}
-            {userType === UserType.Parent && !isParentLocked && <div ref={topbarNotificationsRef} className="relative">
+            {(userType === UserType.Child || (userType === UserType.Parent && !isParentLocked)) && <div ref={topbarNotificationsRef} className="relative">
               <button
                 data-testid="topbar-notifications-toggle"
                 data-unread-count={String(unreadNotificationItems.length)}
@@ -5069,9 +5188,6 @@ const App: React.FC = () => {
                 <Settings className="h-5 w-5" />
               </button>
             </div>}
-            </div>
-            <div className="ios-button hidden h-9 w-9 items-center justify-center overflow-hidden rounded-full text-slate-600 sm:flex">
-              <User className="h-4 w-4" />
             </div>
           </div>
         </div>
@@ -5141,24 +5257,6 @@ const App: React.FC = () => {
                       <button onClick={() => setParentMenuOpen((prev) => !prev)} className="ios-button inline-flex items-center gap-2 rounded-[20px] px-4 py-3 text-sm font-semibold text-slate-700 xl:hidden">
                         {parentMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />} Modüller
                       </button>
-                      <div ref={parentControlButtonRef} className="relative">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setParentControlCenterOpen((prev) => !prev);
-                            setParentMenuOpen(false);
-                            setNotificationsOpen(false);
-                            setSettingsOpen(false);
-                            setQuickActionsOpen(false);
-                            setSearchOpen(false);
-                          }}
-                          aria-label="Kontrol merkezini aç veya kapat"
-                          aria-expanded={parentControlCenterOpen}
-                          className="ios-button-active flex h-12 w-12 items-center justify-center rounded-full text-slate-900 shadow-lg"
-                        >
-                          <Settings className="h-5 w-5" />
-                        </button>
-                      </div>
                     </div>
 
                     {parentMenuOpen && (
@@ -5240,6 +5338,7 @@ const App: React.FC = () => {
               rewards={rewards}
               badges={badges}
               successPoints={successPoints}
+              analysisSnapshot={parentAnalysis}
               startTask={startTask}
               updateTaskStatus={updateTaskStatus}
               completeTask={completeTask}
@@ -5317,151 +5416,6 @@ const App: React.FC = () => {
               </div>
 
               <div className="ios-widget rounded-[20px] p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Karar Ekrani</div>
-                <button onClick={() => setParentDecisionV1Enabled((prev) => !prev)} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
-                  <span>Yeni karar ekrani (V1)</span>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${parentDecisionV1Enabled ? 'ios-mint text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{parentDecisionV1Enabled ? 'Acik' : 'Kapali'}</span>
-                </button>
-                <div className="mt-2 text-[11px] leading-5 text-slate-500">Kapali oldugunda analiz secimi fallback olarak Genel Bakis'a yonlenir.</div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setParentDecisionRolloutMode('stable')}
-                    className={`rounded-[14px] px-2 py-2 text-[11px] font-bold ${parentDecisionRolloutMode === 'stable' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
-                  >
-                    Stable
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setParentDecisionRolloutMode('beta')}
-                    className={`rounded-[14px] px-2 py-2 text-[11px] font-bold ${parentDecisionRolloutMode === 'beta' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
-                  >
-                    Beta
-                  </button>
-                </div>
-                <div className="mt-2 text-[11px] leading-5 text-slate-500">
-                  Stable modda V1 varsayilan kurallar calisir. Beta modda tuning ayarlari aktif olur.
-                </div>
-              </div>
-
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Karar Motoru Tuning</div>
-                <div className={`space-y-3 ${parentDecisionRolloutMode === 'stable' ? 'opacity-60' : ''}`}>
-                  <label className="block text-[11px] text-slate-600">
-                    Risk kritik eşiği: {parentDecisionRuleOverrides.thresholds?.riskCriticalMin ?? 65}
-                    <input
-                      type="range"
-                      min={50}
-                      max={90}
-                      step={1}
-                      value={parentDecisionRuleOverrides.thresholds?.riskCriticalMin ?? 65}
-                      disabled={parentDecisionRolloutMode === 'stable'}
-                      onChange={(event) => setParentDecisionRuleOverrides((prev) => ({
-                        ...prev,
-                        thresholds: { ...(prev.thresholds || {}), riskCriticalMin: Number(event.target.value) },
-                      }))}
-                      className="mt-1 w-full"
-                    />
-                  </label>
-                  <label className="block text-[11px] text-slate-600">
-                    Risk dikkat eşiği: {parentDecisionRuleOverrides.thresholds?.riskWarningMin ?? 45}
-                    <input
-                      type="range"
-                      min={30}
-                      max={70}
-                      step={1}
-                      value={parentDecisionRuleOverrides.thresholds?.riskWarningMin ?? 45}
-                      disabled={parentDecisionRolloutMode === 'stable'}
-                      onChange={(event) => setParentDecisionRuleOverrides((prev) => ({
-                        ...prev,
-                        thresholds: { ...(prev.thresholds || {}), riskWarningMin: Number(event.target.value) },
-                      }))}
-                      className="mt-1 w-full"
-                    />
-                  </label>
-                  <label className="block text-[11px] text-slate-600">
-                    Konu uyarı eşiği: {parentDecisionRuleOverrides.thresholds?.weakTopicCountWarning ?? 4}
-                    <input
-                      type="range"
-                      min={2}
-                      max={10}
-                      step={1}
-                      value={parentDecisionRuleOverrides.thresholds?.weakTopicCountWarning ?? 4}
-                      disabled={parentDecisionRolloutMode === 'stable'}
-                      onChange={(event) => setParentDecisionRuleOverrides((prev) => ({
-                        ...prev,
-                        thresholds: { ...(prev.thresholds || {}), weakTopicCountWarning: Number(event.target.value) },
-                      }))}
-                      className="mt-1 w-full"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setParentDecisionRuleOverrides({})}
-                    disabled={parentDecisionRolloutMode === 'stable'}
-                    className="ios-button w-full rounded-[14px] px-3 py-2 text-[11px] font-bold text-slate-700"
-                  >
-                    Tuning'i sıfırla (V1 varsayılan)
-                  </button>
-                </div>
-              </div>
-
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Observability</div>
-                <div className="space-y-2 text-[11px] text-slate-600">
-                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
-                    <span>Toplam event</span>
-                    <strong>{observabilitySummary.total}</strong>
-                  </div>
-                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
-                    <span>Son event tipi</span>
-                    <strong>{observabilitySummary.topType || '-'}</strong>
-                  </div>
-                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
-                    <span>Son 30 event</span>
-                    <strong>{observabilitySummary.recentCount}</strong>
-                  </div>
-                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
-                    <span>Cache hit/miss</span>
-                    <strong>{analysisPipelineState.cacheHits}/{analysisPipelineState.cacheMisses}</strong>
-                  </div>
-                  <div className="flex items-center justify-between rounded-[12px] bg-white/60 px-2 py-1">
-                    <span>Son batch</span>
-                    <strong>{analysisPipelineState.lastBackgroundRecomputeAt ? new Date(analysisPipelineState.lastBackgroundRecomputeAt).toLocaleTimeString('tr-TR') : '-'}</strong>
-                  </div>
-                  <div className="text-[10px] text-slate-500">
-                    Son olay: {observabilitySummary.lastEventTs ? new Date(observabilitySummary.lastEventTs).toLocaleString('tr-TR') : 'yok'}
-                  </div>
-                  <div className="rounded-[12px] bg-white/60 px-2 py-2 text-[10px] text-slate-600">
-                    <div className="mb-1 font-bold uppercase tracking-wide text-slate-500">Son 5 olay</div>
-                    {observabilityRecent.length === 0 && <div>Kayit yok.</div>}
-                    {observabilityRecent.map((event, index) => (
-                      <div key={`${event.ts}-${event.type}-${index}`} className="mb-1 last:mb-0">
-                        <div className="font-semibold">{event.type}</div>
-                        <div className="text-slate-500">
-                          {new Date(event.ts).toLocaleTimeString('tr-TR')} {event.note ? `· ${event.note}` : ''}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setObservabilityEvents([])}
-                    className="ios-button w-full rounded-[14px] px-3 py-2 text-[11px] font-bold text-slate-700"
-                  >
-                    Event kaydini temizle
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportObservabilityAudit}
-                    className="ios-button w-full rounded-[14px] px-3 py-2 text-[11px] font-bold text-slate-700"
-                  >
-                    Audit JSON indir
-                  </button>
-                </div>
-              </div>
-
-              <div className="ios-widget rounded-[20px] p-3">
                 <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Dokunsal Geri Bildirim</div>
                 <button
                   onClick={() => {
@@ -5479,101 +5433,63 @@ const App: React.FC = () => {
               </div>
 
               <div className="ios-widget rounded-[20px] p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Program Ayarları</div>
-                <button onClick={handleOpenScheduleSettings} className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700">
-                  <span>Ders Programını Değiştir</span>
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Veri Yönetimi</div>
+                <button
+                  type="button"
+                  onClick={handleOpenDataManagement}
+                  className="ios-button flex w-full items-center justify-between rounded-[16px] px-3 py-2 text-left text-slate-700"
+                >
+                  <span>Veri Yönetimi (Şifreli Alan)</span>
                   <span className="ios-blue rounded-full px-2 py-0.5 text-[10px] font-bold text-slate-700">Aç</span>
                 </button>
-              </div>
-
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Veri Yönetimi</div>
-                <div className="-mx-2">
-                  {renderParentDashboardMode('data')}
-                </div>
               </div>
             </div>
           </div>
         </div>
       )}
-      {parentControlCenterOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/45 p-4 backdrop-blur-sm" role="presentation">
-          <div ref={parentControlCenterRef} className="ios-card flex max-h-[min(43rem,calc(100dvh-2rem))] w-[min(32rem,100%)] flex-col overflow-hidden rounded-[28px] p-4" role="dialog" aria-modal="true" aria-label="Kontrol merkezi">
+      {dataAccessModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center overflow-hidden bg-slate-950/55 p-4 backdrop-blur-sm" role="presentation">
+          <div className="ios-card flex max-h-[min(42rem,calc(100dvh-2rem))] w-[min(40rem,100%)] flex-col overflow-hidden rounded-[28px] p-4" role="dialog" aria-modal="true" aria-label="Veri yönetimi erişimi">
             <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
               <div>
-                <div className="text-base font-black text-slate-900">Kontrol Merkezi</div>
-                <div className="mt-1 text-xs text-slate-500">{parentWorkspaceItems.find((item) => item.id === parentWorkspaceView)?.label}</div>
+                <div className="text-base font-black text-slate-900">Veri Yönetimi</div>
+                <div className="mt-1 text-xs text-slate-500">Bu alan şifre korumalıdır.</div>
               </div>
-              <button type="button" onClick={() => setParentControlCenterOpen(false)} className="ios-button flex h-10 w-10 items-center justify-center rounded-full text-slate-600" aria-label="Kontrol merkezini kapat">
+              <button
+                type="button"
+                onClick={() => {
+                  setDataAccessModalOpen(false);
+                  setDataAccessPassword('');
+                  setDataAccessGranted(false);
+                  setDataAccessError(null);
+                }}
+                className="ios-button flex h-10 w-10 items-center justify-center rounded-full text-slate-600"
+                aria-label="Veri yönetimini kapat"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="dr-modal-scroll min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1 text-xs">
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Kullanıcı</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => { handleUserTypeChange(UserType.Parent); setParentControlCenterOpen(false); }} className="ios-button-active rounded-[16px] px-2 py-2 font-bold text-slate-900">Ebeveyn</button>
-                  <button type="button" onClick={() => { handleUserTypeChange(UserType.Child); setParentControlCenterOpen(false); }} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Çocuk</button>
-                </div>
-              </div>
-
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Tema</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setThemeMode('light')} className={`rounded-[16px] px-2 py-2 font-bold ${themeMode === 'light' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Açık</button>
-                  <button type="button" onClick={() => setThemeMode('dark')} className={`rounded-[16px] px-2 py-2 font-bold ${themeMode === 'dark' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Koyu</button>
-                </div>
-              </div>
-
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Hızlı Geçiş</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => handleQuickAction('planning', 'Akademik planlama açıldı.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Planlama</button>
-                  <button type="button" onClick={() => handleQuickAction('planning', 'Sınav takvimi açıldı.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Sınav takvimi</button>
-                  <button type="button" onClick={() => handleQuickAction('analysis', 'Analiz ve raporlar açıldı.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Analiz</button>
-                  <button type="button" onClick={() => handleQuickAction('overview', 'Genel bakış açıldı.')} className="ios-button rounded-[16px] px-2 py-2 font-bold text-slate-700">Özet</button>
-                </div>
-              </div>
-
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Arama</div>
+            {!dataAccessGranted ? (
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-600">Şifre</label>
                 <input
-                  value={globalSearchQuery}
-                  onChange={(event) => setGlobalSearchQuery(event.target.value)}
-                  placeholder="Görev, ders, konu, sınav veya ödül"
+                  type="password"
+                  value={dataAccessPassword}
+                  onChange={(event) => setDataAccessPassword(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') event.preventDefault();
+                  }}
                   className="ios-button w-full rounded-[16px] px-3 py-2 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+                  placeholder="Şifre girin"
                 />
-                {globalSearchQuery && (
-                  <div className="dr-modal-scroll mt-2 max-h-44 space-y-2 overflow-y-auto">
-                    {globalSearchResults.length === 0 ? (
-                      <div className="text-[11px] text-slate-500">Sonuç bulunamadı.</div>
-                    ) : globalSearchResults.slice(0, 4).map((result) => (
-                      <button key={result.id} type="button" onClick={() => { handleSearchResultSelect(result); setParentControlCenterOpen(false); }} className="ios-button w-full rounded-[14px] px-3 py-2 text-left text-slate-700">
-                        <span className="block truncate text-xs font-black">{result.title}</span>
-                        <span className="block truncate text-[11px] text-slate-500">{result.subtitle}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {dataAccessError && <div className="text-xs font-semibold text-rose-600">{dataAccessError}</div>}
               </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setNotificationsMuted((prev) => !prev)} className="ios-button rounded-[18px] px-3 py-3 text-left text-slate-700">
-                  <span className="block text-[11px] font-bold uppercase text-slate-500">Bildirim</span>
-                  <span className="text-sm font-black">{notificationsMuted ? 'Sessiz' : 'Açık'}</span>
-                </button>
-                <button type="button" onClick={() => { setSettingsOpen(true); setParentControlCenterOpen(false); }} className="ios-button rounded-[18px] px-3 py-3 text-left text-slate-700">
-                  <span className="block text-[11px] font-bold uppercase text-slate-500">Ayarlar</span>
-                  <span className="text-sm font-black">Aç</span>
-                </button>
+            ) : (
+              <div className="dr-modal-scroll min-h-0 flex-1 overflow-y-auto">
+                <div className="-mx-2">{renderParentDashboardMode('data')}</div>
               </div>
-
-              <button type="button" onClick={handleLockParentNow} className="ios-coral flex w-full items-center justify-between rounded-[20px] px-4 py-3 text-left font-black text-rose-950">
-                <span>Paneli Kilitle</span>
-                <Lock className="h-4 w-4" />
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}

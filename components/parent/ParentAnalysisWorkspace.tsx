@@ -1,7 +1,7 @@
 ﻿import React, { useMemo, useState } from 'react';
 import { Course, ParentDashboardProps, ReportData, Task } from '../../types';
 import { AnalysisSnapshot } from '../../utils/analysisEngine';
-import { buildParentDecision, getTopicDecisionLevel } from '../../utils/parentDecisionEngine';
+import { getTopicDecisionLevel, type ParentDecisionResult } from '../../utils/parentDecisionEngine';
 import { getTodayString } from '../../utils/dateUtils';
 import AnalysisGraphCenter from './AnalysisGraphCenter';
 import { alignmentLabelMap, alignmentToneMap, examTypeLabelMap } from './parentDashboardShared';
@@ -21,6 +21,7 @@ interface ParentAnalysisWorkspaceProps {
   courses: Course[];
   curriculum: ParentDashboardProps['curriculum'];
   analysis: AnalysisSnapshot;
+  decision: ParentDecisionResult;
   examRecords: NonNullable<ParentDashboardProps['examRecords']>;
   compositeExamResults: NonNullable<ParentDashboardProps['compositeExamResults']>;
   generateReport: ParentDashboardProps['generateReport'];
@@ -63,6 +64,15 @@ const DEFAULT_PARENT_GOAL_CONFIG: ParentGoalConfig = {
 };
 
 const safeClampNumber = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const getCompositeAverage = (result?: NonNullable<ParentDashboardProps['compositeExamResults']>[number]): number | null => {
+  if (!result || !Array.isArray(result.courses) || result.courses.length === 0) return null;
+  const scores = result.courses
+    .map((course) => Number(course.score))
+    .filter((score) => Number.isFinite(score));
+  if (scores.length === 0) return null;
+  return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+};
 
 const normalizeGoalConfig = (value: unknown): ParentGoalConfig => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_PARENT_GOAL_CONFIG;
@@ -162,6 +172,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   courses,
   curriculum,
   analysis,
+  decision,
   examRecords,
   compositeExamResults,
   generateReport,
@@ -385,8 +396,8 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   const strongestCourse = topCourses[0];
   const riskiestTopic = weakTopics[0];
   const dataConfidence = getDataConfidence(analysis.sessions.length);
-  const latestCompositeAverage = compositeExamResults[0] ? Math.round(compositeExamResults[0].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[0].courses.length) : null;
-  const previousCompositeAverage = compositeExamResults[1] ? Math.round(compositeExamResults[1].courses.reduce((sum, course) => sum + course.score, 0) / compositeExamResults[1].courses.length) : null;
+  const latestCompositeAverage = getCompositeAverage(compositeExamResults[0]);
+  const previousCompositeAverage = getCompositeAverage(compositeExamResults[1]);
   const lgsTargetDate = useMemo(() => {
     if (!goalConfig.lgsTargetDate) return null;
     const parsed = new Date(goalConfig.lgsTargetDate);
@@ -441,27 +452,6 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     () => (goalConfig.topicCompletionTarget > 0 ? Math.round((topicCompletionCount / goalConfig.topicCompletionTarget) * 100) : 0),
     [goalConfig.topicCompletionTarget, topicCompletionCount],
   );
-  const decision = useMemo(() => buildParentDecision({
-    sessionsCount: analysis.sessions.length,
-    weeklyCompletedCount: weeklyStats.completed,
-    weakTopicCount: weakTopics.length,
-    averageRisk: analysis.overall.averageRisk,
-    latestCompositeAverage,
-    previousCompositeAverage,
-    parentActionPendingCount,
-    parentActionCompletedCount,
-    parentActionCompletedTodayCount,
-  }), [
-    analysis.sessions.length,
-    weeklyStats.completed,
-    weakTopics.length,
-    analysis.overall.averageRisk,
-    latestCompositeAverage,
-    previousCompositeAverage,
-    parentActionPendingCount,
-    parentActionCompletedCount,
-    parentActionCompletedTodayCount,
-  ]);
   const trendLabel = decision.trend;
   const todayOperational = overviewTodayOperational || {
     plannedCount: 0,

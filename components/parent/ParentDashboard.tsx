@@ -1,13 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { ParentDashboardProps } from '../../types';
-import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
+import type { AnalysisSnapshot } from '../../utils/analysisEngine';
+import type { ParentDecisionResult } from '../../utils/parentDecisionEngine';
 import ParentTaskWorkspace from './ParentTaskWorkspace';
 import ParentAnalysisWorkspace from './ParentAnalysisWorkspace';
 import ParentRewardWorkspace from './ParentRewardWorkspace';
 import ParentBriefingWorkspace from './ParentBriefingWorkspace';
 
 type ParentDashboardInternalProps = ParentDashboardProps & {
-  analysisSnapshot?: ReturnType<typeof deriveAnalysisSnapshot>;
+  analysisSnapshot: AnalysisSnapshot;
+  decisionSummary: ParentDecisionResult;
 };
 
 const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
@@ -34,13 +36,11 @@ const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
   error,
   viewMode = 'all',
   analysisSnapshot,
+  decisionSummary,
 }) => {
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const analysis = useMemo(
-    () => analysisSnapshot || deriveAnalysisSnapshot(tasks, courses, studyPlans, examRecords, compositeExamResults),
-    [analysisSnapshot, tasks, courses, studyPlans, examRecords, compositeExamResults],
-  );
+  const analysis = analysisSnapshot;
 
   const showTasks = viewMode === 'all' || viewMode === 'assignment' || viewMode === 'tasks' || viewMode === 'exams' || viewMode === 'data';
   const showRewards = viewMode === 'all';
@@ -81,6 +81,7 @@ const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
           courses={courses}
           curriculum={curriculum}
           analysis={analysis}
+          decision={decisionSummary}
           examRecords={examRecords}
           compositeExamResults={compositeExamResults}
           generateReport={generateReport}

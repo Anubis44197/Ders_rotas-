@@ -31,7 +31,7 @@
     "workspaceReady": true
   },
   "pass": true,
-  "elapsedMs": 6488,
+  "elapsedMs": 4009,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\01-main-signals.png"
   ]
@@ -66,7 +66,7 @@
     "detailCourseId": "course_fen_bilgisi"
   },
   "pass": true,
-  "elapsedMs": 4962,
+  "elapsedMs": 2001,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\02-course-detail-flow.png"
   ]
@@ -131,7 +131,7 @@
     }
   ],
   "pass": true,
-  "elapsedMs": 5134,
+  "elapsedMs": 3569,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\03-time-filters.png"
   ]
@@ -168,7 +168,7 @@
     "cardCount": 5
   },
   "pass": true,
-  "elapsedMs": 11629,
+  "elapsedMs": 1428,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\04-long-name-overflow.png"
   ]
@@ -201,7 +201,7 @@
     "lowText": "Ilk analiz icin en az 3 tamamlanan calisma gerekli. Bu hafta veri olustukca karar onerileri netlesecek."
   },
   "pass": true,
-  "elapsedMs": 4523,
+  "elapsedMs": 3501,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\05-empty-state.png",
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\05-low-state.png"
@@ -240,7 +240,7 @@
     }
   },
   "pass": true,
-  "elapsedMs": 1571,
+  "elapsedMs": 1730,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\06-error-guard.png"
   ]
@@ -252,7 +252,7 @@
 - kullanilan veri: `qaRecords=manual, analysisTab=goals, e2e=1`
 - kullanilan selector/test-id: `[data-testid="analysis-goals-section"]`, `[data-testid="top-goal-alert-level"]`
 - beklenen sonuc: Hedef karar alani gorunmeli ve ust uyari etiketi olmali.
-- gercek sonuc: section=true, topLevel=Stabil
+- gercek sonuc: section=true, topLevel=Takip et
 - PASS/FAIL: `PASS`
 - ilgili dosya: components/parent/ParentAnalysisWorkspace.tsx
 - screenshot/log: [07-goal-panel.png](C:/Users/90535/Desktop/DersRotası/docs/e2e-artifacts-2026-05-17-stabilization/07-goal-panel.png)
@@ -268,10 +268,10 @@
   "expected": "Hedef karar alani gorunmeli ve ust uyari etiketi olmali.",
   "actual": {
     "hasSection": true,
-    "topLevel": "Stabil"
+    "topLevel": "Takip et"
   },
   "pass": true,
-  "elapsedMs": 1717,
+  "elapsedMs": 1793,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\07-goal-panel.png"
   ]
@@ -304,7 +304,7 @@
     "trend": true
   },
   "pass": true,
-  "elapsedMs": 1674,
+  "elapsedMs": 1781,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\08-exam-cards.png"
   ]
@@ -316,7 +316,7 @@
 - kullanilan veri: `qaRecords=manual, analysisTab=goals, e2e=1`
 - kullanilan selector/test-id: `[data-testid="top-goal-alert-level"]`, `[data-testid^="goal-alert-"]`
 - beklenen sonuc: Uyari etiketleri sadece izinli seviye setinde olmali.
-- gercek sonuc: etiketler=Stabil, Takip et
+- gercek sonuc: etiketler=Takip et, Dikkat, Takip et
 - PASS/FAIL: `PASS`
 - ilgili dosya: components/parent/ParentAnalysisWorkspace.tsx
 - screenshot/log: [09-alert-levels.png](C:/Users/90535/Desktop/DersRotası/docs/e2e-artifacts-2026-05-17-stabilization/09-alert-levels.png)
@@ -331,8 +331,9 @@
   ],
   "expected": "Uyari etiketleri sadece izinli seviye setinde olmali.",
   "actual": {
-    "topLevel": "Stabil",
+    "topLevel": "Takip et",
     "levels": [
+      "Dikkat",
       "Takip et"
     ],
     "allowed": [
@@ -343,7 +344,7 @@
     ]
   },
   "pass": true,
-  "elapsedMs": 1620,
+  "elapsedMs": 1704,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\09-alert-levels.png"
   ]
@@ -380,7 +381,7 @@
     }
   },
   "pass": true,
-  "elapsedMs": 3552,
+  "elapsedMs": 3602,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\10-parent-to-child-task.png"
   ]
@@ -418,7 +419,7 @@
     "afterDone": 1
   },
   "pass": true,
-  "elapsedMs": 5324,
+  "elapsedMs": 5926,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\11-child-complete-parent.png"
   ]
@@ -430,7 +431,7 @@
 - kullanilan veri: `npm run test:heavy`
 - kullanilan selector/test-id: `scripts/heavy-real-data-tests.ts`
 - beklenen sonuc: Ağir veri analizi hata vermeden tamamlanmali.
-- gercek sonuc: heavyPassed=true, analysisElapsedMs=333
+- gercek sonuc: heavyPassed=true, analysisElapsedMs=365
 - PASS/FAIL: `PASS`
 - ilgili dosya: scripts/heavy-real-data-tests.ts
 - screenshot/log: [12-performance-context.png](C:/Users/90535/Desktop/DersRotası/docs/e2e-artifacts-2026-05-17-stabilization/12-performance-context.png), [test-heavy.log](C:/Users/90535/Desktop/DersRotası/docs/e2e-artifacts-2026-05-17-stabilization/test-heavy.log)
@@ -445,11 +446,11 @@
   "expected": "Ağir veri analizi hata vermeden tamamlanmali.",
   "actual": {
     "heavyPassed": true,
-    "analysisElapsedMs": 333,
+    "analysisElapsedMs": 365,
     "logPath": "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\test-heavy.log"
   },
   "pass": true,
-  "elapsedMs": 3501,
+  "elapsedMs": 6380,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\12-performance-context.png",
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\test-heavy.log"
@@ -486,7 +487,7 @@
     "atLeastOneCreated": true
   },
   "pass": true,
-  "elapsedMs": 5303,
+  "elapsedMs": 5065,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\13-idempotency.png"
   ]
@@ -498,7 +499,7 @@
 - kullanilan veri: `qaRecords=low, notifications interaction, e2e=1`
 - kullanilan selector/test-id: `[data-testid="topbar-notifications-toggle"]`, `[data-testid^="notification-item-"]`, `[data-cooldown-group]`
 - beklenen sonuc: Ayni cooldown grubundaki bildirim aksiyon sonrasi tekrar listelenmemeli.
-- gercek sonuc: group=weak, remaining=0, cooldown=1779164508510
+- gercek sonuc: group=parent:drop, remaining=0, cooldown=1779778783060
 - PASS/FAIL: `PASS`
 - ilgili dosya: App.tsx
 - screenshot/log: [14-notification-cooldown.png](C:/Users/90535/Desktop/DersRotası/docs/e2e-artifacts-2026-05-17-stabilization/14-notification-cooldown.png)
@@ -515,14 +516,14 @@
   "expected": "Ayni cooldown grubundaki bildirim aksiyon sonrasi tekrar listelenmemeli.",
   "actual": {
     "firstItem": {
-      "key": "weak:1",
-      "group": "weak"
+      "key": "parent:drop:-28",
+      "group": "parent:drop"
     },
     "remainingCount": 0,
-    "cooldownValue": 1779164508510
+    "cooldownValue": 1779778783060
   },
   "pass": true,
-  "elapsedMs": 3655,
+  "elapsedMs": 3968,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\DersRotası\\docs\\e2e-artifacts-2026-05-17-stabilization\\14-notification-cooldown.png"
   ]
