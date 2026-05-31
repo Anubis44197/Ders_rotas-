@@ -253,7 +253,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
 
       {showCompleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '350px', width: '100%', margin: '0 auto' }}>
+          <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '356px', width: '100%', margin: '0 auto' }}>
             <h3 className="text-xl font-black text-white">Seansı bitir</h3>
             <p className="mt-0.5 text-xs text-slate-400">Süre özetini kontrol et ve kaydet.</p>
             
@@ -320,7 +320,13 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
               <button
                 onClick={handleConfirmCompletion}
                 disabled={isCompleting}
-                className={`rounded-[12px] px-4 py-2 text-xs font-bold transition ${isCompleting ? 'cursor-not-allowed text-slate-500 opacity-60 bg-slate-800 border border-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
+                className="rounded-[12px] px-4 py-2 text-xs font-bold transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
+                  color: '#ffffff',
+                  border: '1px solid #065f46',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                }}
               >
                 {isCompleting ? 'Bekleyin...' : 'Tamamla'}
               </button>
@@ -331,7 +337,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
 
       {showAnalysisModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '350px', width: '100%', margin: '0 auto' }}>
+          <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '356px', width: '100%', margin: '0 auto' }}>
             <h3 className="text-xl font-black text-white">Soru analizi</h3>
             <p className="mt-0.5 text-xs text-slate-400">Doğru, yanlış ve boş sayılarını gir.</p>
             
@@ -359,7 +365,18 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
             
             <div className="mt-5 flex gap-2 justify-end">
               <button onClick={() => setShowAnalysisModal(false)} className="rounded-[12px] px-4 py-2 text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">Geri dön</button>
-              <button onClick={handleAnalysisSubmit} className="rounded-[12px] px-4 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-500 text-white">Devam et</button>
+              <button
+                onClick={handleAnalysisSubmit}
+                className="rounded-[12px] px-4 py-2 text-xs font-bold transition hover:opacity-90 active:scale-95"
+                style={{
+                  background: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)',
+                  color: '#ffffff',
+                  border: '1px solid #1e40af',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                }}
+              >
+                Devam et
+              </button>
             </div>
           </div>
         </div>
