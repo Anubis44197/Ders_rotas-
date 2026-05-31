@@ -18,7 +18,7 @@ const ParentLockScreen: React.FC<ParentLockScreenProps> = ({ onUnlock, error }) 
 
   return (
     <div className="flex min-h-[calc(100vh-81px)] items-center justify-center px-4 py-10" data-testid="parent-lock-screen">
-      <div className="ios-card w-full max-w-md rounded-[28px] p-8 text-center">
+      <div className="ios-card w-full max-w-md rounded-[28px] p-8 text-center" style={{ maxWidth: '448px', width: '100%' }}>
         <div className="ios-ink mx-auto inline-flex h-20 w-20 items-center justify-center rounded-[24px] text-slate-800">
           <Lock className="h-9 w-9" />
         </div>
