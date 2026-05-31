@@ -745,7 +745,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Çalışma Türü</label>
                           <select value={freeType} onChange={(e) => setFreeType(e.target.value as any)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
-                            <option value="ders çalışması">Ders çalışması</option>
+                            <option value="ders çalışma">Ders çalışması</option>
                             <option value="soru çözme">Soru çözümü</option>
                             <option value="kitap okuma">Kitap okuma</option>
                           </select>
