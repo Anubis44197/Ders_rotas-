@@ -989,15 +989,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               {/* Sağ Sütun - Sidebar (Yalnızca Sıradaki Net Adım) */}
               <div className="space-y-4">
                 {/* Sıradaki Net Adım */}
-                {!riskiestTopic && analysis.overall.completedTasks > 0 ? (
-                  <div className="ios-widget ios-mint rounded-[22px] p-5 border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-3">
-                    <span className="text-xl">✨</span>
-                    <div>
-                      <div className="text-xs font-black uppercase tracking-[0.2em] text-emerald-800 dark:text-emerald-300">RİTMİ KORU</div>
-                      <p className="mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400">Ritim korunuyor. Harika! Bu hafta aynı düzende devam edebilirsiniz.</p>
-                    </div>
-                  </div>
-                ) : (
+                {!riskiestTopic && analysis.overall.completedTasks > 0 ? null : (
                   <div className="ios-ink rounded-[30px] p-6 text-white">
                     <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Siradaki net adim</div>
                     <div className="mt-3 text-xl font-black leading-7">
