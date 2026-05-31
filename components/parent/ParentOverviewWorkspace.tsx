@@ -14,6 +14,7 @@ import {
   Target,
 } from '../icons';
 import ParentWorkspaceFrame from './ParentWorkspaceFrame';
+import ContextHelp from '../shared/ContextHelp';
 
 interface ParentOverviewSummary {
   completedCount: number;
@@ -653,7 +654,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
             <div className="dr-hig-caption uppercase tracking-[0.14em] font-semibold text-slate-500 dark:text-slate-400">{periodSummaryTitle}</div>
             <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="dr-hig-secondary-card rounded-[18px] p-5">
-                <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Tamamlanan Gorev</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Tamamlanan Görev</div>
+                  <ContextHelp title="Tamamlanan Görev" tone="blue">
+                    Çocuğunuzun teslim tarihi bugün veya geçmiş olan görevleri bitirme oranıdır. Haftalık plan hedefine ne kadar yaklaştığını gösterir.
+                  </ContextHelp>
+                </div>
                 <div className="mt-2 dr-hig-large-title text-slate-900 dark:text-white">{overviewWeeklyStats.completedCount}</div>
                 <div className="mt-1 dr-hig-caption text-slate-500 dark:text-slate-400">/ {weeklyCompletionTarget} gorev</div>
                 <div className="mt-2.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
@@ -662,7 +668,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 <div className="mt-1 dr-hig-caption text-slate-500 dark:text-slate-400">%{weeklyCompletionPercent}</div>
               </div>
               <div className="dr-hig-secondary-card rounded-[18px] p-5">
-                <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Çalışma Süresi</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Çalışma Süresi</div>
+                  <ContextHelp title="Çalışma Süresi" tone="blue">
+                    Çocuğunuzun ders çalışırken kronometreyle kaydettiği net çalışma süresidir. Mola ve duraklatma süreleri bu hesaba dahil edilmez.
+                  </ContextHelp>
+                </div>
                 <div className="mt-2 dr-hig-large-title text-slate-900 dark:text-white">{formatMinutes(overviewWeeklyStats.totalMinutes)}</div>
                 <div className={`mt-2.5 flex items-center gap-1 dr-hig-caption font-semibold ${minuteDelta.tone}`}>
                   <span className="text-sm leading-none">{minuteDelta.arrow}</span>
@@ -670,7 +681,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 </div>
               </div>
               <div className="dr-hig-secondary-card rounded-[18px] p-5">
-                <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Çözülen Soru</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Çözülen Soru</div>
+                  <ContextHelp title="Çözülen Soru" tone="blue">
+                    Çocuğunuzun bu periyotta çözdüğü toplam soru sayısıdır. Altındaki yeşil ok, önceki döneme göre soru çözme hacmindeki değişimi gösterir.
+                  </ContextHelp>
+                </div>
                 <div className="mt-2 dr-hig-large-title text-slate-900 dark:text-white">{overviewWeeklyStats.solvedQuestionCount}</div>
                 <div className={`mt-2.5 flex items-center gap-1 dr-hig-caption font-semibold ${solvedDelta.tone}`}>
                   <span className="text-sm leading-none">{solvedDelta.arrow}</span>
@@ -678,7 +694,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 </div>
               </div>
               <div className="dr-hig-secondary-card rounded-[18px] p-5">
-                <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Deneme Performansi</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Deneme Performansı</div>
+                  <ContextHelp title="Deneme Performansı" tone="blue">
+                    Çocuğunuzun son LGS deneme sınavlarındaki başarı grafik eğrisidir. Dalgalanmalar çocuğunuzun sınav stresini veya konu eksikliklerini tespit etmenizi kolaylaştırır.
+                  </ContextHelp>
+                </div>
                 <div className={`mt-2 flex items-center gap-2 dr-hig-large-title ${examDelta.tone}`}>
                   <span className="text-xl leading-none">{examDelta.arrow}</span>
                   <span>{examDelta.short}</span>

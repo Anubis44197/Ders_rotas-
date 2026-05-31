@@ -848,20 +848,42 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 </div>
               </div>
 
-              {/* 4 Performance Metric Cards Grid */}
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {/* 3 Performance Metric Cards Grid */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {[
-                  { label: 'Genel durum', value: analysis.overall.generalScore, tone: getScoreTone(analysis.overall.generalScore) },
-                  { label: 'Derse odak', value: analysis.overall.averageFocus, tone: getScoreTone(analysis.overall.averageFocus) },
-                  { label: 'Calisma kalitesi', value: analysis.overall.averageEfficiency, tone: getScoreTone(analysis.overall.averageEfficiency) },
-                  { label: 'Soru basarisi', value: analysis.overall.averageAccuracy ?? '-', tone: getScoreTone(analysis.overall.averageAccuracy ?? 0) },
+                  { 
+                    label: 'Genel Başarı Puanı', 
+                    value: analysis.overall.generalScore, 
+                    tone: getScoreTone(analysis.overall.generalScore),
+                    helpTitle: 'Genel Başarı Puanı',
+                    helpContent: 'Çocuğunuzun test başarıları, ders çalışma süreleri, odaklanma seviyesi ve plan uyumunun harmanlanmasıyla oluşan genel performans skorudur. %80 ve üzeri harika bir seviyedir.'
+                  },
+                  { 
+                    label: 'Çalışma Disiplini ve Odak', 
+                    value: Math.round((analysis.overall.averageFocus + analysis.overall.averageEfficiency) / 2), 
+                    tone: getScoreTone(Math.round((analysis.overall.averageFocus + analysis.overall.averageEfficiency) / 2)),
+                    helpTitle: 'Çalışma Disiplini ve Odak',
+                    helpContent: 'Çocuğunuzun ders çalışırken gösterdiği odaklanma seviyesi (molasız çalışma) ve planlanan ders sürelerine sadakat oranının birleşimidir. Çocuğun ders ciddiyetini gösterir.'
+                  },
+                  { 
+                    label: 'Test Doğruluk Oranı', 
+                    value: analysis.overall.averageAccuracy ?? '-', 
+                    tone: getScoreTone(analysis.overall.averageAccuracy ?? 0),
+                    helpTitle: 'Test Doğruluk Oranı',
+                    helpContent: 'Çocuğunuzun çözdüğü çoktan seçmeli sorulardaki ortalama doğru cevap oranıdır. Akademik konu kavrama düzeyini doğrudan yansıtır.'
+                  },
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className={`dr-analysis-score-card rounded-[24px] p-4 ${item.tone}`}
+                    className={`dr-analysis-score-card rounded-[24px] p-4 relative ${item.tone}`}
                     data-testid={`decision-signal-${item.label.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-')}`}
                   >
-                    <div className="text-xs font-black uppercase tracking-[0.14em] opacity-70">{item.label}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs font-black uppercase tracking-[0.14em] opacity-70">{item.label}</div>
+                      <ContextHelp title={item.helpTitle} tone="blue">
+                        {item.helpContent}
+                      </ContextHelp>
+                    </div>
                     <div className="mt-2 text-3xl font-black tracking-tight">{item.value}</div>
                   </div>
                 ))}
@@ -875,21 +897,30 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {topCourses.length === 0 && <div className="ios-widget rounded-[22px] p-4 text-sm text-slate-500">Ders analizi icin yeterli veri yok.</div>}
-                  {topCourses.map((course) => (
-                    <div key={course.courseId} className="space-y-2 bg-slate-50 border border-slate-100 rounded-[20px] p-3.5 shadow-sm">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedCourseDetailId(course.courseId)}
-                        data-testid={`course-summary-btn-${course.courseId}`}
-                        data-selected={selectedCourseDetailId === course.courseId ? '1' : '0'}
-                        className={`flex w-full items-center justify-between gap-3 rounded-[14px] px-2 py-1 text-left text-sm transition ${selectedCourseDetailId === course.courseId ? 'bg-white shadow-sm' : 'hover:bg-white/55'}`}
-                      >
-                        <span className="break-words font-extrabold text-slate-800">{course.courseName}</span>
-                        <span className="font-black text-slate-950">%{course.averageMastery}</span>
-                      </button>
-                      <ProgressBar value={course.averageMastery} tone={course.weakTopicCount > 0 ? 'bg-[#FFE08A]' : 'bg-[#7EE7C7]'} />
-                    </div>
-                  ))}
+                  {topCourses.map((course) => {
+                    const courseUnits = curriculum[course.courseName] || [];
+                    const totalTopics = courseUnits.flatMap((u) => u.topics || []);
+                    const completedTopics = totalTopics.filter((t) => t.completed);
+                    const completedCount = completedTopics.length;
+                    const totalCount = totalTopics.length;
+                    const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+                    return (
+                      <div key={course.courseId} className="space-y-2 bg-slate-50 border border-slate-100 rounded-[20px] p-3.5 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCourseDetailId(course.courseId)}
+                          data-testid={`course-summary-btn-${course.courseId}`}
+                          data-selected={selectedCourseDetailId === course.courseId ? '1' : '0'}
+                          className={`flex w-full items-center justify-between gap-3 rounded-[14px] px-2 py-1 text-left text-sm transition ${selectedCourseDetailId === course.courseId ? 'bg-white shadow-sm' : 'hover:bg-white/55'}`}
+                        >
+                          <span className="break-words font-extrabold text-slate-800">{course.courseName}</span>
+                          <span className="font-semibold text-slate-500 text-xs">{completedCount} / {totalCount} Konu</span>
+                        </button>
+                        <ProgressBar value={completionPercent} tone={course.weakTopicCount > 0 ? 'bg-[#FFE08A]' : 'bg-[#7EE7C7]'} />
+                      </div>
+                    );
+                  })}
                 </div>
                 {selectedCourseDetail && (
                   <div
@@ -898,7 +929,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                     data-course-id={selectedCourseDetail.courseId}
                   >
                     <div className="break-words font-extrabold text-slate-800 text-sm">Ders detayı: {selectedCourseDetail.courseName}</div>
-                    <div className="mt-1.5 font-medium text-slate-500">Kavrama düzeyi: %{selectedCourseDetail.averageMastery} | Çalışma kalitesi: %{selectedCourseDetail.averageEfficiency} | Destek isteyen konu sayısı: {selectedCourseDetail.weakTopicCount}</div>
+                    <div className="mt-1.5 font-medium text-slate-500">Konuyu Anlama Seviyesi: %{selectedCourseDetail.averageMastery} | Çalışma Verimliliği: %{selectedCourseDetail.averageEfficiency} | Destek isteyen konu sayısı: {selectedCourseDetail.weakTopicCount}</div>
                   </div>
                 )}
               </div>
@@ -1006,48 +1037,56 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               {/* Sağ Sütun - Sidebar (Yalnızca Sıradaki Net Adım) */}
               <div className="space-y-4">
                 {/* Sıradaki Net Adım */}
-                <div className="ios-ink rounded-[30px] p-6 text-white">
-                  <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Siradaki net adim</div>
-                  <div className="mt-3 text-xl font-black leading-7">
-                    {riskiestTopic ? 'Odak konusuna kisa tekrar' : analysis.overall.completedTasks > 0 ? 'Ritmi koru' : 'Ilk olcumlu gorev'}
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-300">
-                    {riskiestTopic
-                      ? `${riskiestTopic.courseName} / ${riskiestTopic.topicName} icin kisa tekrar ve 15 soru onerilir.`
-                      : analysis.overall.completedTasks > 0
-                        ? 'Ritim korunuyor. Bu hafta ayni duzende devam edin.'
-                        : 'Ilk analiz icin en az 1 tamamlanan calisma gerekli.'}
-                  </p>
-                  {riskiestTopic && getPrerequisiteHint(riskiestTopic.courseName, riskiestTopic.topicName) && (
-                    <div className="mt-3 rounded-[14px] bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300 border border-amber-100 dark:border-amber-900/30">
-                      {getPrerequisiteHint(riskiestTopic.courseName, riskiestTopic.topicName)}
+                {!riskiestTopic && analysis.overall.completedTasks > 0 ? (
+                  <div className="ios-widget ios-mint rounded-[22px] p-5 border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-3">
+                    <span className="text-xl">✨</span>
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-[0.2em] text-emerald-800 dark:text-emerald-300">RİTMİ KORU</div>
+                      <p className="mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400">Ritim korunuyor. Harika! Bu hafta aynı düzende devam edebilirsiniz.</p>
                     </div>
-                  )}
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={handleCreateRevisionTask}
-                      disabled={!riskiestTopic || isCreatingAction}
-                      data-testid="create-revision-task-btn"
-                      className={`rounded-[16px] px-3 py-2 text-xs font-black ${(!riskiestTopic || isCreatingAction) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[#7663c9] hover:bg-[#6351b8] text-white shadow-sm transition-all active:scale-[0.98]'}`}
-                    >
-                      Tekrar gorevi olustur
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const targetCourse = riskiestTopic || topCourses[0];
-                        if (!targetCourse) return;
-                        void handleCreateExamPracticeTask(targetCourse.courseId, targetCourse.courseName);
-                      }}
-                      disabled={isCreatingAction || (!riskiestTopic && topCourses.length === 0)}
-                      data-testid="set-question-goal-btn"
-                      className={`rounded-[16px] px-3 py-2 text-xs font-black ${(isCreatingAction || (!riskiestTopic && topCourses.length === 0)) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[#7663c9] hover:bg-[#6351b8] text-white shadow-sm transition-all active:scale-[0.98]'}`}
-                    >
-                      15 soru hedefi ver
-                    </button>
                   </div>
-                </div>
+                ) : (
+                  <div className="ios-ink rounded-[30px] p-6 text-white">
+                    <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Siradaki net adim</div>
+                    <div className="mt-3 text-xl font-black leading-7">
+                      {riskiestTopic ? 'Odak konusuna kisa tekrar' : 'Ilk olcumlu gorev'}
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                      {riskiestTopic
+                        ? `${riskiestTopic.courseName} / ${riskiestTopic.topicName} icin kisa tekrar ve 15 soru onerilir.`
+                        : 'Ilk analiz icin en az 1 tamamlanan calisma gerekli.'}
+                    </p>
+                    {riskiestTopic && getPrerequisiteHint(riskiestTopic.courseName, riskiestTopic.topicName) && (
+                      <div className="mt-3 rounded-[14px] bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300 border border-amber-100 dark:border-amber-900/30">
+                        {getPrerequisiteHint(riskiestTopic.courseName, riskiestTopic.topicName)}
+                      </div>
+                    )}
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={handleCreateRevisionTask}
+                        disabled={!riskiestTopic || isCreatingAction}
+                        data-testid="create-revision-task-btn"
+                        className={`rounded-[16px] px-3 py-2 text-xs font-black ${(!riskiestTopic || isCreatingAction) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[#7663c9] hover:bg-[#6351b8] text-white shadow-sm transition-all active:scale-[0.98]'}`}
+                      >
+                        Tekrar gorevi olustur
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetCourse = riskiestTopic || topCourses[0];
+                          if (!targetCourse) return;
+                          void handleCreateExamPracticeTask(targetCourse.courseId, targetCourse.courseName);
+                        }}
+                        disabled={isCreatingAction || (!riskiestTopic && topCourses.length === 0)}
+                        data-testid="set-question-goal-btn"
+                        className={`rounded-[16px] px-3 py-2 text-xs font-black ${(isCreatingAction || (!riskiestTopic && topCourses.length === 0)) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[#7663c9] hover:bg-[#6351b8] text-white shadow-sm transition-all active:scale-[0.98]'}`}
+                      >
+                        15 soru hedefi ver
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
