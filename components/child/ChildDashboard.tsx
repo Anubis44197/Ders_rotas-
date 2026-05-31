@@ -343,7 +343,6 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
   const [activeReadingTask, setActiveReadingTask] = useState<Task | null>(null);
   const [resumedTimerState, setResumedTimerState] = useState<ResumeTimerState | undefined>(undefined);
   const [showFreeStudy, setShowFreeStudy] = useState(false);
-  const [freeTitle, setFreeTitle] = useState('');
   const [freeCourseId, setFreeCourseId] = useState(safeCourses[0]?.id || '');
   const [freeType, setFreeType] = useState<'soru \u00e7\u00f6zme' | 'ders \u00e7al\u0131\u015fma' | 'kitap okuma'>('ders \u00e7al\u0131\u015fma');
   const [freeDuration, setFreeDuration] = useState('30');
@@ -536,11 +535,6 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
     const questionCount = Number(freeQuestionCount);
     const requiresTopic = freeType !== 'kitap okuma' && activeUnits.length > 0;
 
-    if (!freeTitle.trim()) {
-      setFreeStudyError('Calisma basligi gerekli.');
-      return;
-    }
-
     if (!freeCourseId || !selectedCourseExists) {
       setFreeStudyError('Gecerli bir ders sec.');
       return;
@@ -566,11 +560,15 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
       return;
     }
 
+    const generatedTitle = freeType === 'kitap okuma'
+      ? `Kitap Okuma: ${freeBookTitle.trim()}`
+      : `${selectedCourseName}${freeUnitName ? ` / ${freeUnitName}` : ''}${freeTopicName ? ` / ${freeTopicName}` : ''}`;
+
     setCreatingFreeStudy(true);
     setFreeStudyError(null);
     try {
       const created = await addTask({
-        title: freeTitle.trim(),
+        title: generatedTitle,
         courseId: freeCourseId,
         dueDate: today,
         taskType: freeType,
@@ -585,7 +583,6 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
       });
 
       setShowFreeStudy(false);
-      setFreeTitle('');
       setFreeType('ders \u00e7al\u0131\u015fma');
       setFreeDuration('30');
       setFreeQuestionCount('20');
@@ -716,11 +713,6 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                       {/* Sol Sütun: Çalışma Alanı Tanımları */}
                       <div className="space-y-3.5">
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ne çalışacaksın?</label>
-                          <input value={freeTitle} onChange={(e) => setFreeTitle(e.target.value)} placeholder="Örn: Limit ve Süreklilik" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 placeholder-slate-600" required />
-                        </div>
-
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ders</label>
                           <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
