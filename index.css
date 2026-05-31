@@ -68,6 +68,18 @@ textarea {
   line-height: 1.294;
 }
 
+/* Chrome, Safari, Edge, Opera: Remove default browser up/down spin buttons */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox: Remove default browser up/down spin buttons */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 .dr-form-field {
   min-height: 44px;
   border: 1px solid var(--dr-border);

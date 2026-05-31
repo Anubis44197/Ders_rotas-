@@ -252,19 +252,19 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
       )}
 
       {showCompleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/25 p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="ios-card w-full rounded-[20px] p-4 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '320px', width: '100%', margin: '0 auto' }}>
-            <h3 className="text-lg font-black text-white">Seansı bitir</h3>
-            <p className="mt-0.5 text-[10px] text-slate-400">Süre özetini kontrol et ve kaydet.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '350px', width: '100%', margin: '0 auto' }}>
+            <h3 className="text-xl font-black text-white">Seansı bitir</h3>
+            <p className="mt-0.5 text-xs text-slate-400">Süre özetini kontrol et ve kaydet.</p>
             
-            <div className="mt-2.5 flex justify-between gap-1.5 bg-slate-950/40 border border-slate-800/80 rounded-[10px] p-2 text-[10px] text-slate-300">
+            <div className="mt-3 flex justify-between gap-2 bg-slate-950/40 border border-slate-800/80 rounded-[12px] p-2.5 text-[11px] text-slate-300">
               <div>Çalışma: <strong className="text-white">{formatTime(mainTime)}</strong></div>
               <div>Mola: <strong className="text-white">{formatTime(breakTime)}</strong></div>
               <div>Duraklat: <strong className="text-white">{formatTime(pauseTime)}</strong></div>
             </div>
 
-            <div className="mt-2.5 flex items-center justify-between gap-2">
-              <label className="text-[10px] font-bold text-slate-300 flex-shrink-0">Hazırlık Puanı (0-100):</label>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <label className="text-xs font-bold text-slate-300 flex-shrink-0">Hazırlık Puanı (0-100):</label>
               <input
                 type="number"
                 min="0"
@@ -272,55 +272,55 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
                 value={selfAssessmentScore}
                 onChange={(e) => setSelfAssessmentScore(e.target.value)}
                 placeholder="0"
-                className="bg-slate-950 border border-slate-800 text-white text-xs px-2 py-1 rounded-[8px] w-16 text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="bg-slate-950 border border-slate-800 text-white text-xs px-2.5 py-1 rounded-[8px] w-20 text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-800/60 pt-2.5">
+            <div className="mt-3.5 grid grid-cols-3 gap-2 border-t border-slate-800/60 pt-3">
               <div>
-                <label className="text-[9px] font-bold text-slate-400 block truncate">Süre (Dk)</label>
+                <label className="text-[10px] font-bold text-slate-400 block truncate">Süre (Dk)</label>
                 <input
                   type="number"
                   placeholder="Dakika"
                   value={editedDuration}
                   onChange={(e) => setEditedDuration(e.target.value)}
-                  className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-1.5 py-1 rounded-[6px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-2 py-1.5 rounded-[8px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
                   data-testid="study-duration-input"
                   name="study duration"
                 />
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-400 block truncate">Toplam Soru</label>
+                <label className="text-[10px] font-bold text-slate-400 block truncate">Toplam Soru</label>
                 <input
                   type="number"
                   placeholder="Soru"
                   value={editedTotalQuestions}
                   onChange={(e) => setEditedTotalQuestions(e.target.value)}
-                  className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-1.5 py-1 rounded-[6px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-2 py-1.5 rounded-[8px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
                   data-testid="total-questions-input"
                   name="total questions"
                 />
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-400 block truncate">Doğruluk (%)</label>
+                <label className="text-[10px] font-bold text-slate-400 block truncate">Doğruluk (%)</label>
                 <input
                   type="number"
                   placeholder="Doğruluk"
                   value={editedCorrectness}
                   onChange={(e) => setEditedCorrectness(e.target.value)}
-                  className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-1.5 py-1 rounded-[6px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-2 py-1.5 rounded-[8px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
                   data-testid="correctness-input"
                   name="correctness"
                 />
               </div>
             </div>
 
-            <div className="mt-4 flex gap-2 justify-end">
-              <button onClick={() => { setShowCompleteModal(false); setStatus('running'); }} className="rounded-[10px] px-3 py-1.5 text-[10px] font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">Geri dön</button>
+            <div className="mt-5 flex gap-2 justify-end">
+              <button onClick={() => { setShowCompleteModal(false); setStatus('running'); }} className="rounded-[12px] px-4 py-2 text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">Geri dön</button>
               <button
                 onClick={handleConfirmCompletion}
                 disabled={isCompleting}
-                className={`rounded-[10px] px-3 py-1.5 text-[10px] font-bold transition ${isCompleting ? 'cursor-not-allowed text-slate-500 opacity-60 bg-slate-800 border border-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
+                className={`rounded-[12px] px-4 py-2 text-xs font-bold transition ${isCompleting ? 'cursor-not-allowed text-slate-500 opacity-60 bg-slate-800 border border-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
               >
                 {isCompleting ? 'Bekleyin...' : 'Tamamla'}
               </button>
@@ -330,36 +330,36 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
       )}
 
       {showAnalysisModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/25 p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="ios-card w-full rounded-[20px] p-4 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '320px', width: '100%', margin: '0 auto' }}>
-            <h3 className="text-lg font-black text-white">Soru analizi</h3>
-            <p className="mt-0.5 text-[10px] text-slate-400">Doğru, yanlış ve boş sayılarını gir.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '350px', width: '100%', margin: '0 auto' }}>
+            <h3 className="text-xl font-black text-white">Soru analizi</h3>
+            <p className="mt-0.5 text-xs text-slate-400">Doğru, yanlış ve boş sayılarını gir.</p>
             
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-3.5 grid grid-cols-3 gap-2">
               <div>
-                <label className="text-[9px] font-bold text-emerald-400 block truncate">Doğru</label>
-                <input type="number" min="0" max={task.questionCount} value={correctCount} onChange={(e) => setCorrectCount(e.target.value)} className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-1.5 py-1.5 rounded-[6px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="0" />
+                <label className="text-[10px] font-bold text-emerald-400 block truncate">Doğru</label>
+                <input type="number" min="0" max={task.questionCount} value={correctCount} onChange={(e) => setCorrectCount(e.target.value)} className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-2 py-1.5 rounded-[8px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="0" />
               </div>
               <div>
-                <label className="text-[9px] font-bold text-rose-400 block truncate">Yanlış</label>
-                <input type="number" min="0" max={task.questionCount} value={incorrectCount} onChange={(e) => setIncorrectCount(e.target.value)} className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-1.5 py-1.5 rounded-[6px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="0" />
+                <label className="text-[10px] font-bold text-rose-400 block truncate">Yanlış</label>
+                <input type="number" min="0" max={task.questionCount} value={incorrectCount} onChange={(e) => setIncorrectCount(e.target.value)} className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-2 py-1.5 rounded-[8px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="0" />
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-300 block truncate">Boş</label>
-                <input type="number" min="0" max={task.questionCount} value={emptyCount} onChange={(e) => setEmptyCount(e.target.value)} className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-1.5 py-1.5 rounded-[6px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="0" />
+                <label className="text-[10px] font-bold text-slate-300 block truncate">Boş</label>
+                <input type="number" min="0" max={task.questionCount} value={emptyCount} onChange={(e) => setEmptyCount(e.target.value)} className="w-full mt-1 bg-slate-950 border border-slate-800 text-white text-xs px-2 py-1.5 rounded-[8px] text-center focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="0" />
               </div>
             </div>
             
-            <div className="mt-2.5 flex justify-between items-center text-[10px] text-slate-400">
+            <div className="mt-3 flex justify-between items-center text-[11px] text-slate-400">
               <span>Toplam Soru:</span>
-              <strong className="text-white bg-slate-950/40 px-2 py-0.5 border border-slate-800/80 rounded-[4px]">{totalQuestions} / {task.questionCount}</strong>
+              <strong className="text-white bg-slate-950/40 px-2.5 py-0.5 border border-slate-800/80 rounded-[6px]">{totalQuestions} / {task.questionCount}</strong>
             </div>
 
-            {analysisError && <div className="mt-2.5 rounded-[10px] px-2.5 py-1.5 text-[10px] font-semibold text-rose-300 bg-rose-950/50 border border-rose-900/50">{analysisError}</div>}
+            {analysisError && <div className="mt-2.5 rounded-[12px] px-3 py-1.5 text-xs font-semibold text-rose-300 bg-rose-950/50 border border-rose-900/50">{analysisError}</div>}
             
-            <div className="mt-4 flex gap-2 justify-end">
-              <button onClick={() => setShowAnalysisModal(false)} className="rounded-[10px] px-3 py-1.5 text-[10px] font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">Geri dön</button>
-              <button onClick={handleAnalysisSubmit} className="rounded-[10px] px-3 py-1.5 text-[10px] font-bold bg-primary-600 hover:bg-primary-500 text-white">Devam et</button>
+            <div className="mt-5 flex gap-2 justify-end">
+              <button onClick={() => setShowAnalysisModal(false)} className="rounded-[12px] px-4 py-2 text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">Geri dön</button>
+              <button onClick={handleAnalysisSubmit} className="rounded-[12px] px-4 py-2 text-xs font-bold bg-primary-600 hover:bg-primary-500 text-white">Devam et</button>
             </div>
           </div>
         </div>
