@@ -3,7 +3,7 @@ import { BarChart as RechartsBarChart, Bar, Tooltip, XAxis, YAxis } from 'rechar
 import { ChildDashboardProps, Task, TaskFilter, ChildView, CurriculumUnit } from '../../types';
 import ActiveTaskTimer from './ActiveTaskTimer';
 import ActiveReadingSession from './ActiveReadingSession';
-import { Trophy, PlusCircle, Play, Gift, BadgeCheck, Target, BarChart, Brain, BookMarked, Calendar, CheckCircle } from '../icons';
+import { X, Trophy, PlusCircle, Play, Gift, BadgeCheck, Target, BarChart, Brain, BookMarked, Calendar, CheckCircle } from '../icons';
 import { getTodayString, getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
 import { deriveAnalysisSnapshot, type AnalysisSnapshot } from '../../utils/analysisEngine';
 import { isCompletedTask as isTaskCompleted } from '../../utils/taskStatus';
@@ -701,82 +701,117 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
               </div>
 
               {showFreeStudy && (
-                <form onSubmit={handleCreateFreeStudy} className="dr-hig-secondary-card mb-5 rounded-[28px] p-6">
-                  <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex min-w-0 items-start gap-2">
-                      <div>
-                        <h3 className="dr-hig-headline text-slate-900 dark:text-white">Serbest çalışma başlat</h3>
-                        <p className="dr-hig-caption text-slate-500 dark:text-slate-400 mt-1">Atanan görev yoksa kendi çalışmanı ders, ünite ve konuya bağla.</p>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" onClick={() => setShowFreeStudy(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <form onSubmit={handleCreateFreeStudy} className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md text-white max-h-[90vh] overflow-y-auto" style={{ maxWidth: '380px', width: '100%', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <PlusCircle className="h-5 w-5 text-indigo-400" />
+                        <h3 className="text-lg font-black text-white">Serbest Çalışma Başlat</h3>
                       </div>
-                      <ContextHelp title="Analize etkisi" tone="lilac">
-                        Bu kayıt planlı görev sayılmaz; ama seçilen ders, ünite ve konu performansına destek veri ekler.
-                      </ContextHelp>
+                      <button type="button" onClick={() => setShowFreeStudy(false)} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition">
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                    <div className="ios-lilac rounded-[18px] px-3 py-2 text-xs font-bold text-violet-900">Kaynak: Serbest çalışma</div>
-                  </div>
 
-                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_260px]">
-                    <section className="ios-widget ios-blue rounded-[24px] p-4">
-                      <div className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400">1 Çalışma alanı</div>
-                      <div className="space-y-3">
-                        <input value={freeTitle} onChange={(e) => setFreeTitle(e.target.value)} placeholder="Ne çalışacaksın?" className="ios-button w-full rounded-[18px] px-3 py-3 text-sm" required />
-                        <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="ios-button w-full rounded-[18px] px-3 py-3 text-sm">
-                          {safeCourses.map((course) => <option key={course.id} value={course.id}>{safeText(course.name, course.id)}</option>)}
-                        </select>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <select value={freeUnitName} onChange={(e) => setFreeUnitName(e.target.value)} className="ios-button rounded-[18px] px-3 py-3 text-sm">
-                            <option value="">Ünite seç</option>
-                            {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
-                          </select>
-                          <select value={freeTopicName} onChange={(e) => setFreeTopicName(e.target.value)} className="ios-button rounded-[18px] px-3 py-3 text-sm" disabled={!freeUnitName}>
-                            <option value="">Konu seç</option>
-                            {activeTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                    </section>
-
-                    <section className="ios-widget ios-mint rounded-[24px] p-4">
-                      <div className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400">2 Çalışma türü</div>
-                      <div className="space-y-3">
-                        <select value={freeType} onChange={(e) => setFreeType(e.target.value as 'soru \u00e7\u00f6zme' | 'ders \u00e7al\u0131\u015fma' | 'kitap okuma')} className="ios-button w-full rounded-[18px] px-3 py-3 text-sm">
-                          <option value="ders \u00e7al\u0131\u015fma">Ders çalışması</option>
-                          <option value="soru \u00e7\u00f6zme">Soru çözümü</option>
-                          <option value="kitap okuma">Kitap okuma</option>
-                        </select>
-                        <input value={freeDuration} onChange={(e) => setFreeDuration(e.target.value)} type="number" min="1" className="ios-button w-full rounded-[18px] px-3 py-3 text-sm" placeholder="Süre (dk)" required />
-                        {freeType === 'soru \u00e7\u00f6zme' && <input value={freeQuestionCount} onChange={(e) => setFreeQuestionCount(e.target.value)} type="number" min="1" className="ios-button w-full rounded-[18px] px-3 py-3 text-sm" placeholder="Soru sayısı" />}
-                        {freeType === 'kitap okuma' && <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="ios-button w-full rounded-[18px] px-3 py-3 text-sm" placeholder="Kitap adı" />}
-                        {freeType !== 'kitap okuma' && (
-                          <select value={freeGoalType} onChange={(e) => setFreeGoalType(e.target.value)} className="ios-button w-full rounded-[18px] px-3 py-3 text-sm">
-                            <option value="ders calisma">Ders çalışması</option>
-                            <option value="konu-tekrari">Konu tekrarı</option>
-                            <option value="eksik-konu-tamamlama">Eksik konu tamamlama</option>
-                            <option value="test-cozme">Test çözme</option>
-                          </select>
-                        )}
-                      </div>
-                    </section>
-
-                    <section className="ios-lilac flex flex-col justify-between rounded-[24px] p-4 text-slate-900">
+                    <div className="space-y-3.5 text-left">
                       <div>
-                        <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">3 Başlat</div>
-                        <p className="mt-3 text-sm leading-6 text-slate-600">Bu kayıt analizde planlı görevden ayrı tutulur ama konu performansına destek veri olarak eklenir.</p>
-                        <div className="ios-widget mt-4 rounded-[18px] px-3 py-3 text-xs leading-5 text-slate-600">
-                          {selectedCourseName || 'Ders'} {freeUnitName ? `/ ${freeUnitName}` : ''} {freeTopicName ? `/ ${freeTopicName}` : ''}
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ne çalışacaksın?</label>
+                        <input value={freeTitle} onChange={(e) => setFreeTitle(e.target.value)} placeholder="Örn: Limit ve Süreklilik" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 placeholder-slate-600" required />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ders</label>
+                          <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                            {safeCourses.map((course) => <option key={course.id} value={course.id}>{safeText(course.name, course.id)}</option>)}
+                          </select>
                         </div>
-                        {freeStudyError && (
-                          <div className="mt-3 rounded-[18px] bg-rose-50 px-3 py-2 text-xs font-bold leading-5 text-rose-700">
-                            {freeStudyError}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Çalışma Türü</label>
+                          <select value={freeType} onChange={(e) => setFreeType(e.target.value as any)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                            <option value="ders çalışması">Ders çalışması</option>
+                            <option value="soru çözme">Soru çözümü</option>
+                            <option value="kitap okuma">Kitap okuma</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {freeType !== 'kitap okuma' && activeUnits.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ünite</label>
+                            <select value={freeUnitName} onChange={(e) => setFreeUnitName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-2.5 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                              <option value="">Ünite seç</option>
+                              {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Konu</label>
+                            <select value={freeTopicName} onChange={(e) => setFreeTopicName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-2.5 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer" disabled={!freeUnitName}>
+                              <option value="">Konu seç</option>
+                              {activeTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Süre (dk)</label>
+                          <input value={freeDuration} onChange={(e) => setFreeDuration(e.target.value)} type="number" min="1" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="30" required />
+                        </div>
+                        {freeType === 'soru çözme' && (
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Soru Sayısı</label>
+                            <input value={freeQuestionCount} onChange={(e) => setFreeQuestionCount(e.target.value)} type="number" min="1" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="20" />
+                          </div>
+                        )}
+                        {freeType === 'kitap okuma' && (
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kitap Adı</label>
+                            <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 placeholder-slate-600" placeholder="Kitap adı girin" required />
+                          </div>
+                        )}
+                        {freeType !== 'kitap okuma' && (
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Hedef</label>
+                            <select value={freeGoalType} onChange={(e) => setFreeGoalType(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                              <option value="ders calisma">Ders çalışması</option>
+                              <option value="konu-tekrari">Konu tekrarı</option>
+                              <option value="eksik-konu-tamamlama">Eksik konu tamamlama</option>
+                              <option value="test-cozme">Test çözme</option>
+                            </select>
                           </div>
                         )}
                       </div>
-                      <button type="submit" disabled={creatingFreeStudy} className={`mt-4 rounded-[18px] px-5 py-3 text-sm font-black ${creatingFreeStudy ? 'ios-button cursor-not-allowed text-slate-500 opacity-60' : 'ios-button-active text-slate-900'}`}>
-                        {creatingFreeStudy ? 'Oluşturuluyor...' : 'Oluştur ve başlat'}
+
+                      {freeStudyError && (
+                        <div className="mt-3 rounded-[12px] bg-rose-950/50 border border-rose-900/50 px-3 py-2 text-xs font-bold leading-5 text-rose-300 text-center">
+                          {freeStudyError}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-5 flex gap-2 w-full">
+                      <button type="button" onClick={() => setShowFreeStudy(false)} className="flex-1 rounded-[12px] px-4 py-2.5 text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">
+                        İptal
                       </button>
-                    </section>
-                  </div>
-                </form>
+                      <button
+                        type="submit"
+                        disabled={creatingFreeStudy}
+                        className="flex-1 rounded-[12px] px-4 py-2.5 text-xs font-bold transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{
+                          background: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)',
+                          color: '#ffffff',
+                          border: '1px solid #1e40af',
+                          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                        }}
+                      >
+                        {creatingFreeStudy ? 'Başlatılıyor...' : 'Oluştur ve Başlat'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               )}
 
               <div className="space-y-4">
