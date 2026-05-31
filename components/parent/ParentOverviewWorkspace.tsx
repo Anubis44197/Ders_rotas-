@@ -744,7 +744,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
             return (
               <div className="dr-hig-secondary-card rounded-[26px] p-6" data-testid="overview-weekly-schedule-panel">
                 <div className="mb-4 flex items-center justify-between">
-                  <h4 className="dr-hig-headline text-slate-900 dark:text-white">Haftalık Çalışma Programı</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="dr-hig-headline text-slate-900 dark:text-white">Haftalık Çalışma Programı</h4>
+                    <ContextHelp title="Haftalık Çalışma Programı" tone="blue">
+                      Çocuğunuzun okul saatleri, etütleri ve evdeki çalışma programının haftalık görünümüdür. Günlük planlanan ders saatlerini ve serbest çalışma pencerelerini buradan izleyebilirsiniz.
+                    </ContextHelp>
+                  </div>
                   <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">
                     {scheduledDays.length} gün · {totalSlots} ders · {formatMinutes(totalMinutesScheduled)}
                   </div>
@@ -799,7 +804,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           {selectedCourseDetail && (
             <div className="dr-hig-secondary-card rounded-[26px] p-6" data-testid="overview-course-deep-dive-panel">
               <div className="mb-4 flex items-center justify-between">
-                <h4 className="dr-hig-headline text-slate-900 dark:text-white">Ders Detay Sayfasi ({selectedCourseDetail.courseName})</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="dr-hig-headline text-slate-900 dark:text-white">Ders Detay Sayfasi ({selectedCourseDetail.courseName})</h4>
+                  <ContextHelp title="Ders Detay Sayfası" tone="blue">
+                    Seçtiğiniz dersin genel durumunu gösterir. Çocuğunuzun o dersteki konu hakimiyeti, ortalama odaklanma puanı ve tekrar edilmesi gereken zayıf konu sayısını özetler.
+                  </ContextHelp>
+                </div>
                 <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Periyot: {periodOptions.find((option) => option.value === overviewStudyPeriod)?.label || '1A'}</div>
               </div>
               <div className="mb-4 flex flex-wrap gap-2">
@@ -897,7 +907,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
             <div className="dr-hig-secondary-card rounded-[26px] p-6" data-testid="overview-topic-deep-dive-panel">
               <div className="mb-4 flex items-center justify-between">
                 <div className="min-w-0">
-                  <h4 className="dr-hig-headline text-slate-900 dark:text-white">Konu Performansi</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="dr-hig-headline text-slate-900 dark:text-white">Konu Performansi</h4>
+                    <ContextHelp title="Konu Performansı" tone="blue">
+                      Ders altındaki konuların tamamlanma ve başarı durumunu listeler. Güçlü olunan veya ekstra çalışma/tekrar gerektiren konuları renk kodlarıyla anında ayırt edebilirsiniz.
+                    </ContextHelp>
+                  </div>
                   <div className="mt-1 truncate dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">
                     Secili konu: {selectedTopicDetail.topicName}
                   </div>
@@ -1083,7 +1098,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
 
           <div className="dr-hig-secondary-card rounded-[26px] p-6">
             <div className="mb-3 flex items-center justify-between">
-              <h4 className="dr-hig-headline text-slate-900 dark:text-white">Rapor Sayfasi</h4>
+              <div className="flex items-center gap-2">
+                <h4 className="dr-hig-headline text-slate-900 dark:text-white">Rapor Sayfasi</h4>
+                <ContextHelp title="Rapor Sayfası" tone="blue">
+                  Çocuğunuzun seçilen periyottaki akademik ilerlemesini, çözdüğü soruları, çalışma sürelerini ve sınav gelişimlerini özetleyen veli analiz raporudur.
+                </ContextHelp>
+              </div>
               <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Periyot: {periodOptions.find((option) => option.value === overviewStudyPeriod)?.label || '1A'}</div>
             </div>
             <div className="mb-3 flex flex-wrap gap-2">
@@ -1104,7 +1124,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
             {reportCardTab === 'course' ? (
               <div className="mt-4">
                 <div className="ios-widget rounded-[14px] p-3">
-                  <div className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ders Raporu Trendi</div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ders Raporu Trendi</span>
+                    <ContextHelp title="Ders Raporu Trendi" tone="blue">
+                      Bu grafik, çocuğunuzun tüm ana derslerdeki konu hakimiyetinin son 4 hafta içindeki gelişim yönünü (yükseliş/düşüş eğilimini) yan yana gösterir.
+                    </ContextHelp>
+                  </div>
                   {courseReportSeriesForChart.length > 0 ? (
                     <>
                       <svg viewBox="0 0 620 220" className="h-52 w-full" aria-label="Ders raporu trendi">
@@ -1149,7 +1174,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   )}
                 </div>
                 <div className="ios-widget rounded-[14px] p-3">
-                  <div className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ders Durumu</div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ders Durumu</span>
+                    <ContextHelp title="Ders Durumu" tone="blue">
+                      Bu grafik, çocuğunuzun şu anki aktif derslerdeki genel konu hakimiyeti ve ilerleme yüzdelerini karşılaştırmalı olarak gösterir.
+                    </ContextHelp>
+                  </div>
                   <svg viewBox="0 0 620 220" className="h-52 w-full" aria-label="Ders durumu cizgi grafigi">
                     <line x1="30" y1="182" x2="600" y2="182" stroke="#CBD5E1" strokeWidth="1" />
                     {[0, 25, 50, 75, 100].map((tick, i) => (
