@@ -119,8 +119,8 @@ interface ParentOverviewWorkspaceProps {
     color: string;
     points: number[];
   }>;
-  overviewStudyPeriod: 'week1' | 'week3' | 'week6' | 'month' | 'quarter' | 'total';
-  onOverviewStudyPeriodChange: (period: 'week1' | 'week3' | 'week6' | 'month' | 'quarter' | 'total') => void;
+  overviewStudyPeriod: 'week1' | 'week3' | 'month' | 'quarter' | 'total';
+  onOverviewStudyPeriodChange: (period: 'week1' | 'week3' | 'month' | 'quarter' | 'total') => void;
   overviewSignal: {
     title: string;
     text: string;
@@ -204,10 +204,9 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   lastCompletedTaskLabel,
   onOpenPlanning,
 }) => {
-  const periodOptions: Array<{ value: 'week1' | 'week3' | 'week6' | 'month' | 'quarter' | 'total'; label: string }> = [
+  const periodOptions: Array<{ value: 'week1' | 'week3' | 'month' | 'quarter' | 'total'; label: string }> = [
     { value: 'week1', label: '1H' },
     { value: 'week3', label: '3H' },
-    { value: 'week6', label: '6H' },
     { value: 'month', label: '1A' },
     { value: 'quarter', label: '3A' },
     { value: 'total', label: 'Genel' },

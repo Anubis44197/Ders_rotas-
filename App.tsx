@@ -163,7 +163,7 @@ interface ToastMessage {
 }
 
 type ParentWorkspaceView = 'overview' | 'planning' | 'analysis';
-type OverviewStudyPeriod = 'week1' | 'week3' | 'week6' | 'month' | 'quarter' | 'total';
+type OverviewStudyPeriod = 'week1' | 'week3' | 'month' | 'quarter' | 'total';
 type SearchScope = 'all' | 'tasks' | 'courses' | 'topics' | 'exams' | 'rewards';
 
 interface AppSearchResult {
@@ -884,11 +884,9 @@ const getOverviewPeriodStartDate = (period: OverviewStudyPeriod, today: string) 
     ? 6
     : period === 'week3'
       ? 20
-      : period === 'week6'
-        ? 41
-        : period === 'month'
-          ? 29
-          : 89;
+      : period === 'month'
+        ? 29
+        : 89;
   startDate.setDate(startDate.getDate() - lookbackDays);
   return startDate;
 };
@@ -896,7 +894,6 @@ const getOverviewPeriodStartDate = (period: OverviewStudyPeriod, today: string) 
 const getOverviewPeriodLookbackDays = (period: OverviewStudyPeriod) => {
   if (period === 'week1') return 7;
   if (period === 'week3') return 21;
-  if (period === 'week6') return 42;
   if (period === 'month') return 30;
   if (period === 'quarter') return 90;
   return 0;
@@ -911,7 +908,6 @@ const getOverviewComparisonLabel = (period: OverviewStudyPeriod) => {
 
 const getOverviewSparklinePointCount = (period: OverviewStudyPeriod) => {
   if (period === 'week1' || period === 'week3') return 7;
-  if (period === 'week6') return 8;
   if (period === 'month') return 10;
   return 12;
 };

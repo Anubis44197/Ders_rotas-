@@ -1,4 +1,4 @@
-type OverviewStudyPeriod = 'week1' | 'week3' | 'week6' | 'month' | 'quarter' | 'total';
+type OverviewStudyPeriod = 'week1' | 'week3' | 'month' | 'quarter' | 'total';
 
 type TaskLite = {
   completionDate?: string;
@@ -45,7 +45,6 @@ const isCompletedTask = (task: TaskLite) => task.status === 'tamamlandı';
 const lookbackDays = (period: OverviewStudyPeriod) => {
   if (period === 'week1') return 7;
   if (period === 'week3') return 21;
-  if (period === 'week6') return 42;
   if (period === 'month') return 30;
   if (period === 'quarter') return 90;
   return 0;
@@ -60,7 +59,6 @@ const comparisonLabel = (period: OverviewStudyPeriod) => {
 
 const pointCount = (period: OverviewStudyPeriod) => {
   if (period === 'week1' || period === 'week3') return 7;
-  if (period === 'week6') return 8;
   if (period === 'month') return 10;
   return 12;
 };
