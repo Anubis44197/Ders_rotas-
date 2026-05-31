@@ -344,13 +344,12 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
   const [resumedTimerState, setResumedTimerState] = useState<ResumeTimerState | undefined>(undefined);
   const [showFreeStudy, setShowFreeStudy] = useState(false);
   const [freeCourseId, setFreeCourseId] = useState(safeCourses[0]?.id || '');
-  const [freeType, setFreeType] = useState<'soru \u00e7\u00f6zme' | 'ders \u00e7al\u0131\u015fma' | 'kitap okuma'>('ders \u00e7al\u0131\u015fma');
+  const [freeType, setFreeType] = useState<string>('ders çalışma');
   const [freeDuration, setFreeDuration] = useState('30');
   const [freeQuestionCount, setFreeQuestionCount] = useState('20');
   const [freeBookTitle, setFreeBookTitle] = useState('');
   const [freeUnitName, setFreeUnitName] = useState('');
   const [freeTopicName, setFreeTopicName] = useState('');
-  const [freeGoalType, setFreeGoalType] = useState('ders calisma');
   const [claimingRewardId, setClaimingRewardId] = useState<string | null>(null);
   const [creatingFreeStudy, setCreatingFreeStudy] = useState(false);
   const [freeStudyError, setFreeStudyError] = useState<string | null>(null);
@@ -564,6 +563,25 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
       ? `Kitap Okuma: ${freeBookTitle.trim()}`
       : `${selectedCourseName}${freeUnitName ? ` / ${freeUnitName}` : ''}${freeTopicName ? ` / ${freeTopicName}` : ''}`;
 
+    let mappedTaskType: Task['taskType'] = 'ders çalışma';
+    let mappedTaskGoalType: string | undefined = undefined;
+
+    if (freeType === 'soru çözme') {
+      mappedTaskType = 'soru \u00e7\u00f6zme'; // soru çözme
+      mappedTaskGoalType = 'test-cozme';
+    } else if (freeType === 'kitap okuma') {
+      mappedTaskType = 'kitap okuma';
+    } else if (freeType === 'konu tekrarı') {
+      mappedTaskType = 'ders \u00e7al\u0131\u015fma'; // ders çalışma
+      mappedTaskGoalType = 'konu-tekrari';
+    } else if (freeType === 'eksik konu tamamlama') {
+      mappedTaskType = 'ders \u00e7al\u0131\u015fma'; // ders çalışma
+      mappedTaskGoalType = 'eksik-konu-tamamlama';
+    } else {
+      mappedTaskType = 'ders \u00e7al\u0131\u015fma'; // ders çalışma
+      mappedTaskGoalType = 'ders calisma';
+    }
+
     setCreatingFreeStudy(true);
     setFreeStudyError(null);
     try {
@@ -571,25 +589,24 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
         title: generatedTitle,
         courseId: freeCourseId,
         dueDate: today,
-        taskType: freeType,
+        taskType: mappedTaskType,
         plannedDuration: Math.round(plannedDuration),
         isSelfAssigned: true,
-        ...(freeType === 'soru \u00e7\u00f6zme' ? { questionCount: Math.round(questionCount) } : {}),
-        ...(freeType === 'kitap okuma' ? { bookTitle: freeBookTitle.trim(), readingType: 'serbest', bookGenre: 'Hikaye' } : {}),
+        ...(mappedTaskType === 'soru \u00e7\u00f6zme' ? { questionCount: Math.round(questionCount) } : {}),
+        ...(mappedTaskType === 'kitap okuma' ? { bookTitle: freeBookTitle.trim(), readingType: 'serbest', bookGenre: 'Hikaye' } : {}),
         ...(freeUnitName ? { curriculumUnitName: freeUnitName } : {}),
         ...(freeTopicName ? { curriculumTopicName: freeTopicName } : {}),
-        ...(freeType !== 'kitap okuma' ? { taskGoalType: freeGoalType || undefined } : {}),
+        ...(mappedTaskType !== 'kitap okuma' ? { taskGoalType: mappedTaskGoalType || undefined } : {}),
         planSource: 'free-study',
       });
 
       setShowFreeStudy(false);
-      setFreeType('ders \u00e7al\u0131\u015fma');
+      setFreeType('ders çalışma');
       setFreeDuration('30');
       setFreeQuestionCount('20');
       setFreeBookTitle('');
       setFreeUnitName('');
       setFreeTopicName('');
-      setFreeGoalType('ders calisma');
       setFreeStudyError(null);
       startSelectedTask(created);
     } catch {
@@ -746,7 +763,9 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Çalışma Türü</label>
                           <select value={freeType} onChange={(e) => setFreeType(e.target.value as any)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
                             <option value="ders çalışma">Ders çalışması</option>
-                            <option value="soru çözme">Soru çözümü</option>
+                            <option value="konu tekrarı">Konu tekrarı</option>
+                            <option value="eksik konu tamamlama">Eksik konu tamamlama</option>
+                            <option value="soru çözme">Test çözme</option>
                             <option value="kitap okuma">Kitap okuma</option>
                           </select>
                         </div>
@@ -767,17 +786,6 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                             <div>
                               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kitap Adı</label>
                               <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 placeholder-slate-600" placeholder="Kitap adı girin" required />
-                            </div>
-                          )}
-                          {freeType !== 'kitap okuma' && (
-                            <div>
-                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Hedef</label>
-                              <select value={freeGoalType} onChange={(e) => setFreeGoalType(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
-                                <option value="ders calisma">Ders çalışması</option>
-                                <option value="konu-tekrari">Konu tekrarı</option>
-                                <option value="eksik-konu-tamamlama">Eksik konu tamamlama</option>
-                                <option value="test-cozme">Test çözme</option>
-                              </select>
                             </div>
                           )}
                         </div>
