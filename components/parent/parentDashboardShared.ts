@@ -80,16 +80,23 @@ export const normalizeForLookup = (value: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-export type TaskTypeKey = 'question' | 'study' | 'revision';
+export type TaskTypeKey = 'question' | 'study' | 'revision' | 'branch-exam' | 'general-exam';
 export type TaskWorkspaceTab = 'assignment' | 'list' | 'exams' | 'data';
 
 export const resolveTaskTypeKey = (value: string): TaskTypeKey => {
   if (value === 'question') return 'question';
   if (value === 'revision') return 'revision';
+  if (value === 'branch-exam' || value === 'branş deneme') return 'branch-exam';
+  if (value === 'general-exam' || value === 'genel deneme') return 'general-exam';
   return 'study';
 };
 
-export const taskTypeKeyToTaskType = (value: TaskTypeKey): 'soru çözme' | 'ders çalışma' => (value === 'question' ? 'soru çözme' : 'ders çalışma');
+export const taskTypeKeyToTaskType = (value: TaskTypeKey): 'soru çözme' | 'ders çalışma' | 'branş deneme' | 'genel deneme' => {
+  if (value === 'question') return 'soru çözme';
+  if (value === 'branch-exam') return 'branş deneme';
+  if (value === 'general-exam') return 'genel deneme';
+  return 'ders çalışma';
+};
 
 export const ASSIGNMENT_METRIC_OPTIONS = [
   { key: 'accuracy', label: 'Doğruluk', hint: 'Doğru cevap oranını takip eder.' },
@@ -105,6 +112,8 @@ export const ASSIGNMENT_METRICS_BY_TASK_TYPE: Record<TaskTypeKey, AssignmentMetr
   question: ['accuracy', 'focus', 'duration', 'completion'],
   study: ['focus', 'duration', 'revision', 'completion'],
   revision: ['revision', 'focus', 'duration', 'completion'],
+  'branch-exam': ['accuracy', 'focus', 'duration', 'completion'],
+  'general-exam': ['accuracy', 'focus', 'duration', 'completion'],
 };
 
 export const assignmentMetricLabelMap: Record<AssignmentMetricKey, string> = ASSIGNMENT_METRIC_OPTIONS.reduce((acc, option) => {

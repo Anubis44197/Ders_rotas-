@@ -1,4 +1,4 @@
-﻿import { CompositeExamResult, Course, ExamRecord, PeriodCoursePerformance, StoredStudyPlan, Task } from '../types';
+import { CompositeExamResult, Course, ExamRecord, PeriodCoursePerformance, StoredStudyPlan, Task } from '../types';
 import { isCompletedTask } from './taskStatus';
 import { getTodayString } from './dateUtils';
 import { DEFAULT_METRIC_CONFIG, getTaskMetricProfile } from './metricConfig';

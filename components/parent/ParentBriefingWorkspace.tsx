@@ -41,6 +41,10 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
     return <div className="ios-card ios-coral rounded-[26px] px-4 py-8 text-center text-sm text-rose-800">{error}</div>;
   }
 
+  if (analysis.sessions.length < 3) {
+    return null;
+  }
+
   const weakTopic = analysis.topics.find((topic) => topic.needsRevision);
   const bestCourse = [...analysis.courses].sort((left, right) => right.averageMastery - left.averageMastery)[0];
   const hasAnalysisData = analysis.sessions.length > 0 && analysis.overall.completedTasks > 0;

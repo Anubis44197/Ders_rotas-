@@ -1,4 +1,4 @@
-﻿// Bildirim tipi
+// Bildirim tipi
 export interface Notification {
   id: string;
   type: string; // 'reward_request' | 'task_completed' | 'achievement' | 'reminder' | ...
@@ -40,7 +40,7 @@ export interface Task {
   planLabel?: string;
   postponed?: boolean; // Gorev daha sonra tamamlanmak uzere ertelendi mi?
   assignedTo?: string; // Uzaktan atanmis gorevlerde hedef cocuk kullanici kimligi.
-  taskType: 'soru \u00e7\u00f6zme' | 'ders \u00e7al\u0131\u015fma' | 'kitap okuma';
+  taskType: 'soru çözme' | 'ders çalışma' | 'kitap okuma' | 'branş deneme' | 'genel deneme';
   readingType?: 'ders' | 'serbest'; // For kitap okuma tasks only
   plannedDuration: number; // in minutes
   questionCount?: number;
@@ -203,6 +203,11 @@ export interface ParentDashboardProps {
     pendingTodayCount: number;
     overdueCount: number;
   };
+  overviewTodaySlots?: any[];
+  overviewTodayName?: string;
+  overviewUpcomingExam?: any;
+  overviewExamDecision?: any;
+  onOpenPlanning?: (message: string) => void;
   timeFilter?: TimeFilterValue;
   loading?: boolean;
   error?: string | null;

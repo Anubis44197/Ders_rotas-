@@ -35,6 +35,8 @@ const taskTypeLabels: Record<Task['taskType'], string> = {
   'soru \u00e7\u00f6zme': 'Soru çözme',
   'ders \u00e7al\u0131\u015fma': 'Ders çalışması',
   'kitap okuma': 'Kitap okuma',
+  'branş deneme': 'Branş deneme',
+  'genel deneme': 'Genel deneme',
 };
 
 function getPeriodKey(date: string, period: Period) {

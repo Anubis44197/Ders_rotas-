@@ -56,7 +56,7 @@ interface ParentTaskWorkspaceProps {
   viewMode: 'all' | 'assignment' | 'tasks' | 'exams' | 'data' | 'analysis';
 }
 
-const card = 'ios-card rounded-[30px] p-6';
+const card = 'dr-hig-secondary-card rounded-[30px] p-6';
 const PARENT_TASK_PREVIEW_LIMIT = 12;
 
 const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
@@ -581,7 +581,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         </div>
       </section>}
 
-      {showAssignmentSection && <div className="ios-card rounded-[32px] p-6">
+      {showAssignmentSection && <div className="dr-hig-secondary-card rounded-[32px] p-6">
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Görev atama</div>
@@ -785,37 +785,37 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         <input ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleImportFileChange} className="hidden" />
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <section className="ios-widget rounded-[26px] border border-emerald-400/20 bg-slate-900/30 p-5">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-emerald-400/25 bg-emerald-500/10 text-emerald-300">
+          <section className="ios-widget rounded-[26px] border border-emerald-200/50 bg-emerald-50/50 p-5 shadow-sm">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-emerald-200/40 bg-emerald-500/10 text-emerald-600">
               <Download className="h-5 w-5" />
             </div>
             <h4 className="text-lg font-black text-slate-900">Yedek oluştur</h4>
             <p className="mt-2 min-h-[60px] text-sm text-slate-600">Bugünkü verileri indirilebilir bir dosyaya kaydeder. Dosya adı tarihli gelir.</p>
-            <button onClick={handleExportData} disabled={isExporting || !onExportData} className={`ios-button mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold text-slate-100 ${isExporting || !onExportData ? 'cursor-not-allowed opacity-50' : ''}`}>
+            <button onClick={handleExportData} disabled={isExporting || !onExportData} className={`ios-button mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold ${isExporting || !onExportData ? 'cursor-not-allowed opacity-50' : ''}`}>
               <Download className="h-4 w-4" />
               {isExporting ? 'Yedek hazırlanıyor...' : 'Yedek indir'}
             </button>
           </section>
 
-          <section className="ios-widget rounded-[26px] border border-blue-400/20 bg-slate-900/30 p-5">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-blue-400/25 bg-blue-500/10 text-blue-300">
+          <section className="ios-widget rounded-[26px] border border-blue-200/50 bg-blue-50/50 p-5 shadow-sm">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-blue-200/40 bg-blue-500/10 text-blue-600">
               <Upload className="h-5 w-5" />
             </div>
             <h4 className="text-lg font-black text-slate-900">Yedekten yükle</h4>
             <p className="mt-2 min-h-[60px] text-sm text-slate-600">Seçilen dosya önce incelenir. Onay vermeden mevcut veri değişmez.</p>
-            <button onClick={handleImportClick} disabled={isImporting} className={`ios-button mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold text-slate-100 ${isImporting ? 'cursor-not-allowed opacity-50' : ''}`}>
+            <button onClick={handleImportClick} disabled={isImporting} className={`ios-button mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold ${isImporting ? 'cursor-not-allowed opacity-50' : ''}`}>
               <Upload className="h-4 w-4" />
               Dosya seç
             </button>
           </section>
 
-          <section className="ios-widget rounded-[26px] border border-rose-400/20 bg-slate-900/30 p-5">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-rose-400/25 bg-rose-500/10 text-rose-300">
+          <section className="ios-widget rounded-[26px] border border-rose-200/50 bg-rose-50/50 p-5 shadow-sm">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-rose-200/40 bg-rose-500/10 text-rose-600">
               <Trash2 className="h-5 w-5" />
             </div>
             <h4 className="text-lg font-black text-slate-900">Veriyi temizle</h4>
             <p className="mt-2 min-h-[60px] text-sm text-slate-600">Tüm yerel kayıtları siler. Bu adımdan önce yedek almak en güvenli akıştır.</p>
-            <button onClick={handleDeleteAllData} disabled={isDeletingAllData} className={`mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] border border-rose-400/35 bg-rose-500/15 px-4 py-3 font-bold text-rose-200 transition hover:bg-rose-500/25 ${isDeletingAllData ? 'cursor-not-allowed opacity-50' : ''}`}>
+            <button onClick={handleDeleteAllData} disabled={isDeletingAllData} className={`mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 font-bold text-rose-600 transition hover:bg-rose-100 ${isDeletingAllData ? 'cursor-not-allowed opacity-50' : ''}`}>
               <Trash2 className="h-4 w-4" />
               {isDeletingAllData ? 'Siliniyor...' : 'Tüm veriyi sil'}
             </button>
@@ -823,7 +823,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         </div>
 
         {importFileDetails && (
-          <div className="ios-card mt-5 rounded-[28px] p-5">
+          <div className="dr-hig-secondary-card mt-5 rounded-[28px] p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Seçilen yedek</div>

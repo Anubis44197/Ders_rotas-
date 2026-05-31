@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ParentDashboardProps } from '../../types';
 import type { AnalysisSnapshot } from '../../utils/analysisEngine';
-import type { ParentDecisionResult } from '../../utils/parentDecisionEngine';
+
 import ParentTaskWorkspace from './ParentTaskWorkspace';
 import ParentAnalysisWorkspace from './ParentAnalysisWorkspace';
 import ParentRewardWorkspace from './ParentRewardWorkspace';
@@ -9,7 +9,6 @@ import ParentBriefingWorkspace from './ParentBriefingWorkspace';
 
 type ParentDashboardInternalProps = ParentDashboardProps & {
   analysisSnapshot: AnalysisSnapshot;
-  decisionSummary: ParentDecisionResult;
 };
 
 const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
@@ -36,7 +35,11 @@ const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
   error,
   viewMode = 'all',
   analysisSnapshot,
-  decisionSummary,
+  overviewTodaySlots,
+  overviewTodayName,
+  overviewUpcomingExam,
+  overviewExamDecision,
+  onOpenPlanning,
 }) => {
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -77,11 +80,10 @@ const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
 
       {showAnalysis && (
         <ParentAnalysisWorkspace
-          tasks={tasks}
           courses={courses}
+          tasks={tasks}
           curriculum={curriculum}
           analysis={analysis}
-          decision={decisionSummary}
           examRecords={examRecords}
           compositeExamResults={compositeExamResults}
           generateReport={generateReport}
@@ -91,6 +93,11 @@ const ParentDashboard: React.FC<ParentDashboardInternalProps> = ({
           error={error}
           viewMode={viewMode}
           overviewTodayOperational={overviewTodayOperational}
+          overviewTodaySlots={overviewTodaySlots}
+          overviewTodayName={overviewTodayName}
+          overviewUpcomingExam={overviewUpcomingExam}
+          overviewExamDecision={overviewExamDecision}
+          onOpenPlanning={onOpenPlanning}
         />
       )}
 

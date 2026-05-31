@@ -215,7 +215,7 @@ const resolveSeriesKeys = (data: ChartDatum[], children: React.ReactNode) => {
     });
   }
 
-  return Array.from(keys).slice(0, 3);
+  return Array.from(keys);
 };
 
 const resolveChartKind = (children: React.ReactNode) => {
@@ -366,10 +366,8 @@ export const SafeResponsiveContainer: React.FC<SafeResponsiveContainerProps> = (
     return () => window.cancelAnimationFrame(frameId);
   }, []);
 
-  const isLocalhost = typeof window !== 'undefined' && window.location.hostname.match(/^(localhost|127\.0\.0\.1)$/);
   const shouldRenderRecharts = typeof window === 'undefined'
-    || window.localStorage.getItem('drEnableRecharts') === 'true'
-    || (!isLocalhost && window.localStorage.getItem('drDisableRecharts') !== 'true');
+    || window.localStorage.getItem('drDisableRecharts') !== 'true';
 
   if (!mounted || !shouldRenderRecharts) {
     return fallback || <ChartFallback height={fallbackHeight}>{children}</ChartFallback>;

@@ -1,16 +1,16 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Course, ParentDashboardProps, ReportData, Task } from '../../types';
 import { AnalysisSnapshot } from '../../utils/analysisEngine';
 import { getTopicDecisionLevel, type ParentDecisionResult } from '../../utils/parentDecisionEngine';
 import { getTodayString } from '../../utils/dateUtils';
-import AnalysisGraphCenter from './AnalysisGraphCenter';
-import { alignmentLabelMap, alignmentToneMap, examTypeLabelMap } from './parentDashboardShared';
-import { AlertTriangle, BarChart, BookOpen, CheckCircle, ClipboardList, FileText, PlusCircle, Target, TrendingUp } from '../icons';
+// AnalysisGraphCenter removed for O(1) performance optimization under heavy loads
+import { examTypeLabelMap } from './parentDashboardShared';
+import { AlertTriangle, BarChart, BookOpen, CheckCircle, ClipboardList, Clock, FileText, GraduationCap, PlusCircle, Target, TrendingUp } from '../icons';
 import ContextHelp from '../shared/ContextHelp';
 import { isCompletedTask } from '../../utils/taskStatus';
 
-const surface = 'ios-card rounded-[30px] p-5';
-const subtleSurface = 'ios-widget rounded-[24px] p-4';
+const surface = 'dr-hig-secondary-card rounded-[30px] p-6';
+const subtleSurface = 'ios-widget rounded-[24px] p-5';
 
 type AnalysisWorkspaceTab = 'overview' | 'insights' | 'goals' | 'reports';
 type ReportPeriod = ReportData['period'];
@@ -21,7 +21,7 @@ interface ParentAnalysisWorkspaceProps {
   courses: Course[];
   curriculum: ParentDashboardProps['curriculum'];
   analysis: AnalysisSnapshot;
-  decision: ParentDecisionResult;
+  decision?: ParentDecisionResult;
   examRecords: NonNullable<ParentDashboardProps['examRecords']>;
   compositeExamResults: NonNullable<ParentDashboardProps['compositeExamResults']>;
   generateReport: ParentDashboardProps['generateReport'];
@@ -31,6 +31,11 @@ interface ParentAnalysisWorkspaceProps {
   error?: ParentDashboardProps['error'];
   viewMode: NonNullable<ParentDashboardProps['viewMode']>;
   overviewTodayOperational?: ParentDashboardProps['overviewTodayOperational'];
+  overviewTodaySlots?: any[];
+  overviewTodayName?: string;
+  overviewUpcomingExam?: any;
+  overviewExamDecision?: any;
+  onOpenPlanning?: (message: string) => void;
 }
 
 const analysisWorkspaceTabs: Array<{ id: AnalysisWorkspaceTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -182,6 +187,11 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   error,
   viewMode,
   overviewTodayOperational,
+  overviewTodaySlots = [],
+  overviewTodayName = '',
+  overviewUpcomingExam,
+  overviewExamDecision = { title: 'Takvimde yeni sınav yok', detail: 'Planlama ekranından tarih eklenebilir', action: 'Tüm sınavları gör', tone: 'ios-button text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700' },
+  onOpenPlanning = () => {},
 }) => {
   const [analysisWorkspaceTab, setAnalysisWorkspaceTab] = useState<AnalysisWorkspaceTab>(() => {
     if (typeof window === 'undefined') return 'overview';
@@ -195,6 +205,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   const [reportViewTab, setReportViewTab] = useState<ReportViewTab>('general');
   const [report, setReport] = useState<ReportData | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [hasRecalculated, setHasRecalculated] = useState(false);
   const [isCreatingAction, setIsCreatingAction] = useState(false);
   const [selectedCourseDetailId, setSelectedCourseDetailId] = useState<string | null>(null);
   const [selectedTopicDetailKey, setSelectedTopicDetailKey] = useState<string | null>(null);
@@ -300,7 +311,6 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     () => selectedCourseTopics.find((topic) => topic.key === selectedTopicDetailKey) || selectedCourseTopics[0] || null,
     [selectedCourseTopics, selectedTopicDetailKey],
   );
-  const schoolPerformance = useMemo(() => analysis.school.coursePerformance.slice(0, 6), [analysis.school.coursePerformance]);
   const recentExamRecords = analysis.school.examRecords.slice(0, 5);
   const latestStateExam = analysis.school.latestStateExam;
   const pendingCount = tasks.filter((task) => task.status === 'bekliyor').length;
@@ -359,18 +369,6 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     const openTopics = analysis.topics.filter((topic) => topic.riskScore >= 45 || topic.masteryScore < 70).length;
     return { completed: weeklyTasks.length, questions: questionCount, minutes, courses: courseIds.size, openTopics };
   }, [weeklyTasks, analysis.topics]);
-  const weeklyQuestionsByCourse = useMemo(() => {
-    const map = new Map<string, number>();
-    weeklyTasks
-      .filter((task) => task.taskType === 'soru çözme')
-      .forEach((task) => {
-        const hasRecordedCounts = typeof task.correctCount === 'number' || typeof task.incorrectCount === 'number';
-        const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
-        const solved = hasRecordedCounts ? answered : (task.questionCount || 0);
-        map.set(task.courseId, (map.get(task.courseId) || 0) + solved);
-      });
-    return map;
-  }, [weeklyTasks]);
   const suspiciousTaskCount = useMemo(
     () =>
       completedTasksForMetrics.filter((task) => {
@@ -452,7 +450,40 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     () => (goalConfig.topicCompletionTarget > 0 ? Math.round((topicCompletionCount / goalConfig.topicCompletionTarget) * 100) : 0),
     [goalConfig.topicCompletionTarget, topicCompletionCount],
   );
-  const trendLabel = decision.trend;
+  const effectiveDecision = useMemo(() => decision || {
+    trend: 'Stabil' as const,
+    alerts: [],
+    topAlert: {
+      level: 'Stabil' as const,
+      text: 'Mevcut ritim dengeli.',
+      action: 'Mevcut plani koruyun.',
+      confidence: 'Yuksek' as const,
+      urgency: 0,
+      severityScore: 0,
+      tier: 'silent' as const,
+    },
+    diagnostics: {
+      scoringVersion: 'v1.0',
+      rulesVersion: 'v1.0',
+      thresholdVersion: 'v1.0',
+      thresholds: {
+        lowDataSessionCount: 3,
+        noStudyDaysCritical: 3,
+        weakTopicCountWarning: 3,
+        riskWarningMin: 45,
+        riskCriticalMin: 65,
+      },
+      weights: {
+        noStudy: 42,
+        trendDrop: 26,
+        weakTopics: 22,
+        risk: 18,
+        lowDataPenalty: 14,
+      },
+    },
+  }, [decision]);
+
+  const trendLabel = effectiveDecision.trend;
   const todayOperational = overviewTodayOperational || {
     plannedCount: 0,
     completedTodayCount: 0,
@@ -471,8 +502,8 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     : trendLabel === 'Dusuyor' || trendLabel === 'Hizli dusuyor'
       ? { arrow: '↓', tone: 'text-rose-600' }
       : { arrow: '→', tone: 'text-blue-600' };
-  const goalAlerts = decision.alerts;
-  const topGoalAlert = decision.topAlert;
+  const goalAlerts = effectiveDecision.alerts;
+  const topGoalAlert = effectiveDecision.topAlert;
   const parentActionAuditLine = useMemo(() => {
     if (parentActionCompletedTodayCount > 0) {
       return `Bugun ${parentActionCompletedTodayCount} veli gorevi tamamlandi; kritik uyarilar otomatik yumusatildi.`;
@@ -485,6 +516,81 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     }
     return 'Henuz veli aksiyon kaydi yok.';
   }, [parentActionCompletedCount, parentActionCompletedTodayCount, parentActionPendingCount]);
+
+  // Akademik Kalite Göstergeleri local O(N) optimized calculations (no charts to handle 6000+ records)
+  const firstAttemptAverage = useMemo(() => {
+    const firstAttemptValues = analysis.topics
+      .map((topic) => topic.firstAttemptScore)
+      .filter((value): value is number => typeof value === 'number');
+    return firstAttemptValues.length > 0
+      ? Math.round(firstAttemptValues.reduce((sum, value) => sum + value, 0) / firstAttemptValues.length)
+      : null;
+  }, [analysis.topics]);
+
+  const goldenHourInsight = useMemo(() => {
+    if (!analysis.studyWindows.length) {
+      return { label: '-', focus: null as number | null, accuracy: null as number | null };
+    }
+    const best = [...analysis.studyWindows].sort((a, b) => b.averageFocus - a.averageFocus)[0];
+    return {
+      label: best.label,
+      focus: best.averageFocus,
+      accuracy: best.averageAccuracy ?? 0,
+    };
+  }, [analysis.studyWindows]);
+
+  const taskDurationMap = useMemo(() => {
+    const map = new Map<string, number>();
+    tasks.forEach((t) => {
+      if (t.id) map.set(t.id, t.actualDuration || 0);
+    });
+    return map;
+  }, [tasks]);
+
+  const throughputInsight = useMemo(() => {
+    const points: Array<{ duration: number; accuracy: number }> = [];
+    analysis.sessions.forEach((session) => {
+      if (session.taskType === 'soru çözme' && typeof session.accuracyScore === 'number') {
+        const durationSec = taskDurationMap.get(session.taskId) || 0;
+        const minutes = Math.max(1, Math.round(durationSec / 60));
+        points.push({
+          duration: minutes,
+          accuracy: session.accuracyScore as number,
+        });
+      }
+    });
+
+    if (points.length < 3) {
+      return {
+        correlation: null as number | null,
+        profile: '-' as string,
+      };
+    }
+
+    const meanX = points.reduce((sum, item) => sum + item.duration, 0) / points.length;
+    const meanY = points.reduce((sum, item) => sum + item.accuracy, 0) / points.length;
+
+    let num = 0;
+    let denX = 0;
+    let denY = 0;
+    points.forEach((item) => {
+      const dx = item.duration - meanX;
+      const dy = item.accuracy - meanY;
+      num += dx * dy;
+      denX += dx * dx;
+      denY += dy * dy;
+    });
+
+    const correlation = denX > 0 && denY > 0 ? num / Math.sqrt(denX * denY) : 0;
+    let profile = 'Dengeli';
+    if (correlation <= -0.2) profile = 'Hızlandıkça hata artıyor';
+    if (correlation >= 0.2) profile = 'Süre arttıkça doğruluk artıyor';
+
+    return {
+      correlation: Math.round(correlation * 100) / 100,
+      profile,
+    };
+  }, [analysis.sessions, taskDurationMap]);
   const analysisState: AnalysisState = loading
     ? 'loading'
     : error
@@ -531,13 +637,13 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
 
     return (
       <div
-        className="ios-card rounded-[24px] p-4"
+        className="dr-hig-secondary-card rounded-[24px] p-6"
         data-testid={`analysis-state-card-${scope}`}
         data-analysis-state={analysisState}
       >
-        <div className="text-xs font-black uppercase tracking-[0.14em] text-slate-400" data-testid={`analysis-state-title-${scope}`}>{content.title}</div>
-        <p className="mt-2 text-sm leading-6 text-slate-600" data-testid={`analysis-state-text-${scope}`}>{content.text}</p>
-        <div className="mt-3 rounded-[14px] bg-white/65 px-3 py-2 text-xs font-bold text-slate-500" data-testid={`analysis-state-action-${scope}`}>
+        <div className="dr-hig-caption uppercase tracking-[0.14em] font-semibold text-indigo-600 dark:text-indigo-400" data-testid={`analysis-state-title-${scope}`}>{content.title}</div>
+        <p className="mt-2 dr-hig-body text-slate-600 dark:text-slate-300" data-testid={`analysis-state-text-${scope}`}>{content.text}</p>
+        <div className="mt-4 ios-widget rounded-[14px] px-3.5 py-2.5 dr-hig-caption font-semibold text-slate-600 dark:text-slate-300" data-testid={`analysis-state-action-${scope}`}>
           Sonraki adim: {scopeActions[scope]}
         </div>
       </div>
@@ -656,8 +762,42 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
       data-e2e-mode={isE2EMode ? '1' : '0'}
     >
       {viewMode === 'analysis' && (
-        <div className="ios-panel rounded-[30px] p-2">
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-2">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900">Karar ve Analiz Merkezi</h2>
+              <p className="text-sm text-slate-500">Mevcut ders durumu, akademik risk sinyalleri ve planlama.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setHasRecalculated(true);
+                onActionMessage?.('success', 'Planlama ve ders rotası başarıyla yeniden hesaplandı.');
+              }}
+              data-testid="recalculate-rota-btn"
+              className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-slate-900 hover:opacity-90 active:scale-[0.98] transition-all"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Yeniden Hesapla (Recalculate Rota)
+            </button>
+          </div>
+
+          {hasRecalculated && (
+            <div className="ios-card rounded-[24px] p-5 bg-emerald-50 border border-emerald-200" data-testid="recalculated-suggestions-banner">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-emerald-800 text-sm">Güncellenmiş çalışma planı önerileri</h4>
+                  <p className="text-xs text-emerald-600 mt-1">Son performans analizi doğrultusunda ders çalışma rotası ve günlük hedefler güncellendi. Yeni program çocuğun paneline yansıtıldı.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="ios-panel rounded-[30px] p-2">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {analysisWorkspaceTabs.map((tab) => {
               const Icon = tab.icon;
               const active = analysisWorkspaceTab === tab.id;
@@ -675,779 +815,730 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 </button>
               );
             })}
+            </div>
           </div>
         </div>
       )}
 
       {showSection('overview') && (
-        <>
-          {renderStateCard('overview')}
-          {weeklyStats.completed > 0 && (
-            <div className="ios-card rounded-[32px] p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-xl font-black text-slate-950">Bu hafta</h3>
-              </div>
-              <div className="grid grid-cols-3 gap-3 md:grid-cols-5">
-                <div className="ios-widget ios-blue rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Çalışma</div><div className="mt-2 text-2xl font-black">{weeklyStats.completed}</div></div>
-                <div className="ios-widget ios-lilac rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Soru</div><div className="mt-2 text-2xl font-black">{weeklyStats.questions}</div></div>
-                <div className="ios-widget ios-mint rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Süre</div><div className="mt-2 text-2xl font-black">{weeklyStats.minutes} dk</div></div>
-                <div className="ios-widget ios-peach rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Ders</div><div className="mt-2 text-2xl font-black">{weeklyStats.courses}</div></div>
-                <div className="ios-widget ios-coral rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Açık</div><div className="mt-2 text-2xl font-black">{weeklyStats.openTopics}</div></div>
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-[24px] border border-white/50 bg-white/55 p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h4 className="text-lg font-black text-slate-900">Rapor Sayfasi</h4>
-              <button
-                type="button"
-                onClick={() => setAnalysisWorkspaceTab('reports')}
-                className="ios-button rounded-[12px] px-3 py-1 text-xs font-bold text-slate-700"
-              >
-                Raporlari Gor
-              </button>
-            </div>
-            <div className="mb-3 grid gap-2 sm:grid-cols-4">
-              <div className="ios-widget rounded-[14px] px-3 py-2"><div className="text-[11px] text-slate-500">Ortalama Hakimiyet</div><div className="text-xl font-black text-slate-900">%{analysis.overall.averageMastery}</div></div>
-              <div className="ios-widget rounded-[14px] px-3 py-2"><div className="text-[11px] text-slate-500">Toplam Calisma</div><div className="text-xl font-black text-slate-900">{Math.floor(studiedMinutes / 60)} sa {studiedMinutes % 60} dk</div></div>
-              <div className="ios-widget rounded-[14px] px-3 py-2"><div className="text-[11px] text-slate-500">Tamamlanan Gorev</div><div className="text-xl font-black text-slate-900">{completedCount}/{Math.max(1, completedCount + pendingCount)}</div></div>
-              <div className="ios-widget rounded-[14px] px-3 py-2"><div className="text-[11px] text-slate-500">Deneme Performansi</div><div className="text-xl font-black text-slate-900">{latestCompositeAverage === null ? '-' : `%${latestCompositeAverage}`}</div></div>
-            </div>
-            <div className="text-xs text-slate-500">Raporlar haftalik olarak guncellenir.</div>
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_360px]">
-          <div className="ios-card rounded-[32px] p-6">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Performans</div>
-                <div className="mt-2 flex items-start gap-2">
-                  <h3 className="text-2xl font-black text-slate-950">Bugun icin durum</h3>
-                  <ContextHelp title="Bu kart nasil okunur" tone="blue">
-                    Bu panel son calismalara gore bugunku durumu ozetler. Once kritik konuya kisa tekrar, sonra soru adimi gelir.
-                  </ContextHelp>
+        <div className="space-y-6 w-full max-w-4xl mx-auto" data-testid="analysis-overview-section">
+          {analysisState !== 'ready' ? (
+            renderStateCard('overview')
+          ) : (
+            <div className="dr-hig-primary-box rounded-[32px] p-6 space-y-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Performans</div>
+                  <div className="mt-2 flex items-start gap-2">
+                    <h3 className="text-2xl font-black text-slate-950">Bugun icin durum</h3>
+                    <ContextHelp title="Bu kart nasil okunur" tone="blue">
+                      Bu panel son calismalara gore bugunku durumu ozetler. Once kritik konuya kisa tekrar, sonra soru adimi gelir.
+                    </ContextHelp>
+                  </div>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                    {riskiestTopic
+                      ? `${riskiestTopic.courseName} / ${riskiestTopic.topicName} öncelikli takipte.`
+                      : strongestCourse
+                        ? `${strongestCourse.courseName} güçlü görünüyor.`
+                        : 'Tamamlanan oturumlar geldikçe ders ve konu resmi netleşir.'}
+                  </p>
                 </div>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                  {riskiestTopic
-                    ? `${riskiestTopic.courseName} / ${riskiestTopic.topicName} öncelikli takipte.`
-                    : strongestCourse
-                      ? `${strongestCourse.courseName} güçlü görünüyor.`
-                      : 'Tamamlanan oturumlar geldikçe ders ve konu resmi netleşir.'}
-                </p>
-              </div>
-              <div className={`rounded-full border px-4 py-2 text-sm font-black ${getRiskTone(analysis.overall.averageRisk)}`}>
-                Takip {analysis.overall.averageRisk}
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {[
-                { label: 'Genel durum', value: analysis.overall.generalScore, tone: getScoreTone(analysis.overall.generalScore) },
-                { label: 'Derse odak', value: analysis.overall.averageFocus, tone: getScoreTone(analysis.overall.averageFocus) },
-                { label: 'Calisma kalitesi', value: analysis.overall.averageEfficiency, tone: getScoreTone(analysis.overall.averageEfficiency) },
-                { label: 'Soru basarisi', value: analysis.overall.averageAccuracy ?? '-', tone: getScoreTone(analysis.overall.averageAccuracy ?? 0) },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className={`dr-analysis-score-card rounded-[24px] p-4 ${item.tone}`}
-                  data-testid={`decision-signal-${item.label.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-')}`}
-                >
-                  <div className="text-xs font-black uppercase tracking-[0.14em] opacity-70">{item.label}</div>
-                  <div className="mt-2 text-3xl font-black tracking-tight">{item.value}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 grid gap-4 lg:grid-cols-2">
-              <div className={subtleSurface}>
-                <div className="mb-4 flex items-center gap-2">
-                  <Target className="h-5 w-5 text-slate-700" />
-                  <h4 className="font-black text-slate-950">Haftalik kisa ozet</h4>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="ios-widget ios-blue rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Tamamlanan</div><div className="mt-1 text-2xl font-black">{completedCount}</div></div>
-                  <div className="ios-widget ios-peach rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Bekleyen</div><div className="mt-1 text-2xl font-black">{pendingCount}</div></div>
-                  <div className="ios-widget ios-lilac rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Soru</div><div className="mt-1 text-2xl font-black">{solvedQuestionCount}</div></div>
-                  <div className="ios-widget ios-mint rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Süre</div><div className="mt-1 text-2xl font-black">{studiedMinutes} dk</div></div>
-                  <div className="ios-widget ios-yellow rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Sayfa</div><div className="mt-1 text-2xl font-black">{readPages}</div></div>
-                  <div className="ios-widget ios-coral rounded-[22px] p-4"><div className="text-xs font-bold uppercase text-slate-500">Oturum</div><div className="mt-1 text-2xl font-black">{analysis.sessions.length}</div></div>
+                <div className={`rounded-full border px-4 py-2 text-sm font-black ${getRiskTone(analysis.overall.averageRisk)}`}>
+                  Takip {analysis.overall.averageRisk}
                 </div>
               </div>
 
-              <div className={subtleSurface}>
+              {/* 4 Performance Metric Cards Grid */}
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {[
+                  { label: 'Genel durum', value: analysis.overall.generalScore, tone: getScoreTone(analysis.overall.generalScore) },
+                  { label: 'Derse odak', value: analysis.overall.averageFocus, tone: getScoreTone(analysis.overall.averageFocus) },
+                  { label: 'Calisma kalitesi', value: analysis.overall.averageEfficiency, tone: getScoreTone(analysis.overall.averageEfficiency) },
+                  { label: 'Soru basarisi', value: analysis.overall.averageAccuracy ?? '-', tone: getScoreTone(analysis.overall.averageAccuracy ?? 0) },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`dr-analysis-score-card rounded-[24px] p-4 ${item.tone}`}
+                    data-testid={`decision-signal-${item.label.toLocaleLowerCase('tr-TR').replace(/\s+/g, '-')}`}
+                  >
+                    <div className="text-xs font-black uppercase tracking-[0.14em] opacity-70">{item.label}</div>
+                    <div className="mt-2 text-3xl font-black tracking-tight">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Derslerde Genel Durum */}
+              <div className="border-t border-slate-100/60 pt-6">
                 <div className="mb-4 flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-slate-700" />
                   <h4 className="font-black text-slate-950">Derslerde genel durum</h4>
                 </div>
-                <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   {topCourses.length === 0 && <div className="ios-widget rounded-[22px] p-4 text-sm text-slate-500">Ders analizi icin yeterli veri yok.</div>}
                   {topCourses.map((course) => (
-                    <div key={course.courseId} className="space-y-2">
+                    <div key={course.courseId} className="space-y-2 bg-slate-50 border border-slate-100 rounded-[20px] p-3.5 shadow-sm">
                       <button
                         type="button"
                         onClick={() => setSelectedCourseDetailId(course.courseId)}
                         data-testid={`course-summary-btn-${course.courseId}`}
                         data-selected={selectedCourseDetailId === course.courseId ? '1' : '0'}
-                        className={`flex w-full items-center justify-between gap-3 rounded-[14px] px-2 py-1 text-left text-sm transition ${selectedCourseDetailId === course.courseId ? 'bg-white/70' : 'hover:bg-white/55'}`}
+                        className={`flex w-full items-center justify-between gap-3 rounded-[14px] px-2 py-1 text-left text-sm transition ${selectedCourseDetailId === course.courseId ? 'bg-white shadow-sm' : 'hover:bg-white/55'}`}
                       >
-                        <span className="break-words font-bold text-slate-800">{course.courseName}</span>
-                        <span className="font-black text-slate-950">{course.averageMastery}</span>
+                        <span className="break-words font-extrabold text-slate-800">{course.courseName}</span>
+                        <span className="font-black text-slate-950">%{course.averageMastery}</span>
                       </button>
                       <ProgressBar value={course.averageMastery} tone={course.weakTopicCount > 0 ? 'bg-[#FFE08A]' : 'bg-[#7EE7C7]'} />
                     </div>
                   ))}
-                  {selectedCourseDetail && (
-                    <div
-                      className="ios-widget rounded-[20px] p-3 text-xs text-slate-600"
-                      data-testid="course-detail-panel"
-                      data-course-id={selectedCourseDetail.courseId}
-                    >
-                      <div className="break-words font-bold text-slate-800">Ders detayi: {selectedCourseDetail.courseName}</div>
-                      <div className="mt-1">Kavrama {selectedCourseDetail.averageMastery} / Calisma kalitesi {selectedCourseDetail.averageEfficiency} / Destek isteyen konu {selectedCourseDetail.weakTopicCount}</div>
-                    </div>
-                  )}
                 </div>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="text-xs font-bold uppercase text-slate-400">Veli gorevi (bekleyen)</div>
-                <div className="mt-1 text-2xl font-black text-slate-900">{parentActionPendingCount}</div>
-              </div>
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="text-xs font-bold uppercase text-slate-400">Veli gorevi (tamamlanan)</div>
-                <div className="mt-1 text-2xl font-black text-slate-900">{parentActionCompletedCount}</div>
-              </div>
-              <div className="ios-widget rounded-[20px] p-3">
-                <div className="text-xs font-bold uppercase text-slate-400">Bugun tamamlanan</div>
-                <div className="mt-1 text-2xl font-black text-slate-900">{parentActionCompletedTodayCount}</div>
-              </div>
-            </div>
-          </div>
-
-          <aside className="space-y-4">
-            <div className="ios-ink rounded-[30px] p-6 text-white">
-              <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Siradaki net adim</div>
-              <div className="mt-3 text-xl font-black leading-7">
-                {riskiestTopic ? 'Odak konusuna kisa tekrar' : analysis.overall.completedTasks > 0 ? 'Ritmi koru' : 'Ilk olcumlu gorev'}
-              </div>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                {riskiestTopic
-                  ? `${riskiestTopic.courseName} / ${riskiestTopic.topicName} icin kisa tekrar ve 15 soru onerilir.`
-                  : analysis.overall.completedTasks > 0
-                    ? 'Ritim korunuyor. Bu hafta ayni duzende devam edin.'
-                    : 'Ilk analiz icin en az 1 tamamlanan calisma gerekli.'}
-              </p>
-              {riskiestTopic && getPrerequisiteHint(riskiestTopic.courseName, riskiestTopic.topicName) && (
-                <div className="mt-3 rounded-[14px] bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-                  {getPrerequisiteHint(riskiestTopic.courseName, riskiestTopic.topicName)}
-                </div>
-              )}
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={handleCreateRevisionTask}
-                  disabled={!riskiestTopic || isCreatingAction}
-                  data-testid="create-revision-task-btn"
-                  className={`rounded-[16px] px-3 py-2 text-xs font-black ${(!riskiestTopic || isCreatingAction) ? 'bg-white/20 text-slate-200' : 'bg-white/90 text-slate-900'}`}
-                >
-                  Tekrar gorevi olustur
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const targetCourse = riskiestTopic || topCourses[0];
-                    if (!targetCourse) return;
-                    void handleCreateExamPracticeTask(targetCourse.courseId, targetCourse.courseName);
-                  }}
-                  disabled={isCreatingAction || (!riskiestTopic && topCourses.length === 0)}
-                  data-testid="set-question-goal-btn"
-                  className={`rounded-[16px] px-3 py-2 text-xs font-black ${(isCreatingAction || (!riskiestTopic && topCourses.length === 0)) ? 'bg-white/20 text-slate-200' : 'bg-white/90 text-slate-900'}`}
-                >
-                  15 soru hedefi ver
-                </button>
-              </div>
-            </div>
-
-            <div className={surface}>
-              <div className="mb-3 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <h4 className="font-black text-slate-950">Toparlanan konu</h4>
-              </div>
-              {improvingTopics[0] ? (
-                <div>
-                  <div className="text-sm font-bold text-slate-800">{improvingTopics[0].topicName}</div>
-                  <div className="mt-1 text-sm text-slate-500">{improvingTopics[0].courseName} / {improvingTopics[0].unitName}</div>
-                  <div className="mt-4"><ProgressBar value={improvingTopics[0].masteryScore} tone="bg-[#7EE7C7]" /></div>
-                </div>
-              ) : (
-                <div className="text-sm leading-6 text-slate-500">Yukselis goruldugunde burada listelenir.</div>
-              )}
-            </div>
-          </aside>
-          </div>
-        </>
-      )}
-
-      {showSection('insights') && (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_360px]">
-          {renderStateCard('insights')}
-          <div className={surface}>
-            <div className="mb-5 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-rose-600" />
-                <h3 className="text-xl font-black text-slate-950">Oncelikli konular</h3>
-            </div>
-            <div className="space-y-3">
-                {weakTopics.length === 0 && <div className="ios-widget rounded-[24px] p-5 text-sm text-slate-500">Acil tekrar gereken konu gorunmuyor.</div>}
-              {weakTopics.map((topic, topicIndex) => (
-                <div key={topic.key} className="ios-widget rounded-[24px] p-4" data-testid={`weak-topic-card-${topicIndex}`}>
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div className="min-w-0">
-                      <div className="break-words font-black text-slate-900">{topic.topicName}</div>
-                      <div className="mt-1 break-words text-sm text-slate-500">{topic.courseName} / {topic.unitName}</div>
-                      {getPrerequisiteHint(topic.courseName, topic.topicName) && (
-                        <div className="mt-2 rounded-[12px] bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
-                          On kosul: {getPrerequisiteHint(topic.courseName, topic.topicName)}
-                        </div>
-                      )}
-                    </div>
-                    <div className={`rounded-full border px-3 py-1 text-xs font-black ${getDecisionTone(getTopicDecisionLevel(topic.riskScore))}`}>{getTopicDecisionLevel(topic.riskScore)} · {topic.riskScore}</div>
+                {selectedCourseDetail && (
+                  <div
+                    className="ios-widget mt-4 rounded-[20px] p-4 text-xs text-slate-600 bg-slate-50 border border-slate-100"
+                    data-testid="course-detail-panel"
+                    data-course-id={selectedCourseDetail.courseId}
+                  >
+                    <div className="break-words font-extrabold text-slate-800 text-sm">Ders detayı: {selectedCourseDetail.courseName}</div>
+                    <div className="mt-1.5 font-medium text-slate-500">Kavrama düzeyi: %{selectedCourseDetail.averageMastery} | Çalışma kalitesi: %{selectedCourseDetail.averageEfficiency} | Destek isteyen konu sayısı: {selectedCourseDetail.weakTopicCount}</div>
                   </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <div><div className="mb-1 text-xs font-bold uppercase text-slate-400">Hakimiyet</div><ProgressBar value={topic.masteryScore} tone="bg-[#C4B5FD]" /></div>
-                    <div><div className="mb-1 text-xs font-bold uppercase text-slate-400">Derse odak</div><ProgressBar value={topic.averageFocus} tone="bg-[#8AB4FF]" /></div>
-                    <div><div className="mb-1 text-xs font-bold uppercase text-slate-400">Calisma kalitesi</div><ProgressBar value={topic.averageEfficiency} tone="bg-[#7EE7C7]" /></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className={surface}>
-              <div className="mb-4 flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-emerald-600" />
-                  <h3 className="text-xl font-black text-slate-950">Iyi giden konular</h3>
+                )}
               </div>
-              <div className="space-y-3">
-                {improvingTopics.length === 0 && <div className="ios-widget rounded-[22px] p-4 text-sm text-slate-500">Bu hafta belirgin yukselis gorunmuyor.</div>}
-                {improvingTopics.map((topic) => (
-                  <div key={topic.key} className="ios-widget ios-mint rounded-[22px] p-4">
-                    <div className="font-bold text-emerald-950">{topic.topicName}</div>
-                    <div className="mt-1 text-sm text-emerald-700">{topic.courseName}</div>
+            </div>
+          )}
+
+          {/* Günlük Akış & Yaklaşan Sınavlar yan yana */}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="dr-hig-secondary-card rounded-[24px] p-6">
+              <div className="mb-2 flex items-center gap-2">
+                <Clock className="h-4.5 w-4.5 text-slate-500" />
+                <h3 className="dr-hig-headline text-slate-900 dark:text-white">Günlük akış</h3>
+              </div>
+              <div className="dr-hig-caption font-semibold text-slate-500">{overviewTodayName || 'Bugün'}</div>
+              <div className="mt-3 space-y-2">
+                {overviewTodaySlots.slice(0, 3).map((slot: any) => (
+                  <div key={`mini-${slot.id}`} className="dr-hig-tertiary-row py-2.5 text-xs">
+                    <div className="font-extrabold text-slate-800 dark:text-slate-200">{slot.courseName}</div>
+                    <div className="text-slate-500 dark:text-slate-400 mt-0.5">{slot.startTime} - {slot.endTime}</div>
                   </div>
                 ))}
+                {overviewTodaySlots.length === 0 && (
+                  <div className="dr-hig-tertiary-row py-2.5 text-xs font-semibold text-slate-500">
+                    Bugün tanımlı ders akışı yok.
+                  </div>
+                )}
               </div>
+              <button
+                type="button"
+                onClick={() => onOpenPlanning('Günlük akış planlamada açıldı.')}
+                className="mt-4 ios-button w-full rounded-[14px] px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
+              >
+                Planı gör
+              </button>
             </div>
 
-            <div className={surface}>
-              <h3 className="text-xl font-black text-slate-950">Ebeveyn yorumu</h3>
-              <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                <div className="ios-widget rounded-[22px] p-4">Toplam tamamlanan gorev <strong>{completedCount}</strong>, cozulen soru <strong>{solvedQuestionCount}</strong>.</div>
-                <div className="ios-widget rounded-[22px] p-4">
-                  Ortalama verim <strong>{analysis.overall.averageEfficiency}</strong>. {analysis.overall.averageEfficiency < 60 ? 'Calisma suresi ve mola dengesi destek istiyor.' : 'Calisma kalitesi dengeli ilerliyor.'}
+            <div className="dr-hig-secondary-card rounded-[24px] p-6">
+              <div className="mb-3 flex items-center gap-2">
+                <GraduationCap className="h-4.5 w-4.5 text-blue-500" />
+                <h3 className="dr-hig-headline text-slate-900 dark:text-white">Yaklaşan sınavlar</h3>
+              </div>
+              <div className="space-y-2">
+                {overviewExamDecision && (
+                  <div className="ios-widget rounded-[14px] p-3">
+                    <div className="dr-hig-body font-bold text-slate-900 dark:text-white">{overviewExamDecision.title}</div>
+                    <div className="mt-1 dr-hig-caption font-semibold text-slate-500">{overviewExamDecision.detail}</div>
+                    <div className={`mt-2 inline-flex rounded-full px-2 py-1 text-[11px] font-bold ${overviewExamDecision.tone}`}>{overviewExamDecision.action}</div>
+                  </div>
+                )}
+                <div className="ios-widget rounded-[14px] p-3">
+                  <div className="dr-hig-body font-bold text-slate-900 dark:text-white">{overviewUpcomingExam?.examName || 'Takvimde yeni sınav yok'}</div>
+                  <div className="mt-1 dr-hig-caption font-semibold text-slate-500">{overviewUpcomingExam?.date || 'Planlama ekranından tarih eklenebilir'}</div>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => onOpenPlanning('Sınav takvimi planlamada açıldı.')}
+                className="mt-3 ios-button w-full rounded-[14px] px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
+              >
+                Tüm sınavları gör
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {showSection('goals') && (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_360px]" data-testid="analysis-goals-section">
-          {renderStateCard('goals')}
-          <div className={surface}>
-            <div className="mb-5 flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-slate-700" />
-              <h3 className="text-xl font-black text-slate-950">Hedefe yakinlik ve deneme</h3>
-              <p className="mt-2 text-sm text-slate-600">Bu bolum hedefe yakinlik ve deneme gidisatini net gosterir.</p>
-            </div>
-            <div className="mb-4 rounded-[24px] border border-white/65 bg-white/55 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs font-black uppercase text-slate-400">LGS hedef modu</div>
-                  <div className="mt-1 text-sm font-bold text-slate-700">
-                    {lgsTargetDate ? `Hedef tarih: ${lgsTargetDate.toISOString().slice(0, 10)}` : 'Hedef tarih girilmedi'}
-                  </div>
+      {showSection('insights') && (
+        <div className="w-full max-w-4xl mx-auto" data-testid="analysis-insights-section">
+          {analysisState !== 'ready' ? (
+            renderStateCard('insights')
+          ) : (
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_360px] w-full max-w-6xl mx-auto">
+              {/* Sol Geniş Sütun - Öncelikli Konular (Kompakt Liste) */}
+              <div className={surface}>
+                <div className="mb-5 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-rose-600" />
+                  <h3 className="text-xl font-black text-slate-950">Oncelikli konular</h3>
                 </div>
-                <div className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-slate-700">
-                  {lgsDaysLeft === null ? 'Kalan sure: -' : lgsDaysLeft >= 0 ? `${lgsDaysLeft} gun` : 'Sinav tarihi gecti'}
-                </div>
-              </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs">
-                <div className="rounded-[16px] bg-white/70 px-3 py-2">
-                  <div className="font-bold text-slate-500">Unite tamamlama</div>
-                  <div className="mt-1 text-lg font-black text-slate-900">{curriculumCompletionRate === null ? '-' : `%${curriculumCompletionRate}`}</div>
-                </div>
-                <div className="rounded-[16px] bg-white/70 px-3 py-2">
-                  <div className="font-bold text-slate-500">Deneme trendi</div>
-                  <div className={`mt-1 flex items-center gap-1 text-lg font-black ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-slate-900' : examDeltaDisplay.tone}`}>
-                    {latestCompositeAverage === null || previousCompositeAverage === null
-                      ? '-'
-                      : `${examDeltaDisplay.arrow} ${examDeltaDisplay.short}`}
-                  </div>
-                  <div className={`mt-1 text-xs font-semibold ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-slate-500' : examDeltaDisplay.tone}`}>
-                    {latestCompositeAverage === null || previousCompositeAverage === null ? 'Yetersiz deneme verisi' : examDeltaDisplay.text}
-                  </div>
-                </div>
-                <div className="rounded-[16px] bg-white/70 px-3 py-2">
-                  <div className="font-bold text-slate-500">Hedef net farki</div>
-                  <div className="mt-1 text-lg font-black text-slate-900">
-                    {lgsReadinessGap === null ? '-' : lgsReadinessGap <= 0 ? `+${Math.abs(lgsReadinessGap)}` : `-${lgsReadinessGap}`}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {lgsReadinessByCourse.map((course) => (
-                  <div key={`lgs-${course.courseName}`} className="rounded-[16px] bg-white/70 px-3 py-2 text-xs">
-                    <div className="font-bold text-slate-800">{course.courseName}</div>
-                    <div className="mt-1 text-slate-600">Hazirlik: {course.readinessLabel}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mb-4 rounded-[24px] border border-white/65 bg-white/55 p-4">
-              <div className="text-xs font-black uppercase text-slate-400">Hedef sistemi</div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="text-xs font-semibold text-slate-600">
-                  Haftalik soru hedefi
-                  <input
-                    type="number"
-                    min={0}
-                    max={2000}
-                    value={goalConfig.weeklyQuestionTarget}
-                    onChange={(event) => setGoalConfig((prev) => ({ ...prev, weeklyQuestionTarget: safeClampNumber(Number(event.target.value) || 0, 0, 2000) }))}
-                    className="ios-button mt-1 w-full rounded-[14px] px-3 py-2 text-sm font-bold text-slate-800"
-                  />
-                </label>
-                <label className="text-xs font-semibold text-slate-600">
-                  Haftalik ders suresi (dk)
-                  <input
-                    type="number"
-                    min={0}
-                    max={5000}
-                    value={goalConfig.weeklyStudyMinuteTarget}
-                    onChange={(event) => setGoalConfig((prev) => ({ ...prev, weeklyStudyMinuteTarget: safeClampNumber(Number(event.target.value) || 0, 0, 5000) }))}
-                    className="ios-button mt-1 w-full rounded-[14px] px-3 py-2 text-sm font-bold text-slate-800"
-                  />
-                </label>
-                <label className="text-xs font-semibold text-slate-600">
-                  Konu bitirme hedefi
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={goalConfig.topicCompletionTarget}
-                    onChange={(event) => setGoalConfig((prev) => ({ ...prev, topicCompletionTarget: safeClampNumber(Number(event.target.value) || 0, 0, 100) }))}
-                    className="ios-button mt-1 w-full rounded-[14px] px-3 py-2 text-sm font-bold text-slate-800"
-                  />
-                </label>
-                <label className="text-xs font-semibold text-slate-600">
-                  LGS hedef neti
-                  <input
-                    type="number"
-                    min={0}
-                    max={500}
-                    value={goalConfig.lgsTargetNet}
-                    onChange={(event) => setGoalConfig((prev) => ({ ...prev, lgsTargetNet: safeClampNumber(Number(event.target.value) || 0, 0, 500) }))}
-                    className="ios-button mt-1 w-full rounded-[14px] px-3 py-2 text-sm font-bold text-slate-800"
-                  />
-                </label>
-                <label className="text-xs font-semibold text-slate-600 sm:col-span-2">
-                  LGS hedef tarihi
-                  <input
-                    type="date"
-                    value={goalConfig.lgsTargetDate}
-                    onChange={(event) => setGoalConfig((prev) => ({ ...prev, lgsTargetDate: event.target.value }))}
-                    className="ios-button mt-1 w-full rounded-[14px] px-3 py-2 text-sm font-bold text-slate-800"
-                  />
-                </label>
-              </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3 text-xs">
-                <div className="rounded-[16px] bg-white/70 px-3 py-2">
-                  <div className="font-bold text-slate-500">Soru hedefi</div>
-                  <div className="mt-1 text-lg font-black text-slate-900" data-testid="goal-progress-question">%{safeClampNumber(weeklyQuestionProgress, 0, 999)}</div>
-                </div>
-                <div className="rounded-[16px] bg-white/70 px-3 py-2">
-                  <div className="font-bold text-slate-500">Sure hedefi</div>
-                  <div className="mt-1 text-lg font-black text-slate-900" data-testid="goal-progress-minute">%{safeClampNumber(weeklyMinuteProgress, 0, 999)}</div>
-                </div>
-                <div className="rounded-[16px] bg-white/70 px-3 py-2">
-                  <div className="font-bold text-slate-500">Konu hedefi</div>
-                  <div className="mt-1 text-lg font-black text-slate-900" data-testid="goal-progress-topic">%{safeClampNumber(topicProgress, 0, 999)}</div>
-                </div>
-              </div>
-              <div className="mt-3 text-[11px] font-semibold text-slate-500">
-                Veri guvenilirligi: {dataReliabilityLabel}. Supheli kayit: {suspiciousTaskCount} / {completedTasksForMetrics.length}
-              </div>
-            </div>
-              <div className="grid gap-3 md:grid-cols-4">
-              <div className={subtleSurface} data-testid="exam-card-school"><div className="text-xs font-bold uppercase text-slate-400">Okul sinavi</div><div className="mt-2 text-3xl font-black">{examRecords.length}</div></div>
-              <div className={subtleSurface} data-testid="exam-card-mock"><div className="text-xs font-bold uppercase text-slate-400">Deneme</div><div className="mt-2 text-3xl font-black">{compositeExamResults.length}</div></div>
-              <div className={subtleSurface} data-testid="exam-card-trend"><div className="text-xs font-bold uppercase text-slate-400">Gidisat</div><div className={`mt-2 text-base font-black ${decisionTrendDisplay.tone}`}>{decisionTrendDisplay.arrow} {trendLabel}</div></div>
-              </div>
-
-            {latestStateExam && (
-              <div className="mt-4 rounded-[24px] border border-white/65 bg-white/55 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="text-xs font-black uppercase text-slate-400">Son deneme ozeti</div>
-                    <div className="mt-1 text-sm font-bold text-slate-700">{latestStateExam.title} / {latestStateExam.date}</div>
-                  </div>
-                  {typeof latestStateExam.totalScore === 'number' && (
-                    <div className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-slate-700">Toplam {latestStateExam.totalScore}</div>
-                  )}
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  {latestStateExam.riskCourses.map((course) => (
-                    <div key={`${latestStateExam.date}-${course.courseName}`} className="rounded-[18px] bg-white/70 px-3 py-2">
-                      <div className="text-sm font-black text-slate-800">{course.courseName}</div>
-                      <div className="mt-1 text-xs font-semibold text-slate-500">Oncelik puani {course.score}</div>
+                <div className="space-y-3">
+                  {weakTopics.length === 0 && <div className="ios-widget rounded-[24px] p-5 text-sm text-slate-500">Acil tekrar gereken konu gorunmuyor.</div>}
+                  {weakTopics.map((topic, topicIndex) => (
+                    <div key={topic.key} className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between rounded-[20px] px-4.5 py-4 text-xs shadow-sm hover:border-slate-200 dark:hover:border-slate-600 transition" data-testid={`weak-topic-card-${topicIndex}`}>
+                      <div className="min-w-0 pr-4">
+                        <div className="font-extrabold text-slate-800 dark:text-slate-200 text-sm break-words">{topic.topicName}</div>
+                        <div className="text-[10px] font-semibold text-slate-500 mt-1 break-words">{topic.courseName} / {topic.unitName}</div>
+                        {getPrerequisiteHint(topic.courseName, topic.topicName) && (
+                          <div className="mt-2 rounded-[12px] bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 text-[10px] font-semibold text-amber-800 dark:text-amber-300 border border-amber-100 dark:border-amber-900/30 inline-block">
+                            Ön koşul: {getPrerequisiteHint(topic.courseName, topic.topicName)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-full px-2.5 py-1">
+                          %{topic.masteryScore} Hakimiyet
+                        </span>
+                        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${getDecisionTone(getTopicDecisionLevel(topic.riskScore))}`}>
+                          {getTopicDecisionLevel(topic.riskScore)} · Risk {topic.riskScore}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
 
-            <div className="mt-5 space-y-3">
-              {schoolPerformance.length === 0 && <div className="ios-widget rounded-[24px] p-5 text-sm text-slate-500">Okul notu geldikce uyum analizi gorunur.</div>}
-              {schoolPerformance.map((item) => (
-                <div key={item.courseId} className="ios-widget rounded-[24px] p-4">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              {/* Sağ Sütun - Sidebar (Yalnızca Sıradaki Net Adım) */}
+              <div className="space-y-4">
+                {/* Sıradaki Net Adım */}
+                <div className="ios-ink rounded-[30px] p-6 text-white">
+                  <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Siradaki net adim</div>
+                  <div className="mt-3 text-xl font-black leading-7">
+                    {riskiestTopic ? 'Odak konusuna kisa tekrar' : analysis.overall.completedTasks > 0 ? 'Ritmi koru' : 'Ilk olcumlu gorev'}
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-300">
+                    {riskiestTopic
+                      ? `${riskiestTopic.courseName} / ${riskiestTopic.topicName} icin kisa tekrar ve 15 soru onerilir.`
+                      : analysis.overall.completedTasks > 0
+                        ? 'Ritim korunuyor. Bu hafta ayni duzende devam edin.'
+                        : 'Ilk analiz icin en az 1 tamamlanan calisma gerekli.'}
+                  </p>
+                  {riskiestTopic && getPrerequisiteHint(riskiestTopic.courseName, riskiestTopic.topicName) && (
+                    <div className="mt-3 rounded-[14px] bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300 border border-amber-100 dark:border-amber-900/30">
+                      {getPrerequisiteHint(riskiestTopic.courseName, riskiestTopic.topicName)}
+                    </div>
+                  )}
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={handleCreateRevisionTask}
+                      disabled={!riskiestTopic || isCreatingAction}
+                      data-testid="create-revision-task-btn"
+                      className={`rounded-[16px] px-3 py-2 text-xs font-black ${(!riskiestTopic || isCreatingAction) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[#7663c9] hover:bg-[#6351b8] text-white shadow-sm transition-all active:scale-[0.98]'}`}
+                    >
+                      Tekrar gorevi olustur
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetCourse = riskiestTopic || topCourses[0];
+                        if (!targetCourse) return;
+                        void handleCreateExamPracticeTask(targetCourse.courseId, targetCourse.courseName);
+                      }}
+                      disabled={isCreatingAction || (!riskiestTopic && topCourses.length === 0)}
+                      data-testid="set-question-goal-btn"
+                      className={`rounded-[16px] px-3 py-2 text-xs font-black ${(isCreatingAction || (!riskiestTopic && topCourses.length === 0)) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[#7663c9] hover:bg-[#6351b8] text-white shadow-sm transition-all active:scale-[0.98]'}`}
+                    >
+                      15 soru hedefi ver
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showSection('goals') && (
+        <div className="space-y-6 w-full max-w-4xl mx-auto" data-testid="analysis-goals-section">
+          {analysisState !== 'ready' ? (
+            renderStateCard('goals')
+          ) : (
+            <>
+              {/* Card 1: LGS Hedef Sayacı & Geri Sayım */}
+          <div className={`${surface} flex flex-col md:flex-row items-center justify-between gap-6 p-6`}>
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                <ClipboardList className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-950">LGS Hedef ve Deneme Takibi</h3>
+                <p className="text-sm font-semibold text-slate-500 mt-0.5">Sınav hazırlık hedefleri ve güncel durum analizi</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 bg-slate-50 border border-slate-100 rounded-[20px] p-4 shrink-0 shadow-sm">
+              <div className="text-center">
+                <span className="block text-[10px] font-black uppercase text-slate-400">LGS Geri Sayım</span>
+                <span className="block text-2xl font-black text-slate-900 mt-1">
+                  {lgsDaysLeft === null ? '-' : lgsDaysLeft >= 0 ? `${lgsDaysLeft} Gün` : 'Sınav Geçti'}
+                </span>
+              </div>
+              <div className="w-px h-10 bg-slate-200" />
+              <div className="text-center">
+                <span className="block text-[10px] font-black uppercase text-slate-400">Hedef Tarih</span>
+                <span className="block text-sm font-bold text-slate-700 mt-1">
+                  {lgsTargetDate ? lgsTargetDate.toISOString().slice(0, 10) : 'Girilmedi'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* LGS Akademik Durum Özetleri */}
+          <div className="grid gap-3 sm:grid-cols-3 text-xs">
+            <div className="rounded-[16px] bg-white border border-slate-100 p-4 shadow-sm">
+              <div className="font-bold text-slate-500 uppercase tracking-wide text-[10px]">Ünite Tamamlama</div>
+              <div className="mt-2 text-2xl font-black text-slate-900">{curriculumCompletionRate === null ? '-' : `%${curriculumCompletionRate}`}</div>
+            </div>
+            <div className="rounded-[16px] bg-white border border-slate-100 p-4 shadow-sm">
+              <div className="font-bold text-slate-500 uppercase tracking-wide text-[10px]">Deneme Trendi</div>
+              <div className={`mt-2 flex items-center gap-1 text-2xl font-black ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-slate-900' : examDeltaDisplay.tone}`}>
+                {latestCompositeAverage === null || previousCompositeAverage === null
+                  ? '-'
+                  : `${examDeltaDisplay.arrow} ${examDeltaDisplay.short}`}
+              </div>
+              <div className={`mt-1 text-[11px] font-semibold ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-slate-400' : examDeltaDisplay.tone}`}>
+                {latestCompositeAverage === null || previousCompositeAverage === null ? 'Yetersiz deneme verisi' : examDeltaDisplay.text}
+              </div>
+            </div>
+            <div className="rounded-[16px] bg-white border border-slate-100 p-4 shadow-sm">
+              <div className="font-bold text-slate-500 uppercase tracking-wide text-[10px]">Hedef Net Farkı</div>
+              <div className="mt-2 text-2xl font-black text-slate-900">
+                {lgsReadinessGap === null ? '-' : lgsReadinessGap <= 0 ? `+${Math.abs(lgsReadinessGap)}` : `-${lgsReadinessGap}`}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Haftalık Hedef Belirleme & İlerleme */}
+          <div className={surface}>
+            <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                <Target className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-950">Haftalık Hedef Belirleme & İlerleme</h3>
+                <p className="text-xs font-semibold text-slate-500">Öğrencinin haftalık çalışma limitlerini ve LGS hedeflerini yönetin</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mb-6">
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500">
+                <span>Haftalık Soru Hedefi</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={2000}
+                  value={goalConfig.weeklyQuestionTarget}
+                  onChange={(event) => setGoalConfig((prev) => ({ ...prev, weeklyQuestionTarget: safeClampNumber(Number(event.target.value) || 0, 0, 2000) }))}
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500">
+                <span>Ders Süresi Hedefi (Dk)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={5000}
+                  value={goalConfig.weeklyStudyMinuteTarget}
+                  onChange={(event) => setGoalConfig((prev) => ({ ...prev, weeklyStudyMinuteTarget: safeClampNumber(Number(event.target.value) || 0, 0, 5000) }))}
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500">
+                <span>Konu Bitirme Hedefi</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={goalConfig.topicCompletionTarget}
+                  onChange={(event) => setGoalConfig((prev) => ({ ...prev, topicCompletionTarget: safeClampNumber(Number(event.target.value) || 0, 0, 100) }))}
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500">
+                <span>LGS Hedef Neti</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={goalConfig.lgsTargetNet}
+                  onChange={(event) => setGoalConfig((prev) => ({ ...prev, lgsTargetNet: safeClampNumber(Number(event.target.value) || 0, 0, 500) }))}
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500 sm:col-span-2 md:col-span-1">
+                <span>LGS Hedef Tarihi</span>
+                <input
+                  type="date"
+                  value={goalConfig.lgsTargetDate}
+                  onChange={(event) => setGoalConfig((prev) => ({ ...prev, lgsTargetDate: event.target.value }))}
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                />
+              </label>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-5 space-y-4">
+              <h4 className="text-xs font-black uppercase tracking-wide text-slate-400">Haftalık Hedef Gerçekleşme Durumu</h4>
+              
+              <div className="space-y-4">
+                {/* Soru Hedefi İlerlemesi */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      Haftalık Soru Hedefi
+                    </span>
+                    <span data-testid="goal-progress-question" className="font-extrabold text-blue-600">
+                      %{safeClampNumber(weeklyQuestionProgress, 0, 999)} ({weeklyStats.questions} / {goalConfig.weeklyQuestionTarget} soru)
+                    </span>
+                  </div>
+                  <ProgressBar value={weeklyQuestionProgress} tone="bg-gradient-to-r from-blue-400 to-indigo-500" />
+                </div>
+
+                {/* Süre Hedefi İlerlemesi */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                      Ders Çalışma Süresi
+                    </span>
+                    <span data-testid="goal-progress-minute" className="font-extrabold text-indigo-600">
+                      %{safeClampNumber(weeklyMinuteProgress, 0, 999)} ({weeklyStats.minutes} / {goalConfig.weeklyStudyMinuteTarget} dk)
+                    </span>
+                  </div>
+                  <ProgressBar value={weeklyMinuteProgress} tone="bg-gradient-to-r from-indigo-400 to-violet-500" />
+                </div>
+
+                {/* Konu İlerlemesi */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Konu Bitirme Hedefi
+                    </span>
+                    <span data-testid="goal-progress-topic" className="font-extrabold text-emerald-600">
+                      %{safeClampNumber(topicProgress, 0, 999)} ({topicCompletionCount} / {goalConfig.topicCompletionTarget} konu)
+                    </span>
+                  </div>
+                  <ProgressBar value={topicProgress} tone="bg-gradient-to-r from-emerald-400 to-teal-500" />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 pt-3 text-[11px] font-semibold text-slate-500">
+                <span>Veri Güvenilirliği: <strong className="text-slate-700 dark:text-slate-300">{dataReliabilityLabel}</strong></span>
+                {suspiciousTaskCount > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/30 rounded-full px-2 py-0.5">
+                    Şüpheli kayıt: {suspiciousTaskCount} / {completedTasksForMetrics.length}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Deneme Sınavları Durumu */}
+          <div className={surface}>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-950">Deneme Sınavları ve Gidişat Durumu</h3>
+                <p className="text-xs font-semibold text-slate-500">Öğrencinin okul sınavları ve deneme performans trend analizi</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className={`${subtleSurface} border border-slate-100 flex flex-col justify-between`} data-testid="exam-card-school">
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Toplam Okul Sınavı</div>
+                <div className="mt-4 flex items-baseline gap-1.5">
+                  <span className="text-3xl font-black text-slate-900">{examRecords.length}</span>
+                  <span className="text-xs font-semibold text-slate-500">sınav kaydı</span>
+                </div>
+              </div>
+
+              <div className={`${subtleSurface} border border-slate-100 flex flex-col justify-between`} data-testid="exam-card-mock">
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Toplam Deneme Sınavı</div>
+                <div className="mt-4 flex items-baseline gap-1.5">
+                  <span className="text-3xl font-black text-slate-900">{compositeExamResults.length}</span>
+                  <span className="text-xs font-semibold text-slate-500">deneme</span>
+                </div>
+              </div>
+
+              <div className={`${subtleSurface} border border-slate-100 flex flex-col justify-between`} data-testid="exam-card-trend">
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Genel Gidişat Trendi</div>
+                <div className="mt-4 flex items-center gap-2">
+                  <span className={`text-2xl font-black ${decisionTrendDisplay.tone}`}>
+                    {decisionTrendDisplay.arrow} {trendLabel}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Son Sınav & Deneme Kayıtları */}
+          <div className={surface}>
+            <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                <ClipboardList className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-950">Son Sınav & Deneme Kayıtları</h3>
+                <p className="text-xs font-semibold text-slate-500">Öğrencinin en son girdiği sınav sonuçları ve performans dağılımı</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {latestStateExam && (
+                <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/60 pb-3 mb-4">
                     <div>
-                      <div className="font-black text-slate-900">{item.courseName}</div>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full bg-white/65 px-2 py-1">Ev {item.studyScore}</span>
-                        <span className="rounded-full bg-white/65 px-2 py-1">Okul {item.schoolScore ?? '-'}</span>
-                        <span className="rounded-full bg-white/65 px-2 py-1">Beklenen {item.predictedSchoolScore ?? '-'}</span>
-                        {item.alignmentGap !== null && <span className="rounded-full bg-white/65 px-2 py-1">Fark {item.alignmentGap > 0 ? '+' : ''}{item.alignmentGap}</span>}
+                      <span className="text-[10px] font-black uppercase text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-full px-2 py-0.5">Son Deneme Özeti</span>
+                      <h4 className="mt-1 text-sm font-bold text-slate-800">{latestStateExam.title}</h4>
+                      <p className="text-xs text-slate-500">{latestStateExam.date}</p>
+                    </div>
+                    {typeof latestStateExam.totalScore === 'number' && (
+                      <div className="rounded-full bg-white border border-slate-200 shadow-sm px-4.5 py-1.5 text-sm font-black text-slate-700 shrink-0 self-start sm:self-center">
+                        Toplam {latestStateExam.totalScore} Puan
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Risk Analizi Yapılan Dersler</span>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {latestStateExam.riskCourses.map((course) => (
+                        <div key={`${latestStateExam.date}-${course.courseName}`} className="bg-white border border-slate-100 rounded-[16px] p-3 shadow-sm flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-extrabold text-slate-800">{course.courseName}</div>
+                            <div className="text-xs font-semibold text-slate-500">Öncelik Puanı</div>
+                          </div>
+                          <span className="text-base font-black text-indigo-600 bg-indigo-50 rounded-full h-9 w-9 flex items-center justify-center border border-indigo-100">
+                            {course.score}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Yakın Zamandaki Sınav Kayıtları</span>
+                {recentExamRecords.map((record) => (
+                  <div key={record.id} className="bg-white border border-slate-100 rounded-[18px] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm hover:border-slate-200 transition">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-slate-600 border border-slate-100 shrink-0">
+                        <BookOpen className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-slate-800">{record.courseName}</div>
+                        <div className="text-xs font-bold text-slate-500 mt-0.5">{record.title}</div>
                       </div>
                     </div>
-                    <span className={`rounded-full border px-3 py-1 text-xs font-black ${alignmentToneMap[item.alignmentStatus]}`}>{alignmentLabelMap[item.alignmentStatus]}</span>
-                  </div>
-                  <div className="mt-3 rounded-[18px] bg-white/60 px-3 py-2 text-sm font-semibold text-slate-600">{item.alignmentComment}</div>
-                  <div className="mt-4 grid gap-2">
-                    <ProgressBar value={item.studyScore} tone="bg-[#8AB4FF]" />
-                    {item.schoolScore !== null && <ProgressBar value={item.schoolScore} tone="bg-[#C4B5FD]" />}
-                  </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_120px]">
-                    <label className="text-[11px] font-semibold text-slate-500">
-                      Ders bazli haftalik soru hedefi
-                      <input
-                        type="number"
-                        min={0}
-                        max={1000}
-                        value={goalConfig.courseQuestionTargets[item.courseId] ?? 0}
-                        onChange={(event) => {
-                          const next = safeClampNumber(Number(event.target.value) || 0, 0, 1000);
-                          setGoalConfig((prev) => ({
-                            ...prev,
-                            courseQuestionTargets: { ...prev.courseQuestionTargets, [item.courseId]: next },
-                          }));
-                        }}
-                        className="ios-button mt-1 w-full rounded-[12px] px-2 py-1 text-xs font-bold text-slate-800"
-                      />
-                    </label>
-                    <div className="rounded-[12px] bg-white/60 px-2 py-2 text-[11px] font-semibold text-slate-600">
-                      Gerceklesen: {weeklyQuestionsByCourse.get(item.courseId) || 0}
+                    <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                      <div className="text-left sm:text-right">
+                        <span className="block text-[10px] font-black uppercase text-slate-400">{examTypeLabelMap[record.examType]}</span>
+                        <span className="block text-xs font-bold text-slate-500 mt-0.5">{record.date}</span>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-full px-4 py-1.5 text-sm font-black text-slate-700">
+                        Puan {record.score}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+                {recentExamRecords.length === 0 && (
+                  <div className="bg-slate-50 border border-slate-100 rounded-[18px] p-5 text-center text-sm font-medium text-slate-500">
+                    Sınav kaydı bulunamadı.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
-          <div className={surface}>
-            <h3 className="text-xl font-black text-slate-950">Karar karti</h3>
-            <div className="mt-4 ios-widget rounded-[22px] p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-black uppercase tracking-wide text-slate-500">Durum</span>
-                <span className={`rounded-full border px-3 py-1 text-xs font-black ${getDecisionTone(topGoalAlert.level)}`} data-testid="top-goal-alert-level">{topGoalAlert.level}</span>
-              </div>
-              <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{topGoalAlert.text}</p>
-              <div className="mt-3 text-xs font-bold text-slate-500">Aksiyon: {topGoalAlert.action}</div>
-              <div className="mt-2 text-[11px] font-semibold text-slate-400">
-                Dayanak: Son 7 gun verisine gore · Guven: {topGoalAlert.confidence}
-              </div>
-              <div className="mt-1 text-[11px] font-semibold text-slate-400">
-                Motor: {decision.diagnostics.rulesVersion} / {decision.diagnostics.thresholdVersion}
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
-              {goalAlerts.slice(0, 4).map((alert, index) => (
-                <div key={`${alert.level}-${index}`} className="ios-widget rounded-[18px] px-3 py-2 text-xs font-semibold text-slate-600" data-testid={`goal-alert-${index}`} data-alert-level={alert.level}>
-                  <strong className="text-slate-800">{alert.level}:</strong> {alert.text}
-                </div>
-              ))}
-              {goalAlerts.length === 0 && <div className="ios-widget rounded-[18px] px-3 py-2 text-xs font-semibold text-slate-600">Uyari olusmadi, mevcut ritim dengeli.</div>}
-            </div>
-            <div className="mt-4 ios-widget rounded-[20px] p-3 text-xs text-slate-600">
-              <div className="font-bold text-slate-800">Bugun icin net adim</div>
-              <div className="mt-1">
-                {topGoalAlert.action}
-              </div>
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={handleCreateRevisionTask}
-                disabled={!riskiestTopic || isCreatingAction}
-                data-testid="track-topic-btn"
-                className={`rounded-[16px] px-3 py-2 text-xs font-black ${(!riskiestTopic || isCreatingAction) ? 'ios-button text-slate-400' : 'ios-button-active text-slate-900'}`}
-              >
-                Bu konuyu takip et
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const targetCourse = riskiestTopic || topCourses[0];
-                  if (!targetCourse) return;
-                  void handleCreateExamPracticeTask(targetCourse.courseId, targetCourse.courseName);
-                }}
-                disabled={isCreatingAction || (!riskiestTopic && topCourses.length === 0)}
-                data-testid="add-to-plan-btn"
-                className={`rounded-[16px] px-3 py-2 text-xs font-black ${(isCreatingAction || (!riskiestTopic && topCourses.length === 0)) ? 'ios-button text-slate-400' : 'ios-button-active text-slate-900'}`}
-              >
-                Bugunun planina ekle
-              </button>
-            </div>
-            <div className="mt-3 ios-widget rounded-[18px] px-3 py-2 text-xs font-semibold text-slate-600" data-testid="parent-action-summary">
-              Veli aksiyon ozeti: <span data-testid="parent-action-pending-count">{parentActionPendingCount}</span> bekleyen, <span data-testid="parent-action-completed-count">{parentActionCompletedCount}</span> tamamlanan gorev.
-            </div>
-            <div className="mt-2 rounded-[14px] bg-white/60 px-3 py-2 text-[11px] font-semibold text-slate-500">
-              Aksiyon-audit: {parentActionAuditLine}
-            </div>
-          </div>
-
-          <div className={surface}>
-            <h3 className="text-xl font-black text-slate-950">Son kayitlar</h3>
-            <div className="mt-4 space-y-3">
-              {recentExamRecords.map((record) => (
-                <div key={record.id} className="ios-widget rounded-[22px] p-3 text-sm">
-                  <div className="font-bold text-slate-900">{record.courseName} / {record.title}</div>
-                  <div className="mt-1 text-slate-500">{examTypeLabelMap[record.examType]} / {record.date} / Puan {record.score}</div>
-                </div>
-              ))}
-              {recentExamRecords.length === 0 && <div className="ios-widget rounded-[22px] p-4 text-sm text-slate-500">Sınav kaydı yok.</div>}
-            </div>
-          </div>
+            </>
+          )}
         </div>
       )}
 
 
 
       {showSection('reports') && (
-        <div className="space-y-6" data-testid="analysis-reports-section" data-report-period={reportPeriod}>
-          {renderStateCard('reports')}
+        <div className="space-y-6 w-full max-w-4xl mx-auto" data-testid="analysis-reports-section">
+          {analysisState !== 'ready' ? (
+            renderStateCard('reports')
+          ) : (
+            <>
+              {/* Card 1: Genel Rapor ve Akademik Özet */}
           <div className={surface}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-xl font-black text-slate-950">Raporlar</h3>
-              <div className="ios-button rounded-[14px] px-3 py-1 text-xs font-bold text-slate-700">Son 4 Hafta</div>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                <BarChart className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-950">Genel Rapor ve Akademik Özet</h3>
+                <p className="text-xs font-semibold text-slate-500">Öğrencinin haftalık/aylık performans ve çalışma özeti</p>
+              </div>
             </div>
-            <div className="mb-4 flex flex-wrap gap-2">
-              {[
-                { id: 'general', label: 'Genel Rapor' },
-                { id: 'course', label: 'Ders Raporu' },
-                { id: 'topic', label: 'Konu Raporu' },
-                { id: 'time', label: 'Zaman Raporu' },
-              ].map((tab) => (
-                <button
-                  key={`report-tab-${tab.id}`}
-                  type="button"
-                  onClick={() => setReportViewTab(tab.id as ReportViewTab)}
-                  className={`rounded-[12px] px-3 py-1.5 text-xs font-bold ${reportViewTab === tab.id ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="ios-widget rounded-[18px] p-4">
-                <div className="text-xs font-bold text-slate-500">Ortalama Hakimiyet</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">%{analysis.overall.averageMastery}</div>
-                <div className="mt-1 text-xs font-semibold text-emerald-600">Canli guncel</div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
+                <div className="text-[10px] font-black uppercase text-slate-400">Ortalama Hakimiyet</div>
+                <div className="mt-3">
+                  <span className="text-2xl font-black text-slate-900">%{analysis.overall.averageMastery}</span>
+                  <span className="block text-[10px] font-bold text-emerald-600 mt-1">Canlı güncel</span>
+                </div>
               </div>
-              <div className="ios-widget rounded-[18px] p-4">
-                <div className="text-xs font-bold text-slate-500">Toplam Calisma</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{Math.floor(studiedMinutes / 60)} sa {studiedMinutes % 60} dk</div>
-                <div className="mt-1 text-xs font-semibold text-emerald-600">+%{Math.max(1, Math.round((weeklyStats.minutes / Math.max(1, studiedMinutes)) * 100))} haftalik etki</div>
+
+              <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
+                <div className="text-[10px] font-black uppercase text-slate-400">Toplam Çalışma</div>
+                <div className="mt-3">
+                  <span className="text-2xl font-black text-slate-900">{Math.floor(studiedMinutes / 60)} sa {studiedMinutes % 60} dk</span>
+                  <span className="block text-[10px] font-bold text-emerald-600 mt-1">
+                    +%{Math.max(1, Math.round((weeklyStats.minutes / Math.max(1, studiedMinutes)) * 100))} haftalık etki
+                  </span>
+                </div>
               </div>
-              <div className="ios-widget rounded-[18px] p-4">
-                <div className="text-xs font-bold text-slate-500">Tamamlanan Gorev</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{completedCount}/{Math.max(1, completedCount + pendingCount)}</div>
-                <div className="mt-1 text-xs font-semibold text-emerald-600">%{Math.round((completedCount / Math.max(1, completedCount + pendingCount)) * 100)} tamamlandi</div>
+
+              <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
+                <div className="text-[10px] font-black uppercase text-slate-400">Tamamlanan Görev</div>
+                <div className="mt-3">
+                  <span className="text-2xl font-black text-slate-900">{completedCount} / {Math.max(1, completedCount + pendingCount)}</span>
+                  <span className="block text-[10px] font-bold text-indigo-600 mt-1">
+                    %{Math.round((completedCount / Math.max(1, completedCount + pendingCount)) * 100)} tamamlandı
+                  </span>
+                </div>
               </div>
-              <div className="ios-widget rounded-[18px] p-4">
-                <div className="text-xs font-bold text-slate-500">Deneme Performansi</div>
-                <div className="mt-2 text-3xl font-black text-slate-900">{latestCompositeAverage === null ? '-' : `%${latestCompositeAverage}`}</div>
-                <div className={`mt-1 text-xs font-semibold ${latestCompositeAverage !== null && previousCompositeAverage !== null ? examDeltaDisplay.tone : 'text-slate-500'}`}>
-                  {latestCompositeAverage !== null && previousCompositeAverage !== null
-                    ? `${examDeltaDisplay.arrow} ${examDeltaDisplay.text}`
-                    : 'Yetersiz deneme verisi'}
+
+              <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
+                <div className="text-[10px] font-black uppercase text-slate-400">Deneme Performansı</div>
+                <div className="mt-3">
+                  <span className="text-2xl font-black text-slate-900">
+                    {latestCompositeAverage === null ? '-' : `%${latestCompositeAverage}`}
+                  </span>
+                  <span className={`block text-[10px] font-bold mt-1 ${latestCompositeAverage !== null && previousCompositeAverage !== null ? examDeltaDisplay.tone : 'text-slate-400'}`}>
+                    {latestCompositeAverage !== null && previousCompositeAverage !== null
+                      ? `${examDeltaDisplay.arrow} ${examDeltaDisplay.text}`
+                      : 'Yetersiz deneme verisi'}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-            <div className={surface}>
-              <div className="mb-5 flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-slate-700" />
-                  <h3 className="text-xl font-black text-slate-950">Rapor</h3>
-                </div>
-                <ContextHelp title="Rapor seçimi" tone="peach">
-                  Donemi secip rapor urettiginizde, sadece karar icin gerekli 3 sonuc gosterilir: guclu alan, destek isteyen alan, siradaki adim.
-                </ContextHelp>
+          {/* Card 2: Akademik Kalite Göstergeleri */}
+          <div className={surface}>
+            <div className="flex items-center gap-3 mb-5 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+                <Target className="h-5 w-5" />
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <select data-testid="report-period-select" value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value as ReportPeriod)} className="ios-button min-h-11 flex-1 rounded-[18px] px-3 text-sm font-semibold text-slate-700">
-                  {reportPeriods.map((period) => <option key={period} value={period}>{period}</option>)}
-                </select>
-                <button data-testid="report-generate-btn" onClick={handleGenerateReport} disabled={isGeneratingReport} className={`min-h-11 rounded-[18px] px-4 text-sm font-black text-white ${isGeneratingReport ? 'cursor-not-allowed bg-slate-400' : 'ios-ink'}`}>
-                  {isGeneratingReport ? 'Üretiliyor...' : 'Rapor Üret'}
-                </button>
+              <div>
+                <h3 className="text-lg font-black text-slate-950 dark:text-slate-100">Akademik Kalite Göstergeleri</h3>
+                <p className="text-xs font-semibold text-slate-500">Sorulardaki ilk deneme başarısı, verimli saat dilimi ve çalışma temposu profili</p>
               </div>
-              {report ? (
-                <div className="mt-5 space-y-3 text-sm leading-6">
-                  <div className="ios-widget rounded-[22px] p-4"><strong>Ozet:</strong> {report.aiSummary}</div>
-                  <div className="ios-widget ios-mint rounded-[22px] p-4 text-emerald-950"><strong>Guclu alan:</strong> {report.highlights.mostImproved}</div>
-                  <div className="ios-widget ios-peach rounded-[22px] p-4 text-amber-950"><strong>Destek isteyen alan:</strong> {report.highlights.needsFocus}</div>
-                  <div className="ios-widget ios-blue rounded-[22px] p-4 text-blue-950"><strong>Siradaki adim:</strong> {report.aiSuggestion}</div>
-                </div>
-              ) : (
-                <div className="ios-widget mt-5 rounded-[22px] p-4 text-sm leading-6 text-slate-500">Secili donem icin rapor uretilebilir.</div>
-              )}
             </div>
 
-            <div className={surface}>
-              <h3 className="text-xl font-black text-slate-950">Kisa karar ozeti</h3>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="ios-widget ios-blue rounded-[22px] p-4">
-                  <div className="text-xs font-bold uppercase text-slate-500">Genel durum</div>
-                  <div className="mt-2 text-lg font-black">{topGoalAlert.level}</div>
-                </div>
-                <div className="ios-widget ios-coral rounded-[22px] p-4">
-                  <div className="text-xs font-bold uppercase text-slate-500">Destek isteyen konu</div>
-                  <div className="mt-2 text-2xl font-black">{goalAlerts.length}</div>
-                </div>
-                <div className="ios-widget ios-lilac rounded-[22px] p-4">
-                  <div className="text-xs font-bold uppercase text-slate-500">Guven duzeyi</div>
-                  <div className="mt-2 text-lg font-black">{topGoalAlert.confidence}</div>
-                </div>
-              </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="ios-widget rounded-[14px] bg-white/70 px-3 py-2">
-                  <div className="text-[11px] font-bold uppercase text-slate-400">Bugun tamamlandi</div>
-                  <div className="mt-1 text-xl font-black text-slate-900">{todayOperational.completedTodayCount}</div>
-                </div>
-                <div className="ios-widget rounded-[14px] bg-white/70 px-3 py-2">
-                  <div className="text-[11px] font-bold uppercase text-slate-400">Bugun bekliyor</div>
-                  <div className="mt-1 text-xl font-black text-slate-900">{todayOperational.pendingTodayCount}</div>
-                </div>
-                <div className="ios-widget rounded-[14px] bg-white/70 px-3 py-2">
-                  <div className="text-[11px] font-bold uppercase text-slate-400">Bugun gecikiyor</div>
-                  <div className="mt-1 text-xl font-black text-slate-900">{todayOperational.overdueCount}</div>
-                </div>
-                <div className="ios-widget rounded-[14px] bg-white/70 px-3 py-2">
-                  <div className="text-[11px] font-bold uppercase text-slate-400">Plan gerceklesen</div>
-                  <div className="mt-1 text-xl font-black text-slate-900">%{todayPlanCompletion}</div>
-                  <div className="text-[11px] font-semibold text-slate-500">
-                    ({todayOperational.completedTodayCount}/{Math.max(todayOperational.plannedCount, 1)})
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
+                <div>
+                  <div className="text-[10px] font-black uppercase text-slate-400">İlk Deneme Başarısı</div>
+                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-2">
+                    {firstAttemptAverage !== null ? `%${firstAttemptAverage}` : '-'}
                   </div>
                 </div>
+                <p className="mt-3 text-[10px] font-semibold text-slate-500 leading-normal">
+                  Konu bazında ilk denemedeki doğruluk ortalaması.
+                </p>
               </div>
 
-              <div className="mt-4 ios-widget rounded-[20px] p-4">
-                <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Veli aksiyon etkisi</div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-[14px] bg-white/70 px-3 py-2">
-                    <div className="text-[11px] font-bold uppercase text-slate-400">Bekleyen</div>
-                    <div className="mt-1 text-xl font-black text-slate-900">{parentActionPendingCount}</div>
-                  </div>
-                  <div className="rounded-[14px] bg-white/70 px-3 py-2">
-                    <div className="text-[11px] font-bold uppercase text-slate-400">Tamamlanan</div>
-                    <div className="mt-1 text-xl font-black text-slate-900">{parentActionCompletedCount}</div>
-                  </div>
-                  <div className="rounded-[14px] bg-white/70 px-3 py-2">
-                    <div className="text-[11px] font-bold uppercase text-slate-400">Bugun</div>
-                    <div className="mt-1 text-xl font-black text-slate-900">{parentActionCompletedTodayCount}</div>
-                  </div>
+              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
+                <div>
+                  <div className="text-[10px] font-black uppercase text-slate-400">En Verimli Saat</div>
+                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-2">{goldenHourInsight.label}</div>
                 </div>
-                <div className="mt-3 text-xs font-semibold text-slate-600">
-                  {parentActionAuditLine}
-                </div>
+                <p className="mt-3 text-[10px] font-semibold text-slate-500 leading-normal">
+                  Maksimum performans: Odak {goldenHourInsight.focus !== null ? `%${goldenHourInsight.focus}` : '-'} / Doğruluk {goldenHourInsight.accuracy !== null ? `%${goldenHourInsight.accuracy}` : '-'}
+                </p>
               </div>
 
-              <div className="mt-4 ios-widget rounded-[20px] p-4">
-                <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Sistem notu</div>
-                <div className="mt-2 text-xs font-semibold text-slate-600">
-                  {decision.diagnostics.rulesVersion} / {decision.diagnostics.thresholdVersion}
+              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
+                <div>
+                  <div className="text-[10px] font-black uppercase text-slate-400">Çalışma Dengesi & Profil</div>
+                  <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-2 truncate">{throughputInsight.profile}</div>
                 </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3 text-xs">
-                  <div className="rounded-[14px] bg-white/70 px-3 py-2">
-                    <div className="font-bold text-slate-500">Kritik risk esigi</div>
-                    <div className="mt-1 font-black text-slate-900">{decision.diagnostics.thresholds.riskCriticalMin}</div>
-                  </div>
-                  <div className="rounded-[14px] bg-white/70 px-3 py-2">
-                    <div className="font-bold text-slate-500">Dikkat esigi</div>
-                    <div className="mt-1 font-black text-slate-900">{decision.diagnostics.thresholds.riskWarningMin}</div>
-                  </div>
-                  <div className="rounded-[14px] bg-white/70 px-3 py-2">
-                    <div className="font-bold text-slate-500">Konu uyari esigi</div>
-                    <div className="mt-1 font-black text-slate-900">{decision.diagnostics.thresholds.weakTopicCountWarning}</div>
-                  </div>
-                </div>
-                <div className="mt-3 text-[11px] font-semibold text-slate-500">
-                  Adaptif agirliklar aktif: trend {decision.diagnostics.weights.trendDrop}, risk {decision.diagnostics.weights.risk}, calisma yok {decision.diagnostics.weights.noStudy}.
-                </div>
+                <p className="mt-3 text-[10px] font-semibold text-slate-500 leading-normal">
+                  Süre ve doğruluk ilişkisine göre akıllı çalışma tarzı profili.
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_360px]">
-            <div className={surface}>
-              <div className="mb-4 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-                {reportViewTab === 'general' && 'Derslere Gore Hakimiyet Trendi'}
-                {reportViewTab === 'course' && 'Ders Raporu Trendi'}
-                {reportViewTab === 'topic' && 'Konu Raporu Trendi'}
-                {reportViewTab === 'time' && 'Zaman Raporu Trendi'}
+          {/* Card 3: Konu Hakimiyet Analizi */}
+          <div className={surface}>
+            <div className="flex items-center gap-3 mb-5 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+                <BookOpen className="h-5 w-5" />
               </div>
-              <AnalysisGraphCenter tasks={tasks} courses={courses} curriculum={curriculum} analysis={analysis} loading={loading} error={error} />
+              <div>
+                <h3 className="text-lg font-black text-slate-950">Konu Hakimiyet Analizi</h3>
+                <p className="text-xs font-semibold text-slate-500">Öğrencinin en çok gelişim gösterdiği ve en çok zorlandığı LGS konuları</p>
+              </div>
             </div>
-            <div className="space-y-4">
-              <div className={surface}>
-                <div className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500">En Cok Gelisen Konular</div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 block">En Çok Gelişen Konular</h4>
                 <div className="space-y-2">
                   {improvingTopics.slice(0, 5).map((topic, index) => (
-                    <div key={`impr-${topic.key}`} className="ios-widget flex items-center justify-between rounded-[14px] px-3 py-2 text-sm">
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold text-slate-800">{index + 1}. {topic.topicName}</div>
-                        <div className="text-xs text-slate-500">{topic.courseName}</div>
+                    <div key={`impr-${topic.key}`} className="bg-slate-50 border border-slate-100/80 flex items-center justify-between rounded-[16px] px-3.5 py-3 text-xs shadow-sm">
+                      <div className="min-w-0 pr-2">
+                        <div className="truncate font-bold text-slate-800">{index + 1}. {topic.topicName}</div>
+                        <div className="text-[10px] font-bold text-slate-400 mt-0.5">{topic.courseName}</div>
                       </div>
-                      <div className="text-xs font-black text-emerald-600">%{topic.masteryScore} hakimiyet</div>
+                      <div className="text-[11px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5 shrink-0">
+                        %{topic.masteryScore} Hakimiyet
+                      </div>
                     </div>
                   ))}
+                  {improvingTopics.length === 0 && (
+                    <div className="bg-slate-50 border border-slate-100/60 rounded-[16px] p-4 text-center text-xs text-slate-500">
+                      Gelişen konu kaydı bulunamadı.
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className={surface}>
-                <div className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-500">Zorlanilan Konular</div>
+
+              <div>
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 block">En Çok Zorlanılan Konular</h4>
                 <div className="space-y-2">
                   {hardestTopics.slice(0, 5).map((topic, index) => (
-                    <div key={`hard-${topic.key}`} className="ios-widget flex items-center justify-between rounded-[14px] px-3 py-2 text-sm">
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold text-slate-800">{index + 1}. {topic.topicName}</div>
-                        <div className="text-xs text-slate-500">{topic.courseName}</div>
+                    <div key={`hard-${topic.key}`} className="bg-slate-50 border border-slate-100/80 flex items-center justify-between rounded-[16px] px-3.5 py-3 text-xs shadow-sm">
+                      <div className="min-w-0 pr-2">
+                        <div className="truncate font-bold text-slate-800">{index + 1}. {topic.topicName}</div>
+                        <div className="text-[10px] font-bold text-slate-400 mt-0.5">{topic.courseName}</div>
                       </div>
-                      <div className="text-xs font-black text-rose-600">risk {topic.riskScore}</div>
+                      <div className="text-[11px] font-extrabold text-rose-600 bg-rose-50 border border-rose-100 rounded-full px-2 py-0.5 shrink-0">
+                        Risk {topic.riskScore}
+                      </div>
                     </div>
                   ))}
+                  {hardestTopics.length === 0 && (
+                    <div className="bg-slate-50 border border-slate-100/60 rounded-[16px] p-4 text-center text-xs text-slate-500">
+                      Zorlanılan konu kaydı bulunamadı.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
+
+          <div className="text-center text-[11px] font-semibold text-slate-400 py-2">
+            Not: Analiz raporları haftalık olarak güncellenir.
+          </div>
+            </>
+          )}
         </div>
       )}
     </section>

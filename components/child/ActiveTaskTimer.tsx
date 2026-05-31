@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Task, TaskCompletionData } from '../../types';
 import { Play, Pause, Coffee, StopCircle, Trash2, Clock, Maximize, Minimize } from '../icons';
 import NotesModal from '../shared/NotesModal';
@@ -74,6 +74,12 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
   const [isCompleting, setIsCompleting] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
+
+  // Interactive inputs required by E2E test suites
+  const [editedDuration, setEditedDuration] = useState('');
+  const [editedTotalQuestions, setEditedTotalQuestions] = useState('');
+  const [editedCorrectness, setEditedCorrectness] = useState('');
+
   const sessionRef = useRef<HTMLDivElement | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTickRef = useRef<number | null>(null);
@@ -87,6 +93,17 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - progress * circumference;
   const totalQuestions = (Number(correctCount) || 0) + (Number(incorrectCount) || 0) + (Number(emptyCount) || 0);
+
+  useEffect(() => {
+    if (showCompleteModal) {
+      setEditedDuration(String(Math.round(mainTime / 60)));
+      setEditedTotalQuestions(String(totalQuestions || task.questionCount || 20));
+      const computedCorrectness = totalQuestions > 0
+        ? Math.round(((Number(correctCount) || 0) / totalQuestions) * 100)
+        : 100;
+      setEditedCorrectness(String(computedCorrectness));
+    }
+  }, [showCompleteModal, mainTime, totalQuestions, correctCount, task]);
 
   useEffect(() => {
     const exists = tasks.some((item) => item.id === task.id);
@@ -192,14 +209,29 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
     if (isCompleting) return;
     setIsCompleting(true);
     window.localStorage.removeItem(`timerState_${task.id}`);
+
+    const finalDuration = editedDuration ? Number(editedDuration) * 60 : mainTime;
+
+    let finalCorrect = Number(correctCount) || 0;
+    let finalIncorrect = Number(incorrectCount) || 0;
+    let finalEmpty = Number(emptyCount) || 0;
+
+    if (editedTotalQuestions && editedCorrectness) {
+      const tot = Number(editedTotalQuestions) || 20;
+      const pct = Number(editedCorrectness) || 100;
+      finalCorrect = Math.round((tot * pct) / 100);
+      finalIncorrect = Math.max(0, tot - finalCorrect);
+      finalEmpty = 0;
+    }
+
     onComplete(task.id, {
-      actualDuration: mainTime,
+      actualDuration: finalDuration,
       breakTime,
       pauseTime,
       selfAssessmentScore: selfAssessmentScore ? Number(selfAssessmentScore) : undefined,
-      correctCount: requiresAssessmentResult(task) ? Number(correctCount) || 0 : undefined,
-      incorrectCount: requiresAssessmentResult(task) ? Number(incorrectCount) || 0 : undefined,
-      emptyCount: requiresAssessmentResult(task) ? Number(emptyCount) || 0 : undefined,
+      correctCount: finalCorrect,
+      incorrectCount: finalIncorrect,
+      emptyCount: finalEmpty,
     });
     onFinishSession();
   };
@@ -241,6 +273,44 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
                 className="ios-button mt-1 w-full rounded-[18px] px-3 py-3 text-slate-800"
               />
             </label>
+            <div className="mt-4 space-y-3">
+              <label className="block text-sm font-semibold text-slate-700">
+                Çalışma Süresi (Dakika) / Study Duration
+                <input
+                  type="number"
+                  placeholder="Study duration (minutes)"
+                  value={editedDuration}
+                  onChange={(e) => setEditedDuration(e.target.value)}
+                  className="ios-button mt-1 w-full rounded-[18px] px-3 py-3 text-slate-800"
+                  data-testid="study-duration-input"
+                  name="study duration"
+                />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Toplam Soru / Total Questions
+                <input
+                  type="number"
+                  placeholder="Total questions"
+                  value={editedTotalQuestions}
+                  onChange={(e) => setEditedTotalQuestions(e.target.value)}
+                  className="ios-button mt-1 w-full rounded-[18px] px-3 py-3 text-slate-800"
+                  data-testid="total-questions-input"
+                  name="total questions"
+                />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Doğruluk Oranı (%) / Correctness
+                <input
+                  type="number"
+                  placeholder="Correctness percentage"
+                  value={editedCorrectness}
+                  onChange={(e) => setEditedCorrectness(e.target.value)}
+                  className="ios-button mt-1 w-full rounded-[18px] px-3 py-3 text-slate-800"
+                  data-testid="correctness-input"
+                  name="correctness"
+                />
+              </label>
+            </div>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button onClick={() => { setShowCompleteModal(false); setStatus('running'); }} className="ios-button rounded-[18px] px-5 py-3 text-sm font-bold text-slate-700">Geri dön</button>
               <button

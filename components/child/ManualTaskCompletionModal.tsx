@@ -9,6 +9,8 @@ interface ManualTaskCompletionModalProps {
 }
 
 const getDefaultTimes = () => ({ start: '17:00', end: '18:00' });
+const isQuestionBasedTask = (taskType: Task['taskType']) =>
+  taskType === 'soru çözme' || taskType === 'branş deneme' || taskType === 'genel deneme';
 
 const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ show, onClose, task, onComplete }) => {
   const defaults = useMemo(() => getDefaultTimes(), []);
@@ -54,7 +56,7 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
       completionData.pagesRead = Number(pagesRead);
     }
 
-    if (task.taskType === 'soru çözme') {
+    if (isQuestionBasedTask(task.taskType)) {
       if (task.questionCount && totalQuestions !== task.questionCount) {
         setError(`Toplam ${task.questionCount} soru olmali.`);
         return;
@@ -118,7 +120,7 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
                 </label>
               )}
 
-              {task.taskType === 'soru çözme' && (
+              {isQuestionBasedTask(task.taskType) && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <label className="text-sm font-semibold text-emerald-700">
                     Dogru

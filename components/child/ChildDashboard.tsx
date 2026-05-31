@@ -11,8 +11,8 @@ import { isCompletedTask as isTaskCompleted } from '../../utils/taskStatus';
 import { ChartTooltip, chartAxisProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 import ContextHelp from '../shared/ContextHelp';
 
-const card = 'ios-card rounded-[28px] p-4';
-const subtleCard = 'ios-widget rounded-[26px] p-4';
+const card = 'dr-hig-secondary-card rounded-[28px] p-5';
+const subtleCard = 'dr-hig-secondary-card rounded-[26px] p-5';
 const CHILD_TASK_PREVIEW_LIMIT = 6;
 const CHILD_COMPLETED_PREVIEW_LIMIT = 4;
 const isMojibakeCodePoint = (codePoint: number, nextCodePoint?: number) =>
@@ -628,33 +628,33 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 lg:px-6" data-testid="child-dashboard-root" data-e2e-mode={isE2EMode ? '1' : '0'}>
-      <section className="ios-card overflow-hidden rounded-[32px] px-5 py-5">
+      <section className="dr-hig-primary-box overflow-hidden rounded-[32px] px-6 py-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <div className="ios-blue mb-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-900">Çocuk paneli</div>
-            <h2 className="text-[28px] font-black tracking-tight text-slate-900">Bugünkü çalışma alanı</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Atanan görevler, serbest çalışma ve ilerleme özetleri tek yerde. Burada önce ne çalışacağını net görürsün.</p>
+            <h2 className="dr-hig-title text-slate-900 dark:text-white">Bugünkü çalışma alanı</h2>
+            <p className="mt-2 dr-hig-body text-slate-600 dark:text-slate-300">Atanan görevler, serbest çalışma ve ilerleme özetleri tek yerde. Burada önce ne çalışacağını net görürsün.</p>
           </div>
           <div className="ios-ink flex items-center gap-3 self-start rounded-[24px] px-4 py-3 text-white">
             <Trophy className="h-6 w-6 text-amber-300" />
             <div>
-              <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Başarı Puanı</div>
-              <div className="text-2xl font-black text-amber-300">{successPoints} BP</div>
+              <div className="dr-hig-caption uppercase tracking-[0.18em] font-semibold text-slate-400 dark:text-slate-300">Başarı Puanı</div>
+              <div className="dr-hig-title text-amber-300 dark:text-amber-200">{successPoints} BP</div>
             </div>
           </div>
         </div>
       </section>
 
       {currentLiveSession && (
-        <section className="ios-card ios-mint rounded-[30px] p-4">
+        <section className="dr-hig-primary-box ios-mint rounded-[30px] p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-800">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 Canli seans
               </div>
-              <h3 className="truncate text-xl font-black text-slate-900">{safeText(currentLiveSession.task.bookTitle || currentLiveSession.task.title, 'Çalışma')}</h3>
-              <p className="mt-1 text-sm text-slate-600">
+              <h3 className="truncate dr-hig-headline text-slate-900 dark:text-white">{safeText(currentLiveSession.task.bookTitle || currentLiveSession.task.title, 'Çalışma')}</h3>
+              <p className="mt-1.5 dr-hig-caption text-slate-600 dark:text-slate-300">
                 Çalışma {formatTime(currentLiveSession.timerState.mainTime)} / Mola {formatTime(currentLiveSession.timerState.breakTime)} / Durum {currentLiveSession.timerState.status === 'break' ? 'Molada' : currentLiveSession.timerState.status === 'paused' ? 'Durakladı' : 'Akışta'}
               </p>
             </div>
@@ -707,12 +707,12 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
               </div>
 
               {showFreeStudy && (
-                <form onSubmit={handleCreateFreeStudy} className="ios-card mb-5 rounded-[28px] p-5">
+                <form onSubmit={handleCreateFreeStudy} className="dr-hig-secondary-card mb-5 rounded-[28px] p-6">
                   <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex min-w-0 items-start gap-2">
                       <div>
-                        <h3 className="text-lg font-black text-slate-900">Serbest çalışma başlat</h3>
-                        <p className="text-sm text-slate-500">Atanan görev yoksa kendi çalışmanı ders, ünite ve konuya bağla.</p>
+                        <h3 className="dr-hig-headline text-slate-900 dark:text-white">Serbest çalışma başlat</h3>
+                        <p className="dr-hig-caption text-slate-500 dark:text-slate-400 mt-1">Atanan görev yoksa kendi çalışmanı ders, ünite ve konuya bağla.</p>
                       </div>
                       <ContextHelp title="Analize etkisi" tone="lilac">
                         Bu kayıt planlı görev sayılmaz; ama seçilen ders, ünite ve konu performansına destek veri ekler.
