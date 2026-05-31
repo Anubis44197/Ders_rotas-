@@ -702,7 +702,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
 
               {showFreeStudy && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" onClick={() => setShowFreeStudy(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <form onSubmit={handleCreateFreeStudy} className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md text-white max-h-[90vh] overflow-y-auto" style={{ maxWidth: '380px', width: '100%', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
+                  <form onSubmit={handleCreateFreeStudy} className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md text-white max-h-[90vh] overflow-y-auto" style={{ maxWidth: '760px', width: '100%', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
                     <div className="mb-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <PlusCircle className="h-5 w-5 text-indigo-400" />
@@ -713,19 +713,43 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                       </button>
                     </div>
 
-                    <div className="space-y-3.5 text-left">
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ne çalışacaksın?</label>
-                        <input value={freeTitle} onChange={(e) => setFreeTitle(e.target.value)} placeholder="Örn: Limit ve Süreklilik" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 placeholder-slate-600" required />
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                      {/* Sol Sütun: Çalışma Alanı Tanımları */}
+                      <div className="space-y-3.5">
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ne çalışacaksın?</label>
+                          <input value={freeTitle} onChange={(e) => setFreeTitle(e.target.value)} placeholder="Örn: Limit ve Süreklilik" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 placeholder-slate-600" required />
+                        </div>
 
-                      <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ders</label>
                           <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
                             {safeCourses.map((course) => <option key={course.id} value={course.id}>{safeText(course.name, course.id)}</option>)}
                           </select>
                         </div>
+
+                        {freeType !== 'kitap okuma' && activeUnits.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ünite</label>
+                              <select value={freeUnitName} onChange={(e) => setFreeUnitName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-2.5 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                                <option value="">Ünite seç</option>
+                                {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Konu</label>
+                              <select value={freeTopicName} onChange={(e) => setFreeTopicName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-2.5 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer" disabled={!freeUnitName}>
+                                <option value="">Konu seç</option>
+                                {activeTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Sağ Sütun: Çalışma Türü ve Süre Parametreleri */}
+                      <div className="space-y-3.5">
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Çalışma Türü</label>
                           <select value={freeType} onChange={(e) => setFreeType(e.target.value as any)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
@@ -734,65 +758,47 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                             <option value="kitap okuma">Kitap okuma</option>
                           </select>
                         </div>
-                      </div>
 
-                      {freeType !== 'kitap okuma' && activeUnits.length > 0 && (
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ünite</label>
-                            <select value={freeUnitName} onChange={(e) => setFreeUnitName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-2.5 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
-                              <option value="">Ünite seç</option>
-                              {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
-                            </select>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Süre (dk)</label>
+                            <input value={freeDuration} onChange={(e) => setFreeDuration(e.target.value)} type="number" min="1" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="30" required />
                           </div>
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Konu</label>
-                            <select value={freeTopicName} onChange={(e) => setFreeTopicName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-2.5 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer" disabled={!freeUnitName}>
-                              <option value="">Konu seç</option>
-                              {activeTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}
-                            </select>
-                          </div>
-                        </div>
-                      )}
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Süre (dk)</label>
-                          <input value={freeDuration} onChange={(e) => setFreeDuration(e.target.value)} type="number" min="1" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="30" required />
+                          {freeType === 'soru çözme' && (
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Soru Sayısı</label>
+                              <input value={freeQuestionCount} onChange={(e) => setFreeQuestionCount(e.target.value)} type="number" min="1" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="20" />
+                            </div>
+                          )}
+                          {freeType === 'kitap okuma' && (
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kitap Adı</label>
+                              <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 placeholder-slate-600" placeholder="Kitap adı girin" required />
+                            </div>
+                          )}
+                          {freeType !== 'kitap okuma' && (
+                            <div>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Hedef</label>
+                              <select value={freeGoalType} onChange={(e) => setFreeGoalType(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                                <option value="ders calisma">Ders çalışması</option>
+                                <option value="konu-tekrari">Konu tekrarı</option>
+                                <option value="eksik-konu-tamamlama">Eksik konu tamamlama</option>
+                                <option value="test-cozme">Test çözme</option>
+                              </select>
+                            </div>
+                          )}
                         </div>
-                        {freeType === 'soru çözme' && (
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Soru Sayısı</label>
-                            <input value={freeQuestionCount} onChange={(e) => setFreeQuestionCount(e.target.value)} type="number" min="1" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="20" />
-                          </div>
-                        )}
-                        {freeType === 'kitap okuma' && (
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kitap Adı</label>
-                            <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 placeholder-slate-600" placeholder="Kitap adı girin" required />
-                          </div>
-                        )}
-                        {freeType !== 'kitap okuma' && (
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Hedef</label>
-                            <select value={freeGoalType} onChange={(e) => setFreeGoalType(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
-                              <option value="ders calisma">Ders çalışması</option>
-                              <option value="konu-tekrari">Konu tekrarı</option>
-                              <option value="eksik-konu-tamamlama">Eksik konu tamamlama</option>
-                              <option value="test-cozme">Test çözme</option>
-                            </select>
-                          </div>
-                        )}
                       </div>
-
-                      {freeStudyError && (
-                        <div className="mt-3 rounded-[12px] bg-rose-950/50 border border-rose-900/50 px-3 py-2 text-xs font-bold leading-5 text-rose-300 text-center">
-                          {freeStudyError}
-                        </div>
-                      )}
                     </div>
 
-                    <div className="mt-5 flex gap-2 w-full">
+                    {freeStudyError && (
+                      <div className="mt-3.5 rounded-[12px] bg-rose-950/50 border border-rose-900/50 px-3 py-2 text-xs font-bold leading-5 text-rose-300 text-center">
+                        {freeStudyError}
+                      </div>
+                    )}
+
+                    <div className="mt-5 flex gap-2 w-full justify-end md:max-w-xs md:ml-auto">
                       <button type="button" onClick={() => setShowFreeStudy(false)} className="flex-1 rounded-[12px] px-4 py-2.5 text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">
                         İptal
                       </button>
