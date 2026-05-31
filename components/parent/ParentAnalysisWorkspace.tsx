@@ -935,64 +935,6 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
             </div>
           )}
-
-          {/* Günlük Akış & Yaklaşan Sınavlar yan yana */}
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="dr-hig-secondary-card rounded-[24px] p-6">
-              <div className="mb-2 flex items-center gap-2">
-                <Clock className="h-4.5 w-4.5 text-slate-500" />
-                <h3 className="dr-hig-headline text-slate-900 dark:text-white">Günlük akış</h3>
-              </div>
-              <div className="dr-hig-caption font-semibold text-slate-500">{overviewTodayName || 'Bugün'}</div>
-              <div className="mt-3 space-y-2">
-                {overviewTodaySlots.slice(0, 3).map((slot: any) => (
-                  <div key={`mini-${slot.id}`} className="dr-hig-tertiary-row py-2.5 text-xs">
-                    <div className="font-extrabold text-slate-800 dark:text-slate-200">{slot.courseName}</div>
-                    <div className="text-slate-500 dark:text-slate-400 mt-0.5">{slot.startTime} - {slot.endTime}</div>
-                  </div>
-                ))}
-                {overviewTodaySlots.length === 0 && (
-                  <div className="dr-hig-tertiary-row py-2.5 text-xs font-semibold text-slate-500">
-                    Bugün tanımlı ders akışı yok.
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => onOpenPlanning('Günlük akış planlamada açıldı.')}
-                className="mt-4 ios-button w-full rounded-[14px] px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
-              >
-                Planı gör
-              </button>
-            </div>
-
-            <div className="dr-hig-secondary-card rounded-[24px] p-6">
-              <div className="mb-3 flex items-center gap-2">
-                <GraduationCap className="h-4.5 w-4.5 text-blue-500" />
-                <h3 className="dr-hig-headline text-slate-900 dark:text-white">Yaklaşan sınavlar</h3>
-              </div>
-              <div className="space-y-2">
-                {overviewExamDecision && (
-                  <div className="ios-widget rounded-[14px] p-3">
-                    <div className="dr-hig-body font-bold text-slate-900 dark:text-white">{overviewExamDecision.title}</div>
-                    <div className="mt-1 dr-hig-caption font-semibold text-slate-500">{overviewExamDecision.detail}</div>
-                    <div className={`mt-2 inline-flex rounded-full px-2 py-1 text-[11px] font-bold ${overviewExamDecision.tone}`}>{overviewExamDecision.action}</div>
-                  </div>
-                )}
-                <div className="ios-widget rounded-[14px] p-3">
-                  <div className="dr-hig-body font-bold text-slate-900 dark:text-white">{overviewUpcomingExam?.examName || 'Takvimde yeni sınav yok'}</div>
-                  <div className="mt-1 dr-hig-caption font-semibold text-slate-500">{overviewUpcomingExam?.date || 'Planlama ekranından tarih eklenebilir'}</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => onOpenPlanning('Sınav takvimi planlamada açıldı.')}
-                className="mt-3 ios-button w-full rounded-[14px] px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-100 transition"
-              >
-                Tüm sınavları gör
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
