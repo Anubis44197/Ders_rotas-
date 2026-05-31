@@ -42,6 +42,13 @@ export const INITIAL_REAL_COURSES: Course[] = [
     active: true,
     order: 5,
     icon: "BookOpen"
+  },
+  {
+    id: "course_paragraf",
+    name: "Paragraf",
+    active: true,
+    order: 6,
+    icon: "BookOpen"
   }
 ];
 
@@ -84,6 +91,13 @@ export const INITIAL_REAL_PERFORMANCE: PerformanceData[] = [
   {
     courseId: "course_turkce",
     courseName: "Türkçe",
+    correct: 0,
+    incorrect: 0,
+    timeSpent: 0
+  },
+  {
+    courseId: "course_paragraf",
+    courseName: "Paragraf",
     correct: 0,
     incorrect: 0,
     timeSpent: 0
@@ -1460,6 +1474,59 @@ export const INITIAL_REAL_CURRICULUM: SubjectCurriculum = {
         {
           "name": "Bilgi Kaynaklarını Etkili Kullanma",
           "completed": false
+        }
+      ]
+    }
+  ],
+  "Paragraf": [
+    {
+      name: "1. Ünite: Paragrafta Anlam",
+      topics: [
+        {
+          name: "Ana Düşünce ve Yardımcı Düşünceler",
+          completed: false
+        },
+        {
+          name: "Paragrafta Konu, Başlık ve Anahtar Kelimeler",
+          completed: false
+        },
+        {
+          name: "Paragrafta Karakter ve Duygular",
+          completed: false
+        }
+      ]
+    },
+    {
+      name: "2. Ünite: Paragrafta Yapı",
+      topics: [
+        {
+          name: "Paragraf Giriş-Gelişme-Sonuç Cümleleri",
+          completed: false
+        },
+        {
+          name: "Paragrafı İkiye Bölme ve Akışı Bozan Cümleler",
+          completed: false
+        },
+        {
+          name: "Paragraf Tamamlama ve Cümle Oluşturma",
+          completed: false
+        }
+      ]
+    },
+    {
+      name: "3. Ünite: Paragrafta Teknikler",
+      topics: [
+        {
+          name: "Sözel Mantık ve Muhakeme Akıl Yürütme",
+          completed: false
+        },
+        {
+          name: "Görsel Okuma ve Tablo Yorumlama",
+          completed: false
+        },
+        {
+          name: "Anlatım Biçimleri ve Düşünceyi Geliştirme Yolları",
+          completed: false
         }
       ]
     }
