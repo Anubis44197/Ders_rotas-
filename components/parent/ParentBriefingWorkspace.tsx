@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnalysisSnapshot } from '../../utils/analysisEngine';
 import { AlertTriangle, CheckCircle, Target, TrendingUp } from '../icons';
+import ContextHelp from '../shared/ContextHelp';
 
 interface ParentBriefingWorkspaceProps {
   analysis: AnalysisSnapshot;
@@ -86,20 +87,43 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
             </p>
           </div>
 
-          <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black ${status.tone}`}>
-            <StatusIcon className="h-4 w-4" />
-            {status.label}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black ${status.tone}`}>
+              <StatusIcon className="h-4 w-4" />
+              {status.label}
+            </div>
+            <ContextHelp title="Genel Durum (Pedagojik Gidişat)" tone="blue">
+              Çocuğunuzun test performansları ve plan uyumuna göre hesaplanan genel gidişat durumudur. Stabil/Dengeli ilerleme her şeyin yolunda olduğunu, Müdahale Gerekli ise zayıf konulara destek verilmesi gerektiğini belirtir.
+            </ContextHelp>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          {metricItems.map((item) => (
-            <div key={item.label} className="ios-widget dr-briefing-score-card rounded-[24px] px-4 py-4">
-              <div className="dr-card-kicker text-xs font-bold uppercase tracking-[0.14em]">{item.label}</div>
-              <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{item.value}</div>
-              <div className="mt-1 text-xs font-semibold text-slate-400">{item.hint}</div>
-            </div>
-          ))}
+          {metricItems.map((item) => {
+            const helpContent = item.label === 'Genel Skor'
+              ? 'Çocuğunuzun test başarı puanları, çalışma süreleri ve odak derecesinin birleşimiyle oluşan 100 üzerinden genel performans puanıdır.'
+              : item.label === 'Tamamlanan'
+                ? 'Çocuğunuzun bu dönemde tamamladığı toplam ders çalışma oturumu (görev) sayısıdır.'
+                : item.label === 'Odak'
+                  ? 'Çocuğunuzun ders çalışırken molasız ve kesintisiz gösterdiği konsantrasyon seviyesidir.'
+                  : item.label === 'Hakimiyet'
+                    ? 'Çocuğunuzun çalıştığı LGS konularını ortalama kavrama ve testlerde doğru yapma oranını gösterir.'
+                    : '';
+            return (
+              <div key={item.label} className="ios-widget dr-briefing-score-card rounded-[24px] px-4 py-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="dr-card-kicker text-xs font-bold uppercase tracking-[0.14em]">{item.label}</div>
+                  {helpContent && (
+                    <ContextHelp title={item.label} tone="blue">
+                      {helpContent}
+                    </ContextHelp>
+                  )}
+                </div>
+                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{item.value}</div>
+                <div className="mt-1 text-xs font-semibold text-slate-400">{item.hint}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -848,8 +848,13 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                         : 'Tamamlanan oturumlar geldikçe ders ve konu resmi netleşir.'}
                   </p>
                 </div>
-                <div className={`rounded-full border px-4 py-2 text-sm font-black ${getRiskTone(analysis.overall.averageRisk)}`}>
-                  Takip {analysis.overall.averageRisk}
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className={`rounded-full border px-4 py-2 text-sm font-black ${getRiskTone(analysis.overall.averageRisk)}`}>
+                    Takip {analysis.overall.averageRisk}
+                  </div>
+                  <ContextHelp title="Takip Puanı (Akademik Risk)" tone="blue">
+                    Çocuğunuzun LGS hazırlığındaki akademik risk puanıdır (0-100 arası). Puanın düşük olması (Örn: 10) her şeyin harika gittiğini, yüksek olması (Örn: 70+) ise acil desteğe ve plan revizyonuna ihtiyaç olduğunu gösterir.
+                  </ContextHelp>
                 </div>
               </div>
 
