@@ -3,7 +3,6 @@ import { BarChart as RechartsBarChart, Bar, Tooltip, XAxis, YAxis } from 'rechar
 import { ChildDashboardProps, Task, TaskFilter, ChildView, CurriculumUnit } from '../../types';
 import ActiveTaskTimer from './ActiveTaskTimer';
 import ActiveReadingSession from './ActiveReadingSession';
-import StudyStats from './StudyStats';
 import { Trophy, PlusCircle, Play, Gift, BadgeCheck, Target, BarChart, Brain, BookMarked, Calendar, CheckCircle } from '../icons';
 import { getTodayString, getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
 import { deriveAnalysisSnapshot, type AnalysisSnapshot } from '../../utils/analysisEngine';
@@ -471,9 +470,6 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
     setShowAllFreeTasks(false);
   }, [taskFilter]);
 
-  const topTopic = analysis.topics[0];
-  const weakestTopic = analysis.topics.find((topic) => topic.needsRevision) || analysis.topics[0];
-
   const startSelectedTask = (task: Task, timerState?: ResumeTimerState) => {
     if (startingTaskId) return;
     const resolvedTimerState = timerState || parseSavedTimerState(task.id);
@@ -680,8 +676,6 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
       <div className="ios-panel flex flex-wrap gap-2 rounded-[26px] p-2">
         <button onClick={() => setActiveView('tasks')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'tasks' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><Target className="mr-2 inline h-4 w-4" />Görevler</button>
         <button onClick={() => setActiveView('treasures')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'treasures' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><Gift className="mr-2 inline h-4 w-4" />Ödüller</button>
-        <button onClick={() => setActiveView('stats')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'stats' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><BarChart className="mr-2 inline h-4 w-4" />İstatistik</button>
-        <button onClick={() => setActiveView('assistant')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'assistant' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><Brain className="mr-2 inline h-4 w-4" />Koç</button>
       </div>
 
       {activeView === 'tasks' && (
@@ -954,26 +948,6 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {activeView === 'stats' && <StudyStats tasks={safeTasks} courses={safeCourses} />}
-
-      {activeView === 'assistant' && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className={card}>
-            <div className="mb-3 flex items-center gap-2 text-slate-900"><Target className="h-5 w-5 text-blue-600" /><h3 className="text-lg font-black">Güçlü alan</h3></div>
-            <div className="text-sm leading-6 text-slate-600">{topTopic ? `${topTopic.courseName} / ${topTopic.unitName} / ${topTopic.topicName} alanında hakimiyet skoru ${topTopic.masteryScore}.` : 'Henüz yeterli çalışma verisi yok.'}</div>
-          </div>
-          <div className={card}>
-            <div className="mb-3 flex items-center gap-2 text-slate-900"><Calendar className="h-5 w-5 text-amber-500" /><h3 className="text-lg font-black">Odaklanılacak konu</h3></div>
-            <div className="text-sm leading-6 text-slate-600">{weakestTopic ? `${weakestTopic.courseName} / ${weakestTopic.unitName} / ${weakestTopic.topicName} daha fazla tekrar istiyor. Mevcut skor ${weakestTopic.masteryScore}.` : 'Eksik konu analizi için daha fazla tamamlanan görev gerekiyor.'}</div>
-          </div>
-          <div className={card}>
-            <div className="mb-3 flex items-center gap-2 text-slate-900"><Brain className="h-5 w-5 text-violet-600" /><h3 className="text-lg font-black">Çalışma koçu</h3></div>
-            <div className="text-sm leading-6 text-slate-600">{ai ? 'AI bağlantısı mevcut. Sonraki adımda burada konu bazlı çalışma önerileri ve günlük uyarı sistemi açılacak.' : 'Bu alan şimdilik kural tabanlı. Önce planlı görevleri bitir, sonra serbest çalışmaya geç.'}</div>
-            <div className="ios-widget mt-4 rounded-[20px] px-4 py-3 text-sm text-slate-600">Ortalama verim: <strong>{analysis.overall.averageEfficiency}</strong> / Ortalama doğruluk: <strong>{analysis.overall.averageAccuracy ?? 0}</strong></div>
           </div>
         </div>
       )}
