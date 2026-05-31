@@ -96,31 +96,31 @@ export const INITIAL_REAL_CURRICULUM: SubjectCurriculum = {
       name: "1. Ünite",
       topics: [
         {
-          name: "Çarpanlar ve Katlar: Pozitif tam sayıların pozitif tam sayı çarpanlarını bulma, pozitif tam sayıları üslü ifade ya da üslü ifadelerin çarpımı şeklinde yazma",
+          name: "Pozitif Tam Sayıların Çarpanları ve Üslü İfadeler",
           completed: false
         },
         {
-          name: "Çarpanlar ve Katlar: İki doğal sayının en büyük ortak böleni ve en küçük ortak katı",
+          name: "EBOB ve EKOK",
           completed: false
         },
         {
-          name: "Çarpanlar ve Katlar: Aralarında asal sayılar",
+          name: "Aralarında Asal Sayılar",
           completed: false
         },
         {
-          name: "Üslü İfadeler: Tam sayıların tam sayı kuvvetleri",
+          name: "Tam Sayıların Tam Sayı Kuvvetleri",
           completed: false
         },
         {
-          name: "Üslü İfadeler: Üslü ifadeler ile ilgili temel kurallar",
+          name: "Üslü İfadelerin Temel Kuralları",
           completed: false
         },
         {
-          name: "Üslü İfadeler: Ondalık gösterimleri çözümleme",
+          name: "Ondalık Gösterimleri Çözümleme",
           completed: false
         },
         {
-          name: "Üslü İfadeler: Bir sayıyı 10’un farklı tam sayı kuvvetlerini kullanarak ifade etme ve bilimsel gösterim",
+          name: "10'un Kuvvetleri ve Bilimsel Gösterim",
           completed: false
         }
       ]
@@ -129,35 +129,35 @@ export const INITIAL_REAL_CURRICULUM: SubjectCurriculum = {
       name: "2. Ünite",
       topics: [
         {
-          name: "Kareköklü İfadeler: Tam kare pozitif tam sayılar ile bu sayıların karekökleri arasındaki ilişki",
+          name: "Tam Kare Sayılar ve Karekök İlişkisi",
           completed: false
         },
         {
-          name: "Kareköklü İfadeler: Tam kare olmayan kareköklü bir ifadenin değerinin bulunduğu sayı aralıkları",
+          name: "Kareköklü Sayıların Sayı Doğrusundaki Yeri",
           completed: false
         },
         {
-          name: "Kareköklü İfadeler: Kareköklü bir ifadeyi a√b şeklinde yazma ve a√b şeklindeki ifadede katsayıyı kök içine alma",
+          name: "Kök Dışına Çıkarma ve Kök İçine Alma (a√b)",
           completed: false
         },
         {
-          name: "Kareköklü İfadeler: Kareköklü ifadelerde çarpma ve bölme işlemleri",
+          name: "Kareköklü İfadelerde Çarpma ve Bölme",
           completed: false
         },
         {
-          name: "Kareköklü İfadeler: Kareköklü ifadelerde toplama ve çıkarma işlemleri",
+          name: "Kareköklü İfadelerde Toplama ve Çıkarma",
           completed: false
         },
         {
-          name: "Kareköklü İfadeler: Kareköklü bir ifade ile çarpıldığında sonucu doğal sayı yapan çarpanlar",
+          name: "Kareköklü İfadeyi Doğal Sayı Yapan Çarpanlar",
           completed: false
         },
         {
-          name: "Kareköklü İfadeler: Ondalık ifadelerin karekökleri",
+          name: "Ondalık İfadelerin Karekökleri",
           completed: false
         },
         {
-          name: "Kareköklü İfadeler: Gerçek sayılar",
+          name: "Gerçek Sayılar (Rasyonel ve İrrasyonel)",
           completed: false
         },
         {
