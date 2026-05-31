@@ -765,7 +765,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-2">
             <div>
-              <h2 className="text-2xl font-black text-slate-900">Karar ve Analiz Merkezi</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-black text-slate-900">Karar ve Analiz Merkezi</h2>
+                <ContextHelp title="Karar ve Analiz Merkezi" tone="blue">
+                  Çocuğunuzun günlük çalışma verileri ve sınav performansları analiz edilerek akademik risk durumlarının ve ders çalışma rotası kararlarının izlendiği yönetim merkezidir.
+                </ContextHelp>
+              </div>
               <p className="text-sm text-slate-500">Mevcut ders durumu, akademik risk sinyalleri ve planlama.</p>
             </div>
             <button
@@ -946,9 +951,14 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_360px] w-full max-w-6xl mx-auto">
               {/* Sol Geniş Sütun - Öncelikli Konular (Kompakt Liste) */}
               <div className={surface}>
-                <div className="mb-5 flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-rose-600" />
-                  <h3 className="text-xl font-black text-slate-950">Oncelikli konular</h3>
+                <div className="mb-5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-rose-600" />
+                    <h3 className="text-xl font-black text-slate-950">Oncelikli konular</h3>
+                  </div>
+                  <ContextHelp title="Öncelikli Konular" tone="blue">
+                    Çocuğunuzun test başarı yüzdelerine göre acil tekrar veya soru çözümü yapması gereken en kritik LGS ders konularının sıralı listesidir.
+                  </ContextHelp>
                 </div>
                 <div className="space-y-3">
                   {weakTopics.length === 0 && <div className="ios-widget rounded-[24px] p-5 text-sm text-slate-500">Acil tekrar gereken konu gorunmuyor.</div>}
@@ -1048,7 +1058,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <ClipboardList className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-xl font-black text-slate-950">LGS Hedef ve Deneme Takibi</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-black text-slate-950">LGS Hedef ve Deneme Takibi</h3>
+                  <ContextHelp title="LGS Hedef ve Deneme Takibi" tone="blue">
+                    Çocuğunuzun LGS deneme sınavlarındaki puan gelişimini, hedeflenen okul puanı ve LGS baraj seviyeleriyle karşılaştırmalı olarak gösteren performans takip alanıdır.
+                  </ContextHelp>
+                </div>
                 <p className="text-sm font-semibold text-slate-500 mt-0.5">Sınav hazırlık hedefleri ve güncel durum analizi</p>
               </div>
             </div>
@@ -1101,7 +1116,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <Target className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-950">Haftalık Hedef Belirleme & İlerleme</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-slate-950">Haftalık Hedef Belirleme & İlerleme</h3>
+                  <ContextHelp title="Haftalık Hedef" tone="blue">
+                    Çocuğunuzun bu hafta çözmeyi hedeflediği toplam soru sayısını ve testlerindeki başarı hedeflerinin gerçekleşme durumunu gösteren planlama alanıdır.
+                  </ContextHelp>
+                </div>
                 <p className="text-xs font-semibold text-slate-500">Öğrencinin haftalık çalışma limitlerini ve LGS hedeflerini yönetin</p>
               </div>
             </div>
@@ -1227,7 +1247,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <TrendingUp className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-950">Deneme Sınavları ve Gidişat Durumu</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-slate-950">Deneme Sınavları ve Gidişat Durumu</h3>
+                  <ContextHelp title="Deneme Sınavları ve Gidişat" tone="blue">
+                    Çocuğunuzun son LGS deneme sınavı sonuçlarına göre net gelişimini ve puan durumunu takip eden akademik analiz kartıdır.
+                  </ContextHelp>
+                </div>
                 <p className="text-xs font-semibold text-slate-500">Öğrencinin okul sınavları ve deneme performans trend analizi</p>
               </div>
             </div>
@@ -1267,7 +1292,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <ClipboardList className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-950">Son Sınav & Deneme Kayıtları</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-slate-950">Son Sınav & Deneme Kayıtları</h3>
+                  <ContextHelp title="Sınav Kayıtları" tone="blue">
+                    Çocuğunuzun okula veya genel denemelere ait son sınav sonuçlarının ve ders bazlı ders puanlarının saklandığı geçmiş kayıt listesidir.
+                  </ContextHelp>
+                </div>
                 <p className="text-xs font-semibold text-slate-500">Öğrencinin en son girdiği sınav sonuçları ve performans dağılımı</p>
               </div>
             </div>
@@ -1359,7 +1389,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <BarChart className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-950">Genel Rapor ve Akademik Özet</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-slate-950">Genel Rapor ve Akademik Özet</h3>
+                  <ContextHelp title="Genel Rapor" tone="blue">
+                    Çocuğunuzun genel çalışma hacmini, çözülen soru sayılarını ve ortalama ders performanslarını tek sayfada özetleyen ebeveyn raporlama alanıdır.
+                  </ContextHelp>
+                </div>
                 <p className="text-xs font-semibold text-slate-500">Öğrencinin haftalık/aylık performans ve çalışma özeti</p>
               </div>
             </div>
@@ -1416,7 +1451,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <Target className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-950 dark:text-slate-100">Akademik Kalite Göstergeleri</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-slate-950 dark:text-slate-100">Akademik Kalite Göstergeleri</h3>
+                  <ContextHelp title="Akademik Kalite" tone="blue">
+                    Çocuğunuzun testlerdeki doğruluk oranı, odaklanma süresi ve çalışma verimliliğinin genel gidişatını analiz eden grafik alanıdır.
+                  </ContextHelp>
+                </div>
                 <p className="text-xs font-semibold text-slate-500">Sorulardaki ilk deneme başarısı, verimli saat dilimi ve çalışma temposu profili</p>
               </div>
             </div>
@@ -1463,7 +1503,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <BookOpen className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-950">Konu Hakimiyet Analizi</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-slate-950">Konu Hakimiyet Analizi</h3>
+                  <ContextHelp title="Konu Hakimiyet Analizi" tone="blue">
+                    Çocuğunuzun tüm ders konularındaki en çok gelişen (başarısı artan) ve en çok zorlanılan (tekrar gereken) konularını listeler.
+                  </ContextHelp>
+                </div>
                 <p className="text-xs font-semibold text-slate-500">Öğrencinin en çok gelişim gösterdiği ve en çok zorlandığı LGS konuları</p>
               </div>
             </div>
