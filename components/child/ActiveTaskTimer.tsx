@@ -49,7 +49,7 @@ const Countdown: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
   }, [count, onFinish]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/85 text-white">
+    <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-slate-950/85 text-white">
       <p className="mb-4 text-xl font-semibold uppercase tracking-[0.18em] text-slate-300">Hazirlik</p>
       <div className="text-9xl font-black">{count > 0 ? count : 'Basla'}</div>
     </div>
@@ -241,7 +241,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
   return (
     <>
       {wasTaskDeleted && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="ios-card w-full max-w-sm rounded-[28px] p-6 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100"><Trash2 className="h-6 w-6 text-red-600" /></div>
             <h3 className="mb-2 text-xl font-black">Görev silindi</h3>
@@ -252,7 +252,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
       )}
 
       {showCompleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '356px', width: '100%', margin: '0 auto' }}>
             <h3 className="text-xl font-black text-white">Seansı bitir</h3>
             <p className="mt-0.5 text-xs text-slate-400">Süre özetini kontrol et ve kaydet.</p>
@@ -322,7 +322,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
       )}
 
       {showAnalysisModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '356px', width: '100%', margin: '0 auto' }}>
             <h3 className="text-xl font-black text-white">Soru analizi</h3>
             <p className="mt-0.5 text-xs text-slate-400">Doğru, yanlış ve boş sayılarını gir.</p>
@@ -368,7 +368,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
         </div>
       )}
 
-      <div ref={sessionRef} className={`dr-session-shell fixed inset-0 z-40 overflow-y-auto bg-[radial-gradient(circle_at_top,#1e2540_0%,#0f1322_60%,#070913_100%)] sm:px-6 ${isFocusMode ? 'dr-session-shell-full' : ''}`} role="application" aria-label="Aktif çalışma seansı">
+      <div ref={sessionRef} className={`dr-session-shell fixed inset-0 z-[60] overflow-y-auto bg-[radial-gradient(circle_at_top,#1e2540_0%,#0f1322_60%,#070913_100%)] sm:px-6 ${isFocusMode ? 'dr-session-shell-full' : ''}`} role="application" aria-label="Aktif çalışma seansı">
         <button
           type="button"
           onClick={handleToggleFocusMode}
@@ -378,7 +378,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
           {isFocusMode ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           <span className="hidden sm:inline">{isFocusMode ? 'Odaktan çık' : 'Odak modu'}</span>
         </button>
-        <div className="mx-auto flex min-h-full w-full max-w-6xl items-center">
+        <div className="mx-auto flex min-h-full w-full max-w-6xl items-start py-8 md:py-12 px-4">
           <div className="grid w-full gap-6 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
             <aside className="dr-session-context-card rounded-[32px] p-6 bg-slate-900/40 border border-slate-800/80 backdrop-blur-md text-white shadow-2xl">
               <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-400">Aktif seans</div>
@@ -426,7 +426,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
         </div>
       </div>
 
-      <div className="ios-panel fixed bottom-0 left-0 right-0 z-40 px-4 py-3 bg-slate-900/90 border-t border-slate-800 backdrop-blur-md xl:hidden">
+      <div className="ios-panel fixed bottom-0 left-0 right-0 z-[70] px-4 py-3 bg-slate-900/90 border-t border-slate-800 backdrop-blur-md xl:hidden">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-2">
           {status === 'running' ? <button onClick={() => setStatus('paused')} className="ios-button flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold text-slate-100 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition"><Pause className="mr-2 h-5 w-5" />Durdur</button> : <button onClick={() => setStatus('running')} className="ios-button-active flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold bg-primary-600 hover:bg-primary-500 text-white font-black"><Play className="mr-2 h-5 w-5" />Devam et</button>}
           {status !== 'break' ? <button onClick={() => setStatus('break')} className="ios-yellow flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold bg-amber-600 hover:bg-amber-500 text-white"><Coffee className="mr-2 h-5 w-5" />Mola ver</button> : <button onClick={() => setStatus('running')} className="ios-yellow flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold bg-amber-600 hover:bg-amber-500 text-white"><Coffee className="mr-2 h-5 w-5" />Molayı bitir</button>}

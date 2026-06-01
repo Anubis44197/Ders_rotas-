@@ -659,7 +659,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
         <section className="dr-hig-primary-box ios-mint rounded-[30px] p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-800">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/70 dark:bg-emerald-950/60 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-300 border border-transparent dark:border-emerald-800/30">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 Canli seans
               </div>

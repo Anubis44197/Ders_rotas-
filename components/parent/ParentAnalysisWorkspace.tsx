@@ -908,7 +908,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <div className="grid gap-4 sm:grid-cols-2">
                   {topCourses.length === 0 && <div className="ios-widget rounded-[22px] p-4 text-sm text-slate-500">Ders analizi icin yeterli veri yok.</div>}
                   {topCourses.map((course) => {
-                    const courseUnits = curriculum[course.courseName] || [];
+                    const courseUnits = (curriculum && curriculum[course.courseName]) || [];
                     const totalTopics = courseUnits.flatMap((u) => u.topics || []);
                     const completedTopics = totalTopics.filter((t) => t.completed);
                     const completedCount = completedTopics.length;

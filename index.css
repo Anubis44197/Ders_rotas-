@@ -294,32 +294,28 @@ textarea:focus-visible {
 }
 
 .dr-theme-dark {
-  --dr-bg: #0f1320;
-  --dr-surface: rgba(22, 27, 43, 0.88);
-  --dr-surface-strong: rgba(30, 36, 55, 0.94);
+  --dr-bg: #0f1322;
+  --dr-surface: rgba(15, 20, 35, 0.45);
+  --dr-surface-strong: rgba(20, 26, 46, 0.65);
   --dr-text: #f1f5ff;
-  --dr-muted: #a3aec6;
+  --dr-muted: #94a3b8;
   --dr-blue: #8ab4ff;
-  --dr-green: #7ee7c7;
+  --dr-green: #34d399;
   --dr-purple: #c4b5fd;
-  --dr-red: #ff9aa2;
-  --dr-orange: #ffc68b;
-  --dr-yellow: #ffe08a;
-  --dr-blue-soft: rgba(30, 43, 77, 0.88);
-  --dr-green-soft: rgba(30, 58, 51, 0.88);
-  --dr-purple-soft: rgba(43, 37, 71, 0.88);
-  --dr-red-soft: rgba(58, 30, 36, 0.88);
-  --dr-orange-soft: rgba(58, 41, 30, 0.88);
-  --dr-yellow-soft: rgba(58, 52, 32, 0.88);
-  --dr-shadow: 0 24px 64px rgba(0, 0, 0, 0.34);
-  --dr-shadow-soft: 0 16px 36px rgba(0, 0, 0, 0.26);
-  --dr-border: #2e3650;
+  --dr-red: #f87171;
+  --dr-orange: #fb923c;
+  --dr-yellow: #fbbf24;
+  --dr-blue-soft: rgba(59, 130, 246, 0.12);
+  --dr-green-soft: rgba(16, 185, 129, 0.12);
+  --dr-purple-soft: rgba(167, 139, 250, 0.12);
+  --dr-red-soft: rgba(239, 68, 68, 0.12);
+  --dr-orange-soft: rgba(249, 115, 22, 0.12);
+  --dr-yellow-soft: rgba(245, 158, 11, 0.12);
+  --dr-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
+  --dr-shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.3);
+  --dr-border: rgba(255, 255, 255, 0.08);
   color: var(--dr-text);
-  background:
-    radial-gradient(circle at 14% 0%, rgba(138, 180, 255, 0.18), transparent 34%),
-    radial-gradient(circle at 88% 12%, rgba(196, 181, 253, 0.13), transparent 30%),
-    radial-gradient(circle at 76% 94%, rgba(126, 231, 199, 0.10), transparent 30%),
-    linear-gradient(180deg, #161b2b 0%, var(--dr-bg) 100%);
+  background: radial-gradient(circle at top, #1e2540 0%, #0f1322 60%, #070913 100%) !important;
 }
 
 .dr-topbar {
@@ -484,8 +480,9 @@ button svg,
 }
 
 .dr-theme-dark .ios-widget {
-  background: rgba(30, 36, 55, 0.72);
-  box-shadow: inset 0 1px 0 rgba(241, 245, 255, 0.06), 0 10px 26px rgba(0, 0, 0, 0.22);
+  background: rgba(15, 20, 35, 0.45);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
 }
 
 .ios-button {
@@ -499,8 +496,18 @@ button svg,
 }
 
 .dr-theme-dark .ios-button {
-  background: rgba(22, 27, 43, 0.82);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f1f5ff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.dr-theme-dark .ios-button-active {
+  background: linear-gradient(135deg, #8ab4ff 0%, #5c8df5 100%) !important;
+  color: #0b1120 !important;
+  border-color: rgba(138, 180, 255, 0.42) !important;
+  box-shadow: 0 8px 22px rgba(92, 141, 245, 0.25) !important;
+  font-weight: 800 !important;
 }
 
 .ios-button:is(select),
@@ -963,27 +970,39 @@ button svg,
 }
 
 .dr-theme-dark .ios-blue {
-  background: linear-gradient(180deg, rgba(30, 43, 77, 0.90), rgba(22, 27, 43, 0.78));
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.28) !important;
+  color: #93c5fd;
 }
 
 .dr-theme-dark .ios-mint {
-  background: linear-gradient(180deg, rgba(30, 58, 51, 0.90), rgba(22, 27, 43, 0.78));
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+  color: #34d399;
 }
 
 .dr-theme-dark .ios-lilac {
-  background: linear-gradient(180deg, rgba(43, 37, 71, 0.90), rgba(22, 27, 43, 0.78));
+  background: rgba(167, 139, 250, 0.12) !important;
+  border-color: rgba(167, 139, 250, 0.28) !important;
+  color: #c4b5fd;
 }
 
 .dr-theme-dark .ios-peach {
-  background: linear-gradient(180deg, rgba(58, 41, 30, 0.90), rgba(22, 27, 43, 0.78));
+  background: rgba(249, 115, 22, 0.12) !important;
+  border-color: rgba(249, 115, 22, 0.28) !important;
+  color: #fdba74;
 }
 
 .dr-theme-dark .ios-coral {
-  background: linear-gradient(180deg, rgba(58, 30, 36, 0.90), rgba(22, 27, 43, 0.78));
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.28) !important;
+  color: #fca5a5;
 }
 
 .dr-theme-dark .ios-yellow {
-  background: linear-gradient(180deg, rgba(58, 52, 32, 0.90), rgba(22, 27, 43, 0.78));
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.28) !important;
+  color: #fbbf24;
 }
 
 .dr-theme-dark .rounded-full.ios-coral,

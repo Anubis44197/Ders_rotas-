@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Task, TaskCompletionData } from '../../types';
 import { Play, Pause, Coffee, StopCircle, Trash2, Maximize, Minimize } from '../icons';
 import { playHaptic } from '../../utils/haptics';
@@ -122,7 +122,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
   return (
     <>
       {wasTaskDeleted && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="ios-card w-full max-w-sm rounded-[28px] p-6 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100"><Trash2 className="h-6 w-6 text-red-600" /></div>
             <h3 className="mb-2 text-xl font-black">Görev silindi</h3>
@@ -133,7 +133,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
       )}
 
       {showCompleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
           <div className="ios-card w-full max-w-md rounded-[28px] p-6">
             <h3 className="text-2xl font-black text-slate-900">Okuma seansını tamamla</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">Bu seansta kaç sayfa okuduğunu gir.</p>
@@ -153,7 +153,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
         </div>
       )}
 
-      <div ref={sessionRef} className={`dr-session-shell fixed inset-0 z-40 overflow-y-auto bg-[radial-gradient(circle_at_top,#ccfbf1_0%,#ecfeff_30%,#f8fafc_100%)] sm:px-6 ${isFocusMode ? 'dr-session-shell-full' : ''}`} role="application" aria-label="Aktif okuma seansi">
+      <div ref={sessionRef} className={`dr-session-shell fixed inset-0 z-[60] overflow-y-auto bg-[radial-gradient(circle_at_top,#ccfbf1_0%,#ecfeff_30%,#f8fafc_100%)] sm:px-6 ${isFocusMode ? 'dr-session-shell-full' : ''}`} role="application" aria-label="Aktif okuma seansi">
         <button
           type="button"
           onClick={handleToggleFocusMode}
@@ -163,7 +163,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
           {isFocusMode ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           <span className="hidden sm:inline">{isFocusMode ? 'Odaktan cik' : 'Odak modu'}</span>
         </button>
-        <div className="mx-auto flex min-h-full w-full max-w-6xl items-center">
+        <div className="mx-auto flex min-h-full w-full max-w-6xl items-start py-8 md:py-12 px-4">
           <div className="grid w-full gap-6 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
             <aside className="dr-session-context-card ios-card rounded-[32px] p-6">
               <div className="text-xs font-bold uppercase tracking-[0.18em] text-teal-600">Okuma seansi</div>
@@ -205,7 +205,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
         </div>
       </div>
 
-      <div className="ios-panel fixed bottom-0 left-0 right-0 z-40 px-4 py-3 xl:hidden">
+      <div className="ios-panel fixed bottom-0 left-0 right-0 z-[70] px-4 py-3 xl:hidden">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-2">
           {status === 'running' ? <button onClick={() => setStatus('paused')} className="ios-button flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold text-slate-700"><Pause className="mr-2 h-5 w-5" />Durdur</button> : <button onClick={() => setStatus('running')} className="ios-button-active flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold"><Play className="mr-2 h-5 w-5" />Devam et</button>}
           {status !== 'break' ? <button onClick={() => setStatus('break')} className="ios-yellow flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold text-amber-900"><Coffee className="mr-2 h-5 w-5" />Mola ver</button> : <button onClick={() => setStatus('running')} className="ios-yellow flex items-center justify-center rounded-[18px] px-3 py-3 text-sm font-bold text-amber-900"><Coffee className="mr-2 h-5 w-5" />Molayi bitir</button>}
