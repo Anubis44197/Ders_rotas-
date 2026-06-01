@@ -380,41 +380,53 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
             Ders/konu girişi müfredatta kalır. Burada sadece okul saatleri ve plan motorunun kullanacağı ev çalışma pencereleri yönetilir.
           </p>
         </div>
-        <div className="flex flex-col items-stretch gap-2 xl:items-end">
-          <div className="flex flex-col gap-2 sm:flex-row xl:justify-end">
-            {onAddExam && (
-              <button
-                type="button"
-                onClick={onAddExam}
-                className="ios-button inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700"
-              >
-                <PlusCircle className="h-4 w-4 text-primary-600" />
-                Sınav ekle
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => openEditorForDay(activeDay, 'school')}
-              className="ios-button inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700"
-            >
-              <PlusCircle className="h-4 w-4 text-primary-600" />
-              Okul programını düzenle
-            </button>
-            <button
-              type="button"
-              onClick={openTaskAssignment}
-              disabled={!addTask}
-              className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 disabled:opacity-50"
-            >
-              <ClipboardList className="h-4 w-4" />
-              Görev ata
-            </button>
+        {saved && (
+          <div className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold text-emerald-700 shrink-0 self-start">
+            Program kaydedildi
           </div>
-          {saved && (
-            <div className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-700">
-              Program kaydedildi
-            </div>
+        )}
+      </div>
+
+      {/* Hızlı Akademik Planlama Kartı */}
+      <div className="mb-6 rounded-[24px] border border-white/10 bg-white/5 p-4">
+        <div className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Hızlı Akademik Planlama</div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {onAddExam && (
+            <button
+              type="button"
+              onClick={onAddExam}
+              className="group flex flex-col items-start rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition duration-300 hover:scale-[1.02] hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:shadow-lg hover:shadow-emerald-500/5"
+            >
+              <div className="flex items-center justify-center rounded-xl bg-emerald-500/10 p-2 text-emerald-600 transition group-hover:scale-110">
+                <PlusCircle className="h-5 w-5" />
+              </div>
+              <h3 className="mt-3 text-sm font-black text-slate-900 group-hover:text-emerald-700">Sınav Ekle</h3>
+              <p className="mt-1 text-xs font-medium text-slate-500 leading-normal">Okul sınav tarihlerini ve hedeflenen konuları takvime kaydedin.</p>
+            </button>
           )}
+          <button
+            type="button"
+            onClick={() => openEditorForDay(activeDay, 'school')}
+            className="group flex flex-col items-start rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition duration-300 hover:scale-[1.02] hover:border-blue-500/30 hover:bg-blue-500/5 hover:shadow-lg hover:shadow-blue-500/5"
+          >
+            <div className="flex items-center justify-center rounded-xl bg-blue-500/10 p-2 text-blue-600 transition group-hover:scale-110">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <h3 className="mt-3 text-sm font-black text-slate-900 group-hover:text-blue-700">Okul Programını Düzenle</h3>
+            <p className="mt-1 text-xs font-medium text-slate-500 leading-normal">Haftalık okul ders bloklarını ve ev çalışma saatlerini güncelleyin.</p>
+          </button>
+          <button
+            type="button"
+            onClick={openTaskAssignment}
+            disabled={!addTask}
+            className="group flex flex-col items-start rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition duration-300 hover:scale-[1.02] hover:border-purple-500/30 hover:bg-purple-500/5 hover:shadow-lg hover:shadow-purple-500/5 disabled:opacity-50 disabled:hover:scale-100 disabled:hover:border-white/10 disabled:hover:bg-white/5"
+          >
+            <div className="flex items-center justify-center rounded-xl bg-purple-500/10 p-2 text-purple-600 transition group-hover:scale-110">
+              <ClipboardList className="h-5 w-5" />
+            </div>
+            <h3 className="mt-3 text-sm font-black text-slate-900 group-hover:text-purple-700">Görev Ata</h3>
+            <p className="mt-1 text-xs font-medium text-slate-500 leading-normal">Müfredattaki ünitelere göre çocuğa doğrudan ders görevi atayın.</p>
+          </button>
         </div>
       </div>
 
@@ -440,7 +452,9 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
           return (
             <div
               key={`summary-${day}`}
-              className={`min-h-[240px] rounded-[20px] border border-white/10 bg-white/5 p-4 transition ${isActiveDay ? 'ring-2 ring-primary-400/50' : ''}`}
+              onClick={() => openEditorForDay(day, 'school')}
+              className={`min-h-[240px] rounded-[20px] border border-white/10 bg-white/5 p-4 transition cursor-pointer hover:border-primary-400/40 hover:bg-white/10 hover:shadow-lg hover:shadow-primary-500/5 ${isActiveDay ? 'ring-2 ring-primary-400/50' : ''}`}
+              title={`${day} programını düzenlemek için tıklayın`}
             >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
@@ -452,23 +466,6 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${dayState.confirmed ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                   {dayState.confirmed ? 'Onaylı' : 'Taslak'}
                 </div>
-              </div>
-
-              <div className="mb-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => openEditorForDay(day, 'school')}
-                  className="ios-button rounded-full px-3 py-1.5 text-xs font-bold text-slate-700"
-                >
-                  Ders bloğu ekle
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openEditorForDay(day, 'study')}
-                  className="ios-button rounded-full px-3 py-1.5 text-xs font-bold text-slate-700"
-                >
-                  Çalışma zamanı ekle
-                </button>
               </div>
 
               <div className="space-y-2">
