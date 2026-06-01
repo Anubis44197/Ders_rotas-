@@ -5359,7 +5359,7 @@ const App: React.FC = () => {
       </main>
       {curriculumEditorOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/45 p-4 backdrop-blur-sm" role="presentation">
-          <div className="ios-card flex max-h-[min(48rem,calc(100dvh-2rem))] w-[min(72rem,100%)] flex-col overflow-hidden rounded-[28px]" role="dialog" aria-modal="true" aria-label="Müfredat düzenleme">
+          <div className="ios-card flex max-h-[min(42rem,calc(100dvh-2rem))] w-[min(54rem,100%)] flex-col overflow-hidden rounded-[28px]" role="dialog" aria-modal="true" aria-label="Müfredat düzenleme">
             <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-primary-600">

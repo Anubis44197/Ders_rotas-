@@ -268,3 +268,5 @@ Uygulamanın görsel tasarımı, modern mobil ve masaüstü web standartlarını
 *   **[2026-06-01]**: Aktif ders çalışma ve okuma seansı ekranlarındaki dikey hizalama (flex centering) ve katman (z-index) çakışması kaynaklı taşma ve kesilme hatalarının düzeltilmesi. Proje genelindeki TypeScript strict mode derleme hatalarının giderilmesi. - **[Durum: Tamamlandı]**
 *   **[2026-06-01]**: Çocuk aktif seans ekranındaki ultra-premium 'Midnight Glassmorphism Space' tasarım estetiğinin (derin uzay dikey renk geçişleri, pürüzsüz gece camı kartları ve özel parlayan aktif buton tasarımları) tüm uygulamanın geneline (Koyu Tema) entegre edilmesi. - **[Durum: Tamamlandı]**
 *   **[2026-06-01]**: Koyu Modda 'Canlı Seans' rozet metninin okunabilirliğini bozan CSS '!important' öncelik çakışmasının giderilmesi ve rozete göz yormayan, premium bir gece camı dokusu (glowing green/dark emerald) kazandırılması. - **[Durum: Tamamlandı]**
+*   **[2026-06-01]**: Geliştirme sunucusunun (Vite dev server) 'npm run dev:stable' komutuyla 3000 portunda başarıyla başlatılması. - **[Durum: Tamamlandı]**
+

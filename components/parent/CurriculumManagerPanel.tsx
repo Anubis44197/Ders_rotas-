@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { SubjectCurriculum } from '../../types';
 import { BookOpen, PlusCircle, CheckCircle, Sparkles, Trash2 } from '../icons';
 
@@ -134,39 +134,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
   };
 
   return (
-    <section className="ios-card rounded-[28px] p-6">
-      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-600">
-            <BookOpen className="h-4 w-4" />
-            Müfredat Editörü
-          </div>
-          <h2 className="mt-2 text-3xl font-black text-slate-900">Ders / ünite / konu yapısı</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Bu alan sadece ebeveyn tarafında görünür. Görev atama ve plan üretimi için temel akademik iskelet burada tanımlanır.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="ios-widget rounded-[22px] px-4 py-3">
-            <div className="text-xs font-semibold uppercase text-slate-500">Ders</div>
-            <div className="mt-2 text-2xl font-bold text-slate-900">{subjects.length}</div>
-          </div>
-          <div className="ios-widget rounded-[22px] px-4 py-3">
-            <div className="text-xs font-semibold uppercase text-slate-500">Ünite</div>
-            <div className="mt-2 text-2xl font-bold text-slate-900">{totalUnitCount}</div>
-          </div>
-          <div className="ios-widget rounded-[22px] px-4 py-3">
-            <div className="text-xs font-semibold uppercase text-slate-500">Konu</div>
-            <div className="mt-2 text-2xl font-bold text-slate-900">{totalTopicCount}</div>
-          </div>
-          <div className="ios-widget ios-mint rounded-[22px] px-4 py-3">
-            <div className="text-xs font-semibold uppercase text-slate-500">Tamamlanan</div>
-            <div className="mt-2 text-2xl font-bold">{completedTopicCount}</div>
-          </div>
-        </div>
-      </div>
-
+    <div className="space-y-4 p-1">
       <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="ios-widget rounded-[24px] p-4">
           <div className="mb-4 flex items-center justify-between">
@@ -326,7 +294,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
           </button>
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 

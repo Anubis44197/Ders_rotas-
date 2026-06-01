@@ -3,6 +3,7 @@ import type { Course, ExamScheduleEntry, SubjectCurriculum, Task, WeeklySchedule
 import { BookOpen, Calendar, ClipboardList, PlusCircle, Trash2 } from '../icons';
 import WeeklySchedulePanel from './WeeklySchedulePanel';
 import { getTodayString } from '../../utils/dateUtils';
+import ContextHelp from '../shared/ContextHelp';
 
 interface CurriculumSummary {
   subjects: string[];
@@ -97,8 +98,6 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
   const activeCourses = safeCourses.filter((course) => course.active !== false);
   const inactiveCourses = safeCourses.filter((course) => course.active === false);
   const brokenReferenceTotal = Object.values(safeCourseReferenceHealth).reduce((sum, count) => sum + count, 0);
-  const hasScheduleBlocks = Object.values(weeklySchedule || {}).some((day) => Array.isArray(day?.slots) && day.slots.length > 0);
-  const hasStudyWindows = Object.values(weeklySchedule || {}).some((day) => Array.isArray(day?.availableWindows) && day.availableWindows.length > 0);
   const today = getTodayString();
 
   // Sınav takvimi — tarih sıralı, geçmiş sınavlar altta
@@ -107,27 +106,16 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
   const upcomingExams = sortedExamEntries.filter((e) => e.date >= today);
   const pastExams = sortedExamEntries.filter((e) => e.date < today);
 
-  const readinessItems = [
-    { label: 'Dersler', value: activeCourses.length > 0 ? `${activeCourses.length} aktif` : 'Eksik', ready: activeCourses.length > 0 },
-    { label: 'Okul programı', value: hasScheduleBlocks ? 'Hazır' : 'Bekliyor', ready: hasScheduleBlocks },
-    { label: 'Çalışma zamanı', value: hasStudyWindows ? 'Hazır' : 'Bekliyor', ready: hasStudyWindows },
-    { label: 'Sınav takvimi', value: upcomingExams.length > 0 ? `${upcomingExams.length} yaklaşan` : 'Sınav yok', ready: upcomingExams.length > 0 },
-  ];
-
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="dr-hig-large-title text-slate-900 dark:text-white">Zaman ve Görevler</h2>
-          <p className="mt-1.5 dr-hig-caption text-slate-500 dark:text-slate-400">Ders, okul programı ve çalışma zemini ile görevler yönetilir.</p>
-        </div>
-        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2 lg:grid-cols-4">
-          {readinessItems.map((item) => (
-            <div key={item.label} className={`dr-hig-secondary-card rounded-2xl px-4 py-3 ${item.ready ? 'ios-mint' : ''}`}>
-              <span className="block dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">{item.label}</span>
-              <span className="dr-hig-headline text-slate-900 dark:text-white mt-1 block">{item.value}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-2">
+            <h2 className="dr-hig-large-title text-slate-900 dark:text-white">Zaman ve Görevler</h2>
+            <ContextHelp title="Zaman ve Görevler" tone="blue">
+              Ders, okul programı ve çalışma zemini ile görevler yönetilir.
+            </ContextHelp>
+          </div>
         </div>
       </section>
 
@@ -152,12 +140,14 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
           <div>
             <div className="flex items-center gap-2 dr-hig-caption font-bold uppercase tracking-[0.18em] text-primary-600">
               <BookOpen className="h-4 w-4" />
-              Müfredat Özeti
+              Müfredat
             </div>
-            <h3 className="mt-2 dr-hig-headline text-slate-900 dark:text-white">Ders / ünite / konu yapısı</h3>
-            <p className="mt-2 max-w-2xl dr-hig-caption text-slate-500">
-              Ders ekle/kaldır, pasif dersi geri al. Bu listedeki dersler görev atama ve analiz ekranlarında kullanılır.
-            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <h3 className="dr-hig-headline text-slate-900 dark:text-white">Müfredat Yönetimi</h3>
+              <ContextHelp title="Müfredat Yönetimi" tone="blue">
+                Ders ekle/kaldır, pasif dersi geri al. Bu listedeki dersler görev atama ve analiz ekranlarında kullanılır.
+              </ContextHelp>
+            </div>
           </div>
           <button
             type="button"
@@ -235,37 +225,37 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
 
       {isExamModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm transition-all">
-          <div className="ios-card flex max-h-[min(34rem,calc(100dvh-2rem))] w-[min(42rem,100%)] flex-col overflow-hidden rounded-[28px]" role="dialog" aria-modal="true" aria-label="Sınav takvimi ekle">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-white/50 px-6 py-4">
-              <h2 className="text-lg font-black text-slate-900">Sınav Ekle</h2>
-              <button type="button" onClick={() => setIsExamModalOpen(false)} className="ios-button flex h-11 w-11 items-center justify-center rounded-full text-slate-600" aria-label="Sınav formunu kapat">
+          <div className="ios-card flex max-h-[min(34rem,calc(100dvh-2rem))] w-[min(34rem,100%)] flex-col overflow-hidden rounded-[28px]" role="dialog" aria-modal="true" aria-label="Sınav takvimi ekle">
+            <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-4 py-3">
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Sınav Ekle</h2>
+              <button type="button" onClick={() => setIsExamModalOpen(false)} className="ios-button flex h-9 w-9 items-center justify-center rounded-full text-slate-600 dark:text-slate-400" aria-label="Sınav formunu kapat">
                 ✕
               </button>
             </div>
-            <div className="flex-1 space-y-4 overflow-y-auto p-6">
+            <div className="flex-1 space-y-3 overflow-y-auto p-4">
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-500">Ders Seçin</label>
-                <select value={selectedExamCourseId} onChange={(event) => setSelectedExamCourseId(event.target.value)} className="dr-form-field w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none">
+                <label className="mb-1.5 block text-xs font-bold uppercase text-slate-500">Ders Seçin</label>
+                <select value={selectedExamCourseId} onChange={(event) => setSelectedExamCourseId(event.target.value)} className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none">
                   <option value="">Ders Seçiniz</option>
                   {safeCourses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-500">Sınav Adı</label>
-                <input value={examNameInput} onChange={(event) => setExamNameInput(event.target.value)} placeholder="Örn: 1. Dönem 1. Yazılı" className="dr-form-field w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none" />
+                <label className="mb-1.5 block text-xs font-bold uppercase text-slate-500">Sınav Adı</label>
+                <input value={examNameInput} onChange={(event) => setExamNameInput(event.target.value)} placeholder="Örn: 1. Dönem 1. Yazılı" className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" />
               </div>
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-500">Tarih</label>
-                <input value={examDateInput} onChange={(event) => setExamDateInput(event.target.value)} type="date" className="dr-form-field w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none" />
+                <label className="mb-1.5 block text-xs font-bold uppercase text-slate-500">Tarih</label>
+                <input value={examDateInput} onChange={(event) => setExamDateInput(event.target.value)} type="date" className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" />
               </div>
               <div>
-                <label className="mb-2 block text-xs font-bold uppercase text-slate-500">Not (İsteğe Bağlı)</label>
-                <input value={examNoteInput} onChange={(event) => setExamNoteInput(event.target.value)} placeholder="Hedef konular veya notlar..." className="dr-form-field w-full rounded-2xl px-3 py-3 text-sm font-semibold outline-none" />
+                <label className="mb-1.5 block text-xs font-bold uppercase text-slate-500">Not (İsteğe Bağlı)</label>
+                <input value={examNoteInput} onChange={(event) => setExamNoteInput(event.target.value)} placeholder="Hedef konular veya notlar..." className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" />
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4">
-              <button type="button" onClick={() => setIsExamModalOpen(false)} className="ios-button rounded-2xl px-4 py-3 text-sm font-bold text-slate-700">İptal</button>
-              <button type="button" onClick={handleAddExamSchedule} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-slate-900">
+            <div className="flex items-center justify-end gap-3 border-t border-white/10 bg-white/5 px-4 py-3">
+              <button type="button" onClick={() => setIsExamModalOpen(false)} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-slate-700" aria-label="Sınav eklemeyi iptal et">İptal</button>
+              <button type="button" onClick={handleAddExamSchedule} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900">
                 Kaydet
               </button>
             </div>
