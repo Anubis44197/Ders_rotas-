@@ -1,17 +1,26 @@
 import React, { useMemo, useState } from 'react';
-import type { ExamScheduleEntry, Task, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
+import type { CurriculumUnit, ExamScheduleEntry, SubjectCurriculum, Task, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
 import {
   AlertTriangle,
+  BarChart,
   BookOpen,
   Calculator,
   CheckCircle,
   Clock,
   Dna,
+  FileText,
   Globe,
   GraduationCap,
+  Home,
   Play,
   Sparkles,
+  Star,
   Target,
+  TrendingDown,
+  TrendingUp,
+  Trash2,
+  User,
+  X,
 } from '../icons';
 import ParentWorkspaceFrame from './ParentWorkspaceFrame';
 import ContextHelp from '../shared/ContextHelp';
@@ -36,6 +45,8 @@ interface ParentOverviewWorkspaceProps {
   overviewSummary: ParentOverviewSummary;
   overviewNextTask: Task | undefined;
   weeklySchedule?: WeeklySchedule;
+  curriculum?: SubjectCurriculum;
+  onWeeklyScheduleChange?: (schedule: WeeklySchedule) => void;
   overviewUpcomingExam: ExamScheduleEntry | undefined;
   overviewTodayName: string;
   overviewTodaySlots: WeeklyScheduleSlot[];
@@ -180,11 +191,38 @@ const getDeltaDisplay = (delta: number, comparisonLabel = 'haftaya') => {
 
 const DAY_NAMES_ORDERED = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
 
+const CURRICULUM_PANEL_THEMES = [
+  { key: 'blue', className: 'dr-curriculum-showcase-card-blue' },
+  { key: 'green', className: 'dr-curriculum-showcase-card-green' },
+  { key: 'orange', className: 'dr-curriculum-showcase-card-orange' },
+  { key: 'purple', className: 'dr-curriculum-showcase-card-purple' },
+] as const;
+
+const getCurriculumTopicIndex = (curriculum: SubjectCurriculum | undefined, courseName: string, unitName?: string, topicName?: string) => {
+  if (!curriculum || !unitName || !topicName) return -1;
+  const normalizedCourseName = courseName.trim().toLocaleLowerCase('tr-TR');
+  const matchingCourseKey = Object.keys(curriculum).find((key) => key.trim().toLocaleLowerCase('tr-TR') === normalizedCourseName);
+  const units = matchingCourseKey ? curriculum[matchingCourseKey] : [];
+  if (!Array.isArray(units)) return -1;
+  let topicIndex = 0;
+  for (const unit of units) {
+    for (const topic of unit.topics || []) {
+      const isMatch = unit.name.trim().toLocaleLowerCase('tr-TR') === unitName.trim().toLocaleLowerCase('tr-TR')
+        && topic.name.trim().toLocaleLowerCase('tr-TR') === topicName.trim().toLocaleLowerCase('tr-TR');
+      if (isMatch) return topicIndex;
+      topicIndex += 1;
+    }
+  }
+  return -1;
+};
+
 const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   parentSummary,
   overviewSummary,
   overviewNextTask,
   weeklySchedule,
+  curriculum,
+  onWeeklyScheduleChange,
   overviewUpcomingExam,
   overviewTodayName,
   overviewTodaySlots,
@@ -225,6 +263,98 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   const [performanceCourseFilter, setPerformanceCourseFilter] = useState<string>('AUTO');
   const [performanceUnitFilter, setPerformanceUnitFilter] = useState<string>('AUTO');
   const [performanceTopicFilter, setPerformanceTopicFilter] = useState<string>('AUTO');
+  const [schoolCurriculumSlot, setSchoolCurriculumSlot] = useState<{ dayName: string; slotId: string } | null>(null);
+  const [schoolUnitName, setSchoolUnitName] = useState('');
+  const [schoolTopicName, setSchoolTopicName] = useState('');
+  const [schoolCurriculumMessage, setSchoolCurriculumMessage] = useState<string | null>(null);
+  const normalizeForLookup = (value: string) => value.trim().toLocaleLowerCase('tr-TR');
+  const getCurriculumUnitsForCourse = (courseName: string): CurriculumUnit[] => {
+    if (!curriculum || !courseName) return [];
+    const directUnits = curriculum[courseName];
+    if (Array.isArray(directUnits)) return directUnits;
+    const normalizedCourseName = normalizeForLookup(courseName);
+    const matchingKey = Object.keys(curriculum).find((key) => normalizeForLookup(key) === normalizedCourseName);
+    const matchingUnits = matchingKey ? curriculum[matchingKey] : [];
+    return Array.isArray(matchingUnits) ? matchingUnits : [];
+  };
+  const activeSchoolCurriculumDay = schoolCurriculumSlot && weeklySchedule ? weeklySchedule[schoolCurriculumSlot.dayName] : null;
+  const activeSchoolCurriculumSlot = schoolCurriculumSlot && activeSchoolCurriculumDay
+    ? activeSchoolCurriculumDay.slots.find((slot) => slot.id === schoolCurriculumSlot.slotId) || null
+    : null;
+  const schoolCurriculumUnits = activeSchoolCurriculumSlot ? getCurriculumUnitsForCourse(activeSchoolCurriculumSlot.courseName) : [];
+  const schoolCurriculumTopics = schoolCurriculumUnits.find((unit) => unit.name === schoolUnitName)?.topics || [];
+  const closeSchoolCurriculumEditor = () => {
+    setSchoolCurriculumSlot(null);
+    setSchoolUnitName('');
+    setSchoolTopicName('');
+  };
+  const updateSchoolScheduleSlot = (
+    dayName: string,
+    slotId: string,
+    updater: (slot: WeeklyScheduleSlot) => WeeklyScheduleSlot,
+  ) => {
+    if (!weeklySchedule || !onWeeklyScheduleChange) return;
+    const currentDay = weeklySchedule[dayName];
+    if (!currentDay) return;
+    onWeeklyScheduleChange({
+      ...weeklySchedule,
+      [dayName]: {
+        ...currentDay,
+        slots: currentDay.slots.map((slot) => (slot.id === slotId ? updater(slot) : slot)),
+      },
+    });
+  };
+  const openSchoolCurriculumEditor = (dayName: string, slot: WeeklyScheduleSlot) => {
+    if (!onWeeklyScheduleChange) return;
+    setSchoolCurriculumSlot({ dayName, slotId: slot.id });
+    setSchoolUnitName(slot.schoolUnitName || '');
+    setSchoolTopicName(slot.schoolTopicName || '');
+    setSchoolCurriculumMessage(null);
+  };
+  const toggleSchoolNotCovered = (dayName: string, slot: WeeklyScheduleSlot) => {
+    const nextIsNotCovered = slot.schoolCurriculumStatus !== 'not-covered';
+    updateSchoolScheduleSlot(dayName, slot.id, (current) => ({
+      ...current,
+      schoolCurriculumStatus: nextIsNotCovered ? 'not-covered' : undefined,
+      schoolUnitName: nextIsNotCovered ? undefined : current.schoolUnitName,
+      schoolTopicName: nextIsNotCovered ? undefined : current.schoolTopicName,
+      schoolCurriculumUpdatedAt: new Date().toISOString(),
+    }));
+    if (nextIsNotCovered) {
+      setSchoolUnitName('');
+      setSchoolTopicName('');
+    }
+    setSchoolCurriculumMessage(nextIsNotCovered ? 'Konu islenmedi olarak kaydedildi.' : 'Islenmedi isareti kaldirildi.');
+  };
+  const saveSchoolCurriculum = () => {
+    if (!schoolCurriculumSlot || !activeSchoolCurriculumSlot) return;
+    if (!schoolUnitName || !schoolTopicName) {
+      setSchoolCurriculumMessage('Unite ve konu secilmeden kayit yapilamaz.');
+      return;
+    }
+    updateSchoolScheduleSlot(schoolCurriculumSlot.dayName, activeSchoolCurriculumSlot.id, (slot) => ({
+      ...slot,
+      schoolCurriculumStatus: 'covered',
+      schoolUnitName,
+      schoolTopicName,
+      schoolCurriculumUpdatedAt: new Date().toISOString(),
+    }));
+    setSchoolCurriculumMessage('Okulda islenen konu kaydedildi.');
+    window.setTimeout(closeSchoolCurriculumEditor, 350);
+  };
+  const clearSchoolCurriculum = () => {
+    if (!schoolCurriculumSlot || !activeSchoolCurriculumSlot) return;
+    updateSchoolScheduleSlot(schoolCurriculumSlot.dayName, activeSchoolCurriculumSlot.id, (slot) => ({
+      ...slot,
+      schoolCurriculumStatus: undefined,
+      schoolUnitName: undefined,
+      schoolTopicName: undefined,
+      schoolCurriculumUpdatedAt: new Date().toISOString(),
+    }));
+    setSchoolUnitName('');
+    setSchoolTopicName('');
+    setSchoolCurriculumMessage('Okul konu girisi temizlendi.');
+  };
   const riskItems = useMemo(
     () => overviewSummary.weakTopics.slice(0, 3).map((topic, index) => ({
       ...topic,
@@ -259,6 +389,93 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       };
     });
   }, [overviewCourseInsights, overviewCourseNames]);
+
+  const curriculumShowcaseCards = useMemo(() => {
+    const schoolByCourse = new Map<string, {
+      unitName?: string;
+      topicName?: string;
+      status?: 'covered' | 'not-covered';
+      sortKey: string;
+    }>();
+    DAY_NAMES_ORDERED.forEach((dayName, dayIndex) => {
+      const day = weeklySchedule?.[dayName];
+      (day?.slots || []).forEach((slot) => {
+        if (slot.schoolCurriculumStatus !== 'covered' && slot.schoolCurriculumStatus !== 'not-covered') return;
+        const key = normalizeForLookup(slot.courseName || '');
+        const sortKey = slot.schoolCurriculumUpdatedAt || `${String(dayIndex).padStart(2, '0')}-${slot.endTime || slot.startTime || '00:00'}`;
+        const current = schoolByCourse.get(key);
+        if (!current || sortKey >= current.sortKey) {
+          schoolByCourse.set(key, {
+            unitName: slot.schoolUnitName,
+            topicName: slot.schoolTopicName,
+            status: slot.schoolCurriculumStatus,
+            sortKey,
+          });
+        }
+      });
+    });
+
+    const childByCourse = new Map<string, {
+      unitName?: string;
+      topicName?: string;
+      sortKey: string;
+    }>();
+    overviewTopicPerformanceRows.forEach((row) => {
+      if (!row.courseName || !row.topicName) return;
+      const hasStudentEvidence = Boolean(row.lastCompletedAt) || Number(row.taskCount || 0) > 0 || Number(row.totalQuestions || 0) > 0;
+      if (!hasStudentEvidence) return;
+      const key = normalizeForLookup(row.courseName);
+      const sortKey = row.lastCompletedAt || `${row.taskCount}-${row.totalQuestions}`;
+      const current = childByCourse.get(key);
+      if (!current || sortKey >= current.sortKey) {
+        childByCourse.set(key, {
+          unitName: row.unitName,
+          topicName: row.topicName,
+          sortKey,
+        });
+      }
+    });
+
+    const sourceCards = courseCards.slice(0, 4);
+
+    return sourceCards.map((course, index) => {
+      const school = schoolByCourse.get(normalizeForLookup(course.courseName));
+      const child = childByCourse.get(normalizeForLookup(course.courseName));
+      const schoolIndex = school?.status === 'covered'
+        ? getCurriculumTopicIndex(curriculum, course.courseName, school.unitName, school.topicName)
+        : -1;
+      const childIndex = getCurriculumTopicIndex(curriculum, course.courseName, child?.unitName, child?.topicName);
+      const gap = schoolIndex >= 0 && childIndex >= 0 ? childIndex - schoolIndex : null;
+      const statusKind = school?.status === 'not-covered'
+        ? 'idle'
+        : gap === null
+          ? 'unknown'
+          : gap > 0
+            ? 'ahead'
+            : gap < 0
+              ? 'behind'
+              : 'sync';
+      const statusLabel = statusKind === 'ahead'
+        ? `OKULUN ÖNÜNDE (+${Math.abs(gap || 0)} KONU)`
+        : statusKind === 'behind'
+          ? `OKULUN GERİSİNDE (-${Math.abs(gap || 0)} KONU)`
+          : statusKind === 'sync'
+            ? 'SENKRONİZE (AYNI KONU)'
+            : school?.status === 'not-covered'
+              ? 'OKULDA KONU İŞLENMEDİ'
+              : 'TAKİP BEKLİYOR';
+      return {
+        ...course,
+        theme: CURRICULUM_PANEL_THEMES[index % CURRICULUM_PANEL_THEMES.length],
+        schoolTopic: school?.status === 'not-covered' ? 'Konu işlenmedi' : school?.topicName || 'Okul verisi girilmedi',
+        childTopic: child?.topicName || 'Öğrenci çalışma verisi yok',
+        gap,
+        statusKind,
+        statusLabel,
+        lgsProgress: Math.max(0, Math.min(100, Math.round(course.progress || 0))),
+      };
+    });
+  }, [courseCards, curriculum, overviewTopicPerformanceRows, weeklySchedule]);
 
   const weeklyCompletionTarget = Math.max(overviewWeeklyStats.completionTarget, 1);
   const weeklyCompletionPercent = Math.max(0, Math.min(100, overviewWeeklyStats.completionPercent));
@@ -718,6 +935,114 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
             </div>
           </div>
 
+          <section className="hidden dr-curriculum-showcase-panel" data-testid="curriculum-showcase-panel">
+            <div className="dr-curriculum-showcase-head">
+              <div>
+                <h3>Veli Paneli - Öğrenci</h3>
+                <p><strong>GENEL BAKIŞ:</strong> Çocuğunuzun okul ve ev gündemi ders bazında karşılaştırılır.</p>
+              </div>
+              <div className="dr-curriculum-avatar">
+                <User className="h-7 w-7" />
+              </div>
+            </div>
+
+            <div className="dr-curriculum-showcase-grid">
+              {curriculumShowcaseCards.map((card) => {
+                const Icon = card.Icon;
+                const StatusIcon = card.statusKind === 'behind' ? TrendingDown : card.statusKind === 'ahead' ? TrendingUp : CheckCircle;
+                const circumference = 2 * Math.PI * 38;
+                const dashOffset = circumference - (circumference * card.lgsProgress) / 100;
+                return (
+                  <article key={`curriculum-showcase-${card.courseName}`} className={`dr-curriculum-showcase-card ${card.theme.className}`}>
+                    <div className="dr-curriculum-card-top">
+                      <div className="dr-curriculum-watermark dr-curriculum-watermark-left">
+                        <Icon className="h-12 w-12" />
+                      </div>
+                      <Star className="dr-curriculum-star dr-curriculum-star-a h-5 w-5" />
+                      <Star className="dr-curriculum-star dr-curriculum-star-b h-3.5 w-3.5" />
+                      <div className="relative z-10 min-w-0">
+                        <h4>{card.courseName.toLocaleUpperCase('tr-TR')}</h4>
+                        <p>LGS Tamamlanma:</p>
+                      </div>
+                      <div className="dr-curriculum-progress" aria-label={`LGS yüzde ${card.lgsProgress}`}>
+                        <svg viewBox="0 0 92 92" aria-hidden="true">
+                          <circle cx="46" cy="46" r="38" />
+                          <circle
+                            cx="46"
+                            cy="46"
+                            r="38"
+                            style={{ strokeDasharray: circumference, strokeDashoffset: dashOffset }}
+                          />
+                        </svg>
+                        <span>LGS<br />%{card.lgsProgress}</span>
+                      </div>
+                    </div>
+
+                    <div className="dr-curriculum-card-body">
+                      <div className="dr-curriculum-topic-card">
+                        <div className="dr-curriculum-topic-icon">
+                          <BookOpen className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <span>Okul Gündemi:</span>
+                          <strong>{card.schoolTopic}</strong>
+                        </div>
+                        {card.statusKind === 'sync' && <CheckCircle className="dr-curriculum-topic-check h-7 w-7" />}
+                      </div>
+
+                      <div className="dr-curriculum-topic-card">
+                        <div className="dr-curriculum-topic-icon">
+                          <Home className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <span>Ev Gündemi:</span>
+                          <strong>{card.childTopic}</strong>
+                        </div>
+                      </div>
+
+                      <div className={`dr-curriculum-track dr-curriculum-track-${card.statusKind}`}>
+                        <div className="dr-curriculum-track-line" />
+                        <div className="dr-curriculum-track-node">
+                          <Home className="h-5 w-5" />
+                          <span>OKUL</span>
+                        </div>
+                        <div className={`dr-curriculum-track-node dr-curriculum-track-student ${card.statusKind === 'behind' ? 'is-behind' : card.statusKind === 'ahead' ? 'is-ahead' : ''}`}>
+                          <GraduationCap className="h-5 w-5" />
+                          <span>ÖĞRENCİ</span>
+                        </div>
+                      </div>
+
+                      <div className="dr-curriculum-status-box">
+                        <div className="dr-curriculum-status-copy">
+                          <span>Durum:</span>
+                          <strong>{card.statusLabel}</strong>
+                        </div>
+                        <div className="dr-curriculum-status-badge">
+                          <StatusIcon className="h-7 w-7" />
+                        </div>
+                        <div className="dr-curriculum-gap-pill">
+                          {card.gap === null ? '-' : card.gap > 0 ? `+${card.gap}` : `${card.gap}`}
+                          <span>KONU</span>
+                        </div>
+                      </div>
+
+                      <div className="dr-curriculum-actions">
+                        <button type="button">
+                          <FileText className="h-4 w-4" />
+                          Durum Raporu
+                        </button>
+                        <button type="button">
+                          <BarChart className="h-4 w-4" />
+                          Haftalık Analiz
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
           {/* --- Haftalık Çalışma Programı (Weekly Study Schedule) --- */}
           {weeklySchedule && (() => {
             const scheduledDays = DAY_NAMES_ORDERED.filter((dayName) => {
@@ -780,10 +1105,27 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                           </div>
                           <div className="space-y-1.5">
                             {slots.map((slot) => (
-                              <div key={`sched-slot-${slot.id}`} className="flex items-center justify-between rounded-[10px] bg-slate-50 border border-slate-200/60 px-2.5 py-1.5 text-xs">
-                                <span className="font-bold text-slate-700">{slot.startTime} - {slot.endTime}</span>
-                                <span className="font-semibold text-slate-500 truncate ml-2">{slot.courseName || 'Genel'}</span>
-                              </div>
+                              <button
+                                key={`sched-slot-${slot.id}`}
+                                type="button"
+                                onDoubleClick={() => openSchoolCurriculumEditor(dayName, slot)}
+                                className={`dr-school-slot-row flex w-full items-center justify-between rounded-[10px] border px-2.5 py-1.5 text-left text-xs ${
+                                  slot.schoolCurriculumStatus === 'not-covered'
+                                    ? 'dr-school-slot-not-covered'
+                                    : slot.schoolCurriculumStatus === 'covered'
+                                      ? 'dr-school-slot-covered'
+                                      : 'bg-slate-50 border-slate-200/60 dark:bg-white/5 dark:border-white/10'
+                                }`}
+                                title="Okulda islenen konuyu secmek icin cift tiklayin"
+                              >
+                                <span className="font-bold text-slate-700 dark:text-slate-200">{slot.startTime} - {slot.endTime}</span>
+                                <span className="min-w-0 truncate pl-2 text-right font-semibold text-slate-500 dark:text-slate-300">
+                                  {slot.schoolCurriculumStatus === 'covered' && (
+                                    <CheckCircle className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-amber-300" aria-hidden="true" />
+                                  )}
+                                  {slot.schoolCurriculumStatus === 'not-covered' ? 'Konu islenmedi' : slot.courseName || 'Genel'}
+                                </span>
+                              </button>
                             ))}
                             {windows.map((win, wIdx) => (
                               <div key={`sched-win-${dayName}-${wIdx}`} className="flex items-center justify-between rounded-[10px] bg-blue-50 border border-blue-200/60 px-2.5 py-1.5 text-xs">
@@ -800,6 +1142,118 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               </div>
             );
           })()}
+
+          {schoolCurriculumSlot && activeSchoolCurriculumSlot && (
+            <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={closeSchoolCurriculumEditor}>
+              <section
+                className="ios-card dr-compact-modal w-[min(30rem,calc(100vw-1.5rem))] overflow-hidden"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Okulda islenen konu"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="dr-compact-modal-header flex items-start justify-between gap-3 border-b border-white/10">
+                  <div className="min-w-0">
+                    <div className="dr-planning-kicker text-[10px] font-black uppercase tracking-[0.22em]">Okulda islenen konu</div>
+                    <h3 className="mt-1 truncate text-base font-black text-slate-900 dark:text-white">{activeSchoolCurriculumSlot.courseName}</h3>
+                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                      {schoolCurriculumSlot.dayName} · {activeSchoolCurriculumSlot.startTime} - {activeSchoolCurriculumSlot.endTime}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeSchoolCurriculumEditor}
+                    className="ios-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-0 text-slate-600"
+                    aria-label="Kapat"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="dr-compact-modal-body space-y-3">
+                  {schoolCurriculumUnits.length === 0 ? (
+                    <div className="dr-planning-empty rounded-[14px] px-3 py-3 text-xs font-semibold">
+                      Bu ders icin mufredat bulunamadi. Once mufredat yonetiminde unite ve konu ekleyin.
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        value={schoolUnitName}
+                        onChange={(event) => {
+                          setSchoolUnitName(event.target.value);
+                          setSchoolTopicName('');
+                          setSchoolCurriculumMessage(null);
+                        }}
+                        className="dr-form-field w-full rounded-xl px-3 py-2 text-xs font-bold outline-none"
+                      >
+                        <option value="">Unite sec</option>
+                        {schoolCurriculumUnits.map((unit) => (
+                          <option key={`school-unit-${unit.name}`} value={unit.name}>{unit.name}</option>
+                        ))}
+                      </select>
+
+                      <div className="dr-modal-scroll max-h-48 space-y-1.5 overflow-y-auto pr-1">
+                        {schoolUnitName && schoolCurriculumTopics.length === 0 && (
+                          <div className="dr-planning-empty rounded-[14px] px-3 py-3 text-xs font-semibold">Bu unitede konu yok.</div>
+                        )}
+                        {schoolCurriculumTopics.map((topic) => (
+                          <button
+                            key={`school-topic-${topic.name}`}
+                            type="button"
+                            onClick={() => {
+                              setSchoolTopicName(topic.name);
+                              setSchoolCurriculumMessage(null);
+                            }}
+                            className={`dr-school-topic-option w-full rounded-xl px-3 py-2 text-left text-xs font-bold ${schoolTopicName === topic.name ? 'dr-school-topic-option-active' : ''}`}
+                          >
+                            {topic.name}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {schoolCurriculumMessage && (
+                    <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                      {schoolCurriculumMessage}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <button
+                      type="button"
+                      onClick={() => toggleSchoolNotCovered(schoolCurriculumSlot.dayName, activeSchoolCurriculumSlot)}
+                      className="ios-button rounded-xl px-3 py-2 text-xs font-black text-slate-700"
+                    >
+                      {activeSchoolCurriculumSlot.schoolCurriculumStatus === 'not-covered' ? 'Islenmedi kaldir' : 'Konu islenmedi'}
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={clearSchoolCurriculum}
+                        disabled={!activeSchoolCurriculumSlot.schoolCurriculumStatus && !activeSchoolCurriculumSlot.schoolUnitName && !activeSchoolCurriculumSlot.schoolTopicName}
+                        className="dr-destructive-button inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Sil
+                      </button>
+                      <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+                        Vazgec
+                      </button>
+                      <button
+                        type="button"
+                        onClick={saveSchoolCurriculum}
+                        disabled={schoolCurriculumUnits.length === 0}
+                        className="ios-button-active rounded-xl px-4 py-2 text-xs font-black text-slate-900 disabled:opacity-50"
+                      >
+                        Kaydet
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
 
           {selectedCourseDetail && (
             <div className="dr-hig-secondary-card rounded-[26px] p-6" data-testid="overview-course-deep-dive-panel">

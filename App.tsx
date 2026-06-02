@@ -64,6 +64,7 @@ const ParentDashboard = lazyWithRetry(() => import('./components/parent/ParentDa
 const ChildDashboard = lazyWithRetry(() => import('./components/child/ChildDashboard'));
 const CurriculumManagerPanel = lazyWithRetry(() => import('./components/parent/CurriculumManagerPanel'));
 const ParentOverviewWorkspace = lazyWithRetry(() => import('./components/parent/ParentOverviewWorkspace'));
+const ParentCurriculumShowcaseWorkspace = lazyWithRetry(() => import('./components/parent/ParentCurriculumShowcaseWorkspace'));
 const ParentPlanningWorkspace = lazyWithRetry(() => import('./components/parent/ParentPlanningWorkspace'));
 
 const SCHEDULE_DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
@@ -162,7 +163,7 @@ interface ToastMessage {
   onAction?: () => void;
 }
 
-type ParentWorkspaceView = 'overview' | 'planning' | 'analysis';
+type ParentWorkspaceView = 'overview' | 'curriculum-panel' | 'planning' | 'analysis';
 type OverviewStudyPeriod = 'week1' | 'week3' | 'month' | 'quarter' | 'total';
 type SearchScope = 'all' | 'tasks' | 'courses' | 'topics' | 'exams' | 'rewards';
 
@@ -218,7 +219,7 @@ const WorkspaceLoadingFallback: React.FC<{ label?: string }> = ({ label = 'Yukle
 );
 
 const normalizeParentWorkspaceView = (value: unknown): ParentWorkspaceView => {
-  if (value === 'overview' || value === 'planning' || value === 'analysis') return value;
+  if (value === 'overview' || value === 'curriculum-panel' || value === 'planning' || value === 'analysis') return value;
   if (value === 'tasks' || value === 'exams') return 'planning';
   return 'overview';
 };
@@ -227,8 +228,8 @@ const Modal: React.FC<{ show: boolean; onClose: () => void; title: string; child
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="ios-card w-full max-w-md rounded-[28px] p-6" role="dialog" aria-modal="true" aria-labelledby="app-modal-title" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-3 backdrop-blur-sm" onClick={onClose}>
+      <div className="ios-card dr-compact-modal w-[min(26rem,calc(100vw-1.5rem))] p-4" role="dialog" aria-modal="true" aria-labelledby="app-modal-title" onClick={(event) => event.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h3 id="app-modal-title" className="text-xl font-bold">{title}</h3>
           <button onClick={onClose} className="ios-button flex h-9 w-9 items-center justify-center rounded-full text-2xl font-light text-slate-500 hover:text-slate-800" title="Kapat" aria-label="Kapat">
@@ -1113,6 +1114,10 @@ const normalizeWeeklyScheduleSlot = (slot: any, fallbackIndex: number): WeeklySc
   startTime: String(slot?.startTime ?? '09:00'),
   endTime: String(slot?.endTime ?? '10:00'),
   note: repairedText(slot?.note).trim() || undefined,
+  schoolCurriculumStatus: slot?.schoolCurriculumStatus === 'covered' || slot?.schoolCurriculumStatus === 'not-covered' ? slot.schoolCurriculumStatus : undefined,
+  schoolUnitName: repairedText(slot?.schoolUnitName).trim() || undefined,
+  schoolTopicName: repairedText(slot?.schoolTopicName).trim() || undefined,
+  schoolCurriculumUpdatedAt: repairedText(slot?.schoolCurriculumUpdatedAt).trim() || undefined,
 });
 
 const normalizeScheduleWindow = (window: any, fallbackIndex = 0): ScheduleDayWindow | null => {
@@ -2368,11 +2373,12 @@ const pruneStudyPlanTree = (plans: StoredStudyPlan[]): StoredStudyPlan[] =>
 
 const parentWorkspaceItems: Array<{ id: ParentWorkspaceView; label: string; description: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }> = [
   { id: 'overview', label: 'Genel Bakış', description: 'Özet ve kontrol merkezi', icon: Home },
+  { id: 'curriculum-panel', label: 'Müfredat Paneli', description: 'Okul ve çocuk konu hizası', icon: BookOpen },
   { id: 'planning', label: 'Planlama', description: 'Okul programı + ev çalışma + sınav takvimi', icon: Sparkles },
   { id: 'analysis', label: 'Karar', description: 'Performans ve kararlar', icon: BarChart },
 ];
 
-const primaryParentWorkspaceIds: ParentWorkspaceView[] = ['overview', 'planning', 'analysis'];
+const primaryParentWorkspaceIds: ParentWorkspaceView[] = ['overview', 'curriculum-panel', 'planning', 'analysis'];
 const secondaryParentWorkspaceIds: ParentWorkspaceView[] = [];
 
 const App: React.FC = () => {
@@ -4976,6 +4982,21 @@ const App: React.FC = () => {
       );
     }
 
+    if (parentWorkspaceView === 'curriculum-panel') {
+      return (
+        <Suspense fallback={<WorkspaceLoadingFallback label="Mufredat paneli yukleniyor..." />}>
+          <ParentCurriculumShowcaseWorkspace
+            courses={courses}
+            curriculum={curriculum}
+            weeklySchedule={weeklySchedule}
+            tasks={tasks}
+            overviewCourseInsights={overviewCourseInsights}
+            overviewTopicPerformanceRows={overviewTopicPerformanceRows}
+          />
+        </Suspense>
+      );
+    }
+
     if (parentWorkspaceView === 'analysis') {
       if (!parentDecisionV1Enabled) {
         return (
@@ -4989,6 +5010,8 @@ const App: React.FC = () => {
                 overviewSummary={overviewSummary}
                 overviewNextTask={overviewNextTask}
                 weeklySchedule={weeklySchedule}
+                curriculum={curriculum}
+                onWeeklyScheduleChange={setWeeklySchedule}
                 overviewUpcomingExam={overviewUpcomingExam}
                 overviewTodayName={overviewTodayName}
                 overviewTodaySlots={overviewTodaySlots}
@@ -5031,6 +5054,8 @@ const App: React.FC = () => {
           overviewSummary={overviewSummary}
           overviewNextTask={overviewNextTask}
           weeklySchedule={weeklySchedule}
+          curriculum={curriculum}
+          onWeeklyScheduleChange={setWeeklySchedule}
           overviewUpcomingExam={overviewUpcomingExam}
           overviewTodayName={overviewTodayName}
           overviewTodaySlots={overviewTodaySlots}
@@ -5260,7 +5285,32 @@ const App: React.FC = () => {
               <div className="dr-content-pad">
                 <div className="mx-auto max-w-7xl">
                   <div className="min-w-0 space-y-4">
-                    <div className="relative flex items-center justify-between xl:hidden">
+                    <nav className="dr-parent-workspace-strip xl:hidden" aria-label="Ebeveyn modulleri">
+                      {parentWorkspaceItems.filter((item) => primaryParentWorkspaceIds.includes(item.id)).map((item) => {
+                        const Icon = item.icon;
+                        const active = parentWorkspaceView === item.id;
+                        return (
+                          <button
+                            key={`workspace-strip-${item.id}`}
+                            type="button"
+                            onClick={() => {
+                              if (item.id === 'analysis' && !parentDecisionV1Enabled) {
+                                addToast('Karar ekrani su an pasif. Genel Bakis acildi.', 'success');
+                                setParentWorkspaceView('overview');
+                                return;
+                              }
+                              setParentWorkspaceView(item.id);
+                            }}
+                            className={`dr-parent-workspace-tab ${active ? 'is-active' : ''}`}
+                            aria-current={active ? 'page' : undefined}
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </nav>
+                    <div className="hidden">
                       <button onClick={() => setParentMenuOpen((prev) => !prev)} className="ios-button inline-flex items-center gap-2 rounded-[20px] px-4 py-3 text-sm font-semibold text-slate-700 xl:hidden">
                         {parentMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />} Modüller
                       </button>
@@ -5274,7 +5324,7 @@ const App: React.FC = () => {
                           onClick={() => setParentMenuOpen(false)}
                           className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm"
                         />
-                        <div className="ios-card absolute left-3 right-3 top-[calc(5rem+env(safe-area-inset-top))] max-h-[calc(100vh-6rem-env(safe-area-inset-bottom))] overflow-y-auto rounded-[28px] p-3">
+                        <div className="ios-card dr-compact-modal dr-soft-scroll absolute left-3 right-3 top-[calc(5rem+env(safe-area-inset-top))] max-h-[min(76dvh,32rem)] overflow-y-auto p-3">
                           <div className="space-y-4">
                             <div>
                               <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Kritik modüller</div>
@@ -5358,9 +5408,9 @@ const App: React.FC = () => {
         )}
       </main>
       {curriculumEditorOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/45 p-4 backdrop-blur-sm" role="presentation">
-          <div className="ios-card flex max-h-[min(42rem,calc(100dvh-2rem))] w-[min(54rem,100%)] flex-col overflow-hidden rounded-[28px]" role="dialog" aria-modal="true" aria-label="Müfredat düzenleme">
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/45 p-3 backdrop-blur-sm" role="presentation">
+          <div className="ios-card dr-compact-modal flex max-h-[min(76dvh,38rem)] w-[min(46rem,calc(100vw-1.5rem))] flex-col overflow-hidden" role="dialog" aria-modal="true" aria-label="Müfredat düzenleme">
+            <div className="dr-compact-modal-header flex shrink-0 items-start justify-between gap-4 border-b border-white/10">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-primary-600">
                   <BookOpen className="h-4 w-4" />
@@ -5373,7 +5423,7 @@ const App: React.FC = () => {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="dr-modal-scroll min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="dr-modal-scroll dr-compact-modal-body min-h-0 flex-1 overflow-y-auto">
               <Suspense fallback={<WorkspaceLoadingFallback label="Mufredat editoru yukleniyor..." />}>
                 <CurriculumManagerPanel curriculum={curriculum} onSave={setCurriculum} />
               </Suspense>
@@ -5382,8 +5432,8 @@ const App: React.FC = () => {
         </div>
       )}
       {settingsOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/45 p-4 backdrop-blur-sm" role="presentation">
-          <div ref={settingsPopoverRef} className="ios-card flex max-h-[min(42rem,calc(100dvh-2rem))] w-[min(30rem,100%)] flex-col overflow-hidden rounded-[28px] p-4" role="dialog" aria-modal="true" aria-label="Uygulama ayarları">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/45 p-3 backdrop-blur-sm" role="presentation">
+          <div ref={settingsPopoverRef} className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(26rem,calc(100vw-1.5rem))] flex-col overflow-hidden p-3" role="dialog" aria-modal="true" aria-label="Uygulama ayarları">
             <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
               <div>
                 <div className="text-base font-black text-slate-900">Uygulama Ayarları</div>
@@ -5455,8 +5505,8 @@ const App: React.FC = () => {
         </div>
       )}
       {dataAccessModalOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center overflow-hidden bg-slate-950/55 p-4 backdrop-blur-sm" role="presentation">
-          <div className="ios-card flex max-h-[min(42rem,calc(100dvh-2rem))] w-[min(40rem,100%)] flex-col overflow-hidden rounded-[28px] p-4" role="dialog" aria-modal="true" aria-label="Veri yönetimi erişimi">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center overflow-hidden bg-slate-950/55 p-3 backdrop-blur-sm" role="presentation">
+          <div className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(32rem,calc(100vw-1.5rem))] flex-col overflow-hidden p-3" role="dialog" aria-modal="true" aria-label="Veri yönetimi erişimi">
             <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
               <div>
                 <div className="text-base font-black text-slate-900">Veri Yönetimi</div>

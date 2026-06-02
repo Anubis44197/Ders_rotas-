@@ -121,6 +121,10 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
   const [assignmentQuestionCount, setAssignmentQuestionCount] = useState('');
   const [assignmentMessage, setAssignmentMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isAssigningTask, setIsAssigningTask] = useState(false);
+  const [schoolCurriculumSlot, setSchoolCurriculumSlot] = useState<{ day: string; slotId: string } | null>(null);
+  const [schoolUnitName, setSchoolUnitName] = useState('');
+  const [schoolTopicName, setSchoolTopicName] = useState('');
+  const [schoolCurriculumMessage, setSchoolCurriculumMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(safeSchedule);
@@ -162,6 +166,15 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
     return assignmentUnits.find((unit) => unit.name === assignmentUnitName)?.topics || [];
   }, [assignmentUnitName, assignmentUnits]);
 
+  const getCurriculumUnitsForCourse = (courseName: string): CurriculumUnit[] => {
+    if (!curriculum || !courseName) return [];
+    const directUnits = curriculum[courseName] as CurriculumUnit[] | undefined;
+    if (Array.isArray(directUnits)) return directUnits;
+    const normalizedCourseName = normalizeForLookup(courseName);
+    const matchedSubject = Object.keys(curriculum).find((subject) => normalizeForLookup(subject) === normalizedCourseName);
+    return matchedSubject && Array.isArray(curriculum[matchedSubject]) ? curriculum[matchedSubject] as CurriculumUnit[] : [];
+  };
+
   const hasDraftChanges = useMemo(
     () => DAYS.some((day) => dayHasChanges(draft[day], safeSchedule[day])),
     [draft, safeSchedule],
@@ -173,6 +186,12 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
   const totalSchoolBlocks = DAYS.reduce((sum, day) => sum + resolveScheduleDay(safeSchedule[day]).slots.length, 0);
   const totalStudyWindows = DAYS.reduce((sum, day) => sum + resolveScheduleDay(safeSchedule[day]).availableWindows.length, 0);
   const confirmedDayCount = DAYS.filter((day) => resolveScheduleDay(safeSchedule[day]).confirmed).length;
+  const activeSchoolCurriculumDay = schoolCurriculumSlot ? resolveScheduleDay(draft[schoolCurriculumSlot.day]) : null;
+  const activeSchoolCurriculumSlot = schoolCurriculumSlot && activeSchoolCurriculumDay
+    ? activeSchoolCurriculumDay.slots.find((slot) => slot.id === schoolCurriculumSlot.slotId) || null
+    : null;
+  const schoolCurriculumUnits = activeSchoolCurriculumSlot ? getCurriculumUnitsForCourse(activeSchoolCurriculumSlot.courseName) : [];
+  const schoolCurriculumTopics = schoolCurriculumUnits.find((unit) => unit.name === schoolUnitName)?.topics || [];
 
   const updateDay = (day: string, updater: (current: ReturnType<typeof resolveScheduleDay>) => ReturnType<typeof resolveScheduleDay>) => {
     setDraft((prev) => {
@@ -299,6 +318,71 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
     }));
   };
 
+  const openSchoolCurriculumEditor = (day: string, slot: WeeklyScheduleSlot) => {
+    setSchoolCurriculumSlot({ day, slotId: slot.id });
+    setSchoolUnitName(slot.schoolUnitName || '');
+    setSchoolTopicName(slot.schoolTopicName || '');
+    setSchoolCurriculumMessage(null);
+  };
+
+  const closeSchoolCurriculumEditor = () => {
+    setSchoolCurriculumSlot(null);
+    setSchoolUnitName('');
+    setSchoolTopicName('');
+  };
+
+  const updateSchoolSlot = (day: string, slotId: string, updater: (slot: WeeklyScheduleSlot) => WeeklyScheduleSlot) => {
+    updateDay(day, (currentDay) => ({
+      ...currentDay,
+      slots: currentDay.slots.map((slot) => slot.id === slotId ? updater(slot) : slot),
+      confirmed: false,
+    }));
+  };
+
+  const handleToggleNotCovered = (day: string, slot: WeeklyScheduleSlot) => {
+    const nextIsNotCovered = slot.schoolCurriculumStatus !== 'not-covered';
+    updateSchoolSlot(day, slot.id, (currentSlot) => ({
+      ...currentSlot,
+      schoolCurriculumStatus: nextIsNotCovered ? 'not-covered' : undefined,
+      schoolUnitName: nextIsNotCovered ? undefined : currentSlot.schoolUnitName,
+      schoolTopicName: nextIsNotCovered ? undefined : currentSlot.schoolTopicName,
+      schoolCurriculumUpdatedAt: new Date().toISOString(),
+    }));
+    setSchoolCurriculumMessage(nextIsNotCovered ? `${slot.courseName}: konu işlenmedi olarak işaretlendi.` : `${slot.courseName}: işlenmedi işareti kaldırıldı.`);
+  };
+
+  const handleSaveSchoolCurriculum = () => {
+    if (!schoolCurriculumSlot || !activeSchoolCurriculumSlot) return;
+    if (!schoolUnitName || !schoolTopicName) {
+      setSchoolCurriculumMessage('Kaydetmek için ünite ve konu seçin.');
+      return;
+    }
+
+    updateSchoolSlot(schoolCurriculumSlot.day, schoolCurriculumSlot.slotId, (slot) => ({
+      ...slot,
+      schoolCurriculumStatus: 'covered',
+      schoolUnitName,
+      schoolTopicName,
+      schoolCurriculumUpdatedAt: new Date().toISOString(),
+    }));
+    setSchoolCurriculumMessage(`${activeSchoolCurriculumSlot.courseName}: okul konusu kaydedildi.`);
+    window.setTimeout(() => closeSchoolCurriculumEditor(), 450);
+  };
+
+  const handleClearSchoolCurriculum = () => {
+    if (!schoolCurriculumSlot || !activeSchoolCurriculumSlot) return;
+    updateSchoolSlot(schoolCurriculumSlot.day, schoolCurriculumSlot.slotId, (slot) => ({
+      ...slot,
+      schoolCurriculumStatus: undefined,
+      schoolUnitName: undefined,
+      schoolTopicName: undefined,
+      schoolCurriculumUpdatedAt: new Date().toISOString(),
+    }));
+    setSchoolUnitName('');
+    setSchoolTopicName('');
+    setSchoolCurriculumMessage(`${activeSchoolCurriculumSlot.courseName}: okul konu girişi temizlendi.`);
+  };
+
   const handleConfirmDay = (day: string) => {
     const dayState = resolveScheduleDay(draft[day]);
     if (dayState.slots.length === 0 && dayState.availableWindows.length === 0) {
@@ -413,15 +497,15 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
 
   return (
     <>
-      <section className="ios-card dr-compact-section">
+      <section className="dr-planning-card dr-weekly-card dr-compact-section">
       <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-600">
+          <div className="dr-planning-kicker flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-600">
             <Calendar className="h-4 w-4" />
             Haftalık zaman
           </div>
           <div className="mt-2 flex items-center gap-2">
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white">Haftalık Program</h2>
+            <h2 className="dr-planning-section-title text-2xl font-black text-slate-900 dark:text-white">Haftalık Program</h2>
             <ContextHelp title="Haftalık Program" tone="blue">
               Ders/konu girişi müfredatta kalır. Burada sadece okul saatleri ve plan motorunun kullanacağı ev çalışma pencereleri yönetilir.
             </ContextHelp>
@@ -435,14 +519,14 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       </div>
 
       {/* Planlama Aksiyonları Kartı */}
-      <div className="dr-compact-action-bar flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm font-bold text-slate-700">Akademik Planlama İşlemleri</div>
-        <div className="flex flex-wrap gap-2">
+      <div className="dr-plan-action-bar flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="dr-plan-action-title text-sm font-bold text-slate-700">Akademik Planlama İşlemleri</div>
+        <div className="dr-plan-action-buttons flex flex-wrap gap-2">
           {onAddExam && (
             <button
               type="button"
               onClick={onAddExam}
-              className="ios-button inline-flex items-center justify-center gap-2 rounded-[14px] px-3 py-2 text-xs font-bold text-slate-700"
+              className="dr-planning-secondary-action inline-flex items-center justify-center gap-2 rounded-[14px] px-3 py-2 text-xs font-bold"
             >
               <PlusCircle className="h-4 w-4 text-primary-600" />
               Sınav ekle
@@ -451,7 +535,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
           <button
             type="button"
             onClick={() => openEditorForDay(activeDay, 'school')}
-            className="ios-button inline-flex items-center justify-center gap-2 rounded-[14px] px-3 py-2 text-xs font-bold text-slate-700"
+            className="dr-planning-secondary-action inline-flex items-center justify-center gap-2 rounded-[14px] px-3 py-2 text-xs font-bold"
           >
             <PlusCircle className="h-4 w-4 text-primary-600" />
             Okul programını düzenle
@@ -460,7 +544,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
             type="button"
             onClick={openTaskAssignment}
             disabled={!addTask}
-            className="ios-button-active inline-flex items-center justify-center gap-2 rounded-[14px] px-3 py-2 text-xs font-black text-slate-900 disabled:opacity-50"
+            className="dr-planning-primary-action inline-flex items-center justify-center gap-2 rounded-[14px] px-3 py-2 text-xs font-black disabled:opacity-50"
           >
             <ClipboardList className="h-4 w-4" />
             Görev ata
@@ -510,16 +594,16 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       </section>
 
       {isEditorOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={handleCloseEditor}>
-          <div className="ios-card dr-compact-modal flex max-h-[84dvh] w-full max-w-2xl flex-col overflow-hidden" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Haftalık program düzenleme">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={handleCloseEditor}>
+          <div className="ios-card dr-compact-modal flex max-h-[min(76dvh,36rem)] w-[min(38rem,calc(100vw-1.5rem))] flex-col overflow-hidden" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Haftalık program düzenleme">
             <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-600">
                   <PlusCircle className="h-4 w-4" />
                   Haftalık zaman düzeni
                 </div>
-                <h3 className="mt-1 text-lg font-black text-slate-900 dark:text-white">{activeDay}</h3>
-                <p className="mt-0.5 text-xs text-slate-500">Okuldaki ders bloklarını ve evde çalışılabilecek saatleri ayrı girin.</p>
+                <h3 className="mt-1 text-base font-black text-slate-900 dark:text-white">{activeDay}</h3>
+                <p className="mt-0.5 max-w-md text-[11px] text-slate-500">Okul ve ev çalışma saatlerini ayrı girin.</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button
@@ -544,18 +628,18 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
             </div>
 
             {showEditorPreview && (
-              <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onClick={() => setShowEditorPreview(false)}>
+              <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={() => setShowEditorPreview(false)}>
                 <section
-                  className="dr-week-preview-modal w-full max-w-5xl overflow-hidden p-4"
+                  className="dr-week-preview-modal w-[min(46rem,calc(100vw-1.5rem))] overflow-hidden p-3"
                   role="dialog"
                   aria-modal="true"
                   aria-label="Haftalık program ön izleme"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <div className="mb-4 flex items-start justify-between gap-4">
+                  <div className="mb-3 flex items-start justify-between gap-4">
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-500">Haftalık ön izleme</div>
-                      <h3 className="mt-1 text-xl font-black text-slate-900 dark:text-white">Tüm hafta planı</h3>
+                      <h3 className="mt-1 text-lg font-black text-slate-900 dark:text-white">Tüm hafta planı</h3>
                       <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
                         Okul blokları ve ev çalışma pencereleri tek ekranda.
                       </p>
@@ -605,10 +689,18 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                               </div>
                             )}
                             {sortSlots(dayState.slots).map((slot) => (
-                              <div key={`week-slot-${day}-${slot.id}`} className={`dr-compact-row border-l-3 ${getCourseStyle(slot.courseName)}`}>
+                              <button
+                                key={`week-slot-${day}-${slot.id}`}
+                                type="button"
+                                onDoubleClick={() => openSchoolCurriculumEditor(day, slot)}
+                                className={`dr-school-slot-row dr-compact-row w-full border-l-3 text-left ${slot.schoolCurriculumStatus === 'not-covered' ? 'dr-school-slot-not-covered' : getCourseStyle(slot.courseName)}`}
+                                title="Okulda işlenen konuyu seçmek için çift tıklayın"
+                              >
                                 <div className="text-[9px] font-bold uppercase opacity-80">{slot.startTime} - {slot.endTime}</div>
                                 <div className="mt-0.5 truncate text-xs font-black text-slate-900 dark:text-white">{slot.courseName}</div>
-                              </div>
+                                {slot.schoolCurriculumStatus === 'not-covered' && <div className="mt-1 text-[9px] font-black uppercase">Konu işlenmedi</div>}
+                                {slot.schoolCurriculumStatus === 'covered' && slot.schoolTopicName && <div className="mt-1 truncate text-[9px] font-bold opacity-80">{slot.schoolTopicName}</div>}
+                              </button>
                             ))}
                             {sortWindows(dayState.availableWindows).map((window, index) => (
                               <div key={`week-window-${day}-${createWindowKey(window, index)}`} className={`dr-compact-row border-l-3 ${QUALITY_META[window.quality].tone}`}>
@@ -664,7 +756,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 </div>
 
                 {editorMode === 'school' ? (
-                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1.1fr)_112px_112px_minmax(0,1fr)_130px]">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <select
                       value={selectedCourseName}
                       onChange={(event) => setSelectedCourseName(event.target.value)}
@@ -683,13 +775,13 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                       placeholder="Sınıf veya not"
                       className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"
                     />
-                    <button onClick={handleAddSchoolBlock} className="ios-button-active flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-900">
+                    <button onClick={handleAddSchoolBlock} className="ios-button-active flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 sm:col-span-2">
                       <PlusCircle className="h-4 w-4" />
                       Ekle
                     </button>
                   </div>
                 ) : (
-                  <div className="grid gap-2 sm:grid-cols-[112px_112px_minmax(0,1fr)_150px]">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <input value={studyStartTime} onChange={(event) => setStudyStartTime(event.target.value)} type="time" className="dr-form-field w-full min-w-[112px] rounded-xl px-3 py-2 text-sm font-semibold outline-none" />
                     <input value={studyEndTime} onChange={(event) => setStudyEndTime(event.target.value)} type="time" className="dr-form-field w-full min-w-[112px] rounded-xl px-3 py-2 text-sm font-semibold outline-none" />
                     <select value={studyQuality} onChange={(event) => setStudyQuality(event.target.value as ScheduleDayWindow['quality'])} className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none">
@@ -697,7 +789,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                       <option value="medium">Konu Çalışması & Tekrar</option>
                       <option value="deep">Deneme Sınavı (LGS / Branş) & Soru Analizi</option>
                     </select>
-                    <button onClick={handleAddStudyWindow} className="ios-button-active flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-900">
+                    <button onClick={handleAddStudyWindow} className="ios-button-active flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 sm:col-span-2">
                       <PlusCircle className="h-4 w-4" />
                       Çalışma ekle
                     </button>
@@ -705,8 +797,9 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 )}
 
                 {error && <div className="rounded-2xl bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</div>}
+                {schoolCurriculumMessage && <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">{schoolCurriculumMessage}</div>}
 
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid gap-3 xl:grid-cols-2">
                   <div>
                     <div className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{activeDay} okul blokları</div>
                     <div className="space-y-2">
@@ -714,14 +807,44 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                         <div className="rounded-xl border border-dashed border-white/20 px-3 py-2 text-xs text-slate-500">Okul dersi eklenmedi.</div>
                       ) : (
                         sortSlots(activeDaySchedule.slots).map((slot) => (
-                          <div key={`detail-${slot.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5">
+                          <div
+                            key={`detail-${slot.id}`}
+                            onDoubleClick={() => openSchoolCurriculumEditor(activeDay, slot)}
+                            className={`dr-school-slot-row flex items-center justify-between gap-3 rounded-xl border px-2.5 py-1.5 ${slot.schoolCurriculumStatus === 'not-covered' ? 'dr-school-slot-not-covered' : slot.schoolCurriculumStatus === 'covered' ? 'dr-school-slot-covered' : 'border-white/10 bg-white/5'}`}
+                            title="Okulda işlenen konuyu seçmek için çift tıklayın"
+                          >
                             <div className="min-w-0">
                               <div className="text-xs font-bold text-slate-900 dark:text-white">{slot.courseName}</div>
                               <div className="mt-0.5 text-[10px] text-slate-500">{slot.startTime} - {slot.endTime}{slot.note ? ` - ${slot.note}` : ''}</div>
+                              {slot.schoolCurriculumStatus === 'not-covered' && <div className="mt-1 text-[10px] font-black uppercase text-amber-700 dark:text-amber-300">Konu işlenmedi</div>}
+                              {slot.schoolCurriculumStatus === 'covered' && slot.schoolTopicName && (
+                                <div className="mt-1 truncate text-[10px] font-bold text-emerald-700 dark:text-emerald-300">{slot.schoolUnitName} / {slot.schoolTopicName}</div>
+                              )}
                             </div>
-                            <button onClick={() => handleRemoveSlot(activeDay, slot.id)} className="dr-destructive-button flex h-8 w-8 items-center justify-center rounded-full p-0" title="Ders bloğunu sil">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleToggleNotCovered(activeDay, slot);
+                                }}
+                                className="ios-button rounded-full px-2 py-1 text-[10px] font-black text-slate-700"
+                                title="Konu işlenmedi durumunu değiştir"
+                              >
+                                {slot.schoolCurriculumStatus === 'not-covered' ? 'Normal' : 'İşlenmedi'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleRemoveSlot(activeDay, slot.id);
+                                }}
+                                className="dr-destructive-button flex h-8 w-8 items-center justify-center rounded-full p-0"
+                                title="Ders bloğunu sil"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
@@ -752,12 +875,12 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
               </div>
             </div>
 
-            <div className="dr-compact-modal-footer flex flex-col gap-3 border-t border-white/10 sm:flex-row sm:items-center sm:justify-between">
+            <div className="dr-compact-modal-footer flex flex-col gap-2 border-t border-white/10">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
                 <Clock className="h-4 w-4" />
                 {hasDraftChanges ? 'Kaydedilmemiş program değişikliği var.' : 'Program güncel.'}
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => handleConfirmDay(activeDay)}
                   className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white"
@@ -780,17 +903,110 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
         </div>
       )}
 
+      {schoolCurriculumSlot && activeSchoolCurriculumSlot && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={closeSchoolCurriculumEditor}>
+          <section
+            className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Okul müfredatı işleme"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
+              <div>
+                <div className="dr-planning-kicker text-xs font-black uppercase tracking-[0.18em]">Okulda işlenen konu</div>
+                <h3 className="mt-1 text-base font-black text-slate-900 dark:text-white">{activeSchoolCurriculumSlot.courseName}</h3>
+                <p className="mt-0.5 text-[11px] text-slate-500">{schoolCurriculumSlot.day} · {activeSchoolCurriculumSlot.startTime} - {activeSchoolCurriculumSlot.endTime}</p>
+              </div>
+              <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-slate-600" aria-label="Okul müfredatı penceresini kapat">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="dr-modal-scroll dr-compact-modal-body flex-1 space-y-3 overflow-y-auto">
+              {schoolCurriculumUnits.length === 0 ? (
+                <div className="dr-planning-empty">
+                  Bu ders için müfredat ünitesi bulunamadı. Önce Müfredat Yönetimi alanından ünite ve konu ekleyin.
+                </div>
+              ) : (
+                <>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Ünite
+                    <select
+                      value={schoolUnitName}
+                      onChange={(event) => {
+                        setSchoolUnitName(event.target.value);
+                        setSchoolTopicName('');
+                        setSchoolCurriculumMessage(null);
+                      }}
+                      className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"
+                    >
+                      <option value="">Ünite seç</option>
+                      {schoolCurriculumUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
+                    </select>
+                  </label>
+                  <div>
+                    <div className="mb-2 text-xs font-bold text-slate-700 dark:text-slate-300">Konu</div>
+                    {schoolCurriculumTopics.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-white/15 px-3 py-3 text-xs font-semibold text-slate-500">Ünite seçince konular burada görünür.</div>
+                    ) : (
+                      <div className="grid gap-2">
+                        {schoolCurriculumTopics.map((topic) => (
+                          <button
+                            key={topic.name}
+                            type="button"
+                            onClick={() => {
+                              setSchoolTopicName(topic.name);
+                              setSchoolCurriculumMessage(null);
+                            }}
+                            className={`dr-school-topic-option rounded-xl px-3 py-2 text-left text-xs font-bold ${schoolTopicName === topic.name ? 'dr-school-topic-option-active' : ''}`}
+                          >
+                            {topic.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+              {schoolCurriculumMessage && <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">{schoolCurriculumMessage}</div>}
+            </div>
+
+            <div className="dr-compact-modal-footer flex flex-wrap justify-end gap-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={handleClearSchoolCurriculum}
+                disabled={!activeSchoolCurriculumSlot.schoolCurriculumStatus && !activeSchoolCurriculumSlot.schoolUnitName && !activeSchoolCurriculumSlot.schoolTopicName}
+                className="dr-destructive-button inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Girişi sil
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleNotCovered(schoolCurriculumSlot.day, activeSchoolCurriculumSlot)}
+                className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-slate-700"
+              >
+                {activeSchoolCurriculumSlot.schoolCurriculumStatus === 'not-covered' ? 'İşlenmedi kaldır' : 'Konu işlenmedi'}
+              </button>
+              <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-slate-700">Vazgeç</button>
+              <button type="button" onClick={handleSaveSchoolCurriculum} disabled={schoolCurriculumUnits.length === 0} className="ios-button-active rounded-xl px-3.5 py-2 text-xs font-black text-slate-900 disabled:opacity-50">Kaydet</button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {isTaskAssignmentOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={closeTaskAssignment}>
-          <form className="ios-card dr-compact-modal flex max-h-[84dvh] w-full max-w-2xl flex-col overflow-hidden" onSubmit={handleAssignTask} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Çocuğa görev ata">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={closeTaskAssignment}>
+          <form className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden" onSubmit={handleAssignTask} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Çocuğa görev ata">
             <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-600">
                   <ClipboardList className="h-4 w-4" />
                   Çocuğa görev ata
                 </div>
-                <h3 className="mt-1 text-lg font-black text-slate-900 dark:text-white">Plan içinden hızlı görev</h3>
-                <p className="mt-0.5 text-xs text-slate-500">Ders, ünite ve konu seçerek görevi doğrudan çocuğun görev listesine gönder.</p>
+                <h3 className="mt-1 text-base font-black text-slate-900 dark:text-white">Plan içinden hızlı görev</h3>
+                <p className="mt-0.5 text-[11px] text-slate-500">Ders, ünite ve konu seçerek görevi gönder.</p>
               </div>
               <button type="button" onClick={closeTaskAssignment} className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-slate-600" aria-label="Görev atama penceresini kapat">
                 <X className="h-4 w-4" />
