@@ -17,18 +17,18 @@ const COLORS = chartSeries;
 
 const LoadingSpinner: React.FC = () => (
   <div className="flex h-64 items-center justify-center">
-    <Loader className="h-8 w-8 animate-spin text-primary-600" />
-    <span className="ml-2 text-slate-600">Veriler yükleniyor...</span>
+    <Loader className="h-8 w-8 animate-spin text-[var(--dr-orange)]" />
+    <span className="ml-2 text-[var(--dr-text-secondary)]">Veriler yükleniyor...</span>
   </div>
 );
 
 const ErrorState: React.FC<{ error: string }> = ({ error }) => (
   <div className="flex h-64 flex-col items-center justify-center text-center">
-    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-      <span className="text-xl text-red-500">!</span>
+    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/20">
+      <span className="text-xl text-rose-500">!</span>
     </div>
-    <p className="mb-2 text-slate-600">Veriler yüklenirken bir sorun oluştu.</p>
-    <p className="text-sm text-slate-500">{error}</p>
+    <p className="mb-2 text-[var(--dr-text-primary)]">Veriler yüklenirken bir sorun oluştu.</p>
+    <p className="text-sm text-[var(--dr-text-secondary)]">{error}</p>
   </div>
 );
 
@@ -57,7 +57,7 @@ const CourseTimeDistribution: React.FC<CourseTimeDistributionProps> = ({ tasks, 
   if (loading) {
     return (
       <div className="ios-card rounded-[28px] p-6">
-        <h3 className="mb-4 flex items-center text-xl font-bold"><BookOpen className="mr-2 h-6 w-6 text-primary-600" />Ders bazlı süre dağılımı</h3>
+        <h3 className="mb-4 flex items-center text-xl font-bold text-[var(--dr-text-primary)]"><BookOpen className="mr-2 h-6 w-6 text-[var(--dr-orange)]" />Ders bazlı süre dağılımı</h3>
         <LoadingSpinner />
       </div>
     );
@@ -66,26 +66,26 @@ const CourseTimeDistribution: React.FC<CourseTimeDistributionProps> = ({ tasks, 
   if (error) {
     return (
       <div className="ios-card rounded-[28px] p-6">
-        <h3 className="mb-4 flex items-center text-xl font-bold"><BookOpen className="mr-2 h-6 w-6 text-primary-600" />Ders bazlı süre dağılımı</h3>
+        <h3 className="mb-4 flex items-center text-xl font-bold text-[var(--dr-text-primary)]"><BookOpen className="mr-2 h-6 w-6 text-[var(--dr-orange)]" />Ders bazlı süre dağılımı</h3>
         <ErrorState error={error} />
       </div>
     );
   }
 
   if (!data.length) {
-    return <EmptyState icon={<BookOpen className="h-8 w-8 text-slate-400" />} title="Ders bazlı süre dağılımı için veri yok" message="Tamamlanan görevler arttıkça hangi derse ne kadar zaman ayrıldığı burada görünecek." />;
+    return <EmptyState icon={<BookOpen className="h-8 w-8 text-[var(--dr-text-secondary)]" />} title="Ders bazlı süre dağılımı için veri yok" message="Tamamlanan görevler arttıkça hangi derse ne kadar zaman ayrıldığı burada görünecek." />;
   }
 
   return (
-    <div className="ios-card rounded-[28px] p-6">
+    <div className="ios-card rounded-[28px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="flex items-center text-xl font-bold"><BookOpen className="mr-2 h-6 w-6 text-primary-600" />Ders bazlı süre dağılımı</h3>
-          <p className="text-sm text-slate-500">Tamamlanan görevlerde gerçek çalışma süresi hangi derslere dağılıyor.</p>
+          <h3 className="flex items-center text-xl font-bold text-[var(--dr-text-primary)]"><BookOpen className="mr-2 h-6 w-6 text-[var(--dr-orange)]" />Ders bazlı süre dağılımı</h3>
+          <p className="text-sm text-[var(--dr-text-secondary)]">Tamamlanan görevlerde gerçek çalışma süresi hangi derslere dağıyor.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Toplam süre: <strong>{totalMinutes} dk</strong></div>
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">En yüksek ders: <strong>{topCourse?.name || '-'}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">Toplam süre: <strong className="text-[var(--dr-text-primary)]">{totalMinutes} dk</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">En yüksek ders: <strong className="text-[var(--dr-text-primary)]">{topCourse?.name || '-'}</strong></div>
         </div>
       </div>
       <SafeResponsiveContainer width="100%" height={320}>

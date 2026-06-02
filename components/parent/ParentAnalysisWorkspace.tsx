@@ -164,7 +164,7 @@ const TOPIC_PREREQUISITE_MAP: Record<string, string[]> = {
   'matematik::dogrusal denklemler': ['Cebirsel ifadeler ve ozdeslikler'],
 };
 
-const ProgressBar: React.FC<{ value: number; tone?: string }> = ({ value, tone = 'bg-[#8AB4FF]' }) => (
+const ProgressBar: React.FC<{ value: number; tone?: string }> = ({ value, tone = 'bg-[var(--dr-orange)]' }) => (
   <div className="ios-progress-track h-2 overflow-hidden rounded-full">
     <div className={`h-full rounded-full ${tone}`} style={{ width: `${Math.max(4, Math.min(100, value))}%` }} />
   </div>
@@ -766,12 +766,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-2">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-black text-slate-900">Karar ve Analiz Merkezi</h2>
+                <h2 className="text-2xl font-black text-[var(--dr-text-primary)]">Karar ve Analiz Merkezi</h2>
                 <ContextHelp title="Karar ve Analiz Merkezi" tone="blue">
                   Çocuğunuzun günlük çalışma verileri ve sınav performansları analiz edilerek akademik risk durumlarının ve ders çalışma rotası kararlarının izlendiği yönetim merkezidir.
                 </ContextHelp>
               </div>
-              <p className="text-sm text-slate-500">Mevcut ders durumu, akademik risk sinyalleri ve planlama.</p>
+              <p className="text-sm text-[var(--dr-text-secondary)]">Mevcut ders durumu, akademik risk sinyalleri ve planlama.</p>
             </div>
             <button
               type="button"
@@ -780,7 +780,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 onActionMessage?.('success', 'Planlama ve ders rotası başarıyla yeniden hesaplandı.');
               }}
               data-testid="recalculate-rota-btn"
-              className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-slate-900 hover:opacity-90 active:scale-[0.98] transition-all"
+              className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white bg-[var(--dr-orange)] hover:opacity-90 active:scale-[0.96] transition-all"
             >
               <TrendingUp className="h-4 w-4" />
               Yeniden Hesapla (Recalculate Rota)
@@ -801,7 +801,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             </div>
           )}
 
-          <div className="ios-panel rounded-[30px] p-2">
+          <div className="ios-panel rounded-[24px] p-2 border border-[var(--dr-std-border-strong)]/20 shadow-md">
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {analysisWorkspaceTabs.map((tab) => {
               const Icon = tab.icon;
@@ -813,7 +813,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                   onClick={() => setAnalysisWorkspaceTab(tab.id)}
                   data-testid={`analysis-tab-${tab.id}`}
                   data-active={active ? '1' : '0'}
-                  className={`flex min-h-16 items-center gap-3 rounded-[22px] px-4 py-3 text-left text-sm font-black transition ${active ? 'ios-button-active' : 'ios-button text-slate-600 hover:bg-white/75'}`}
+                  className={`flex min-h-16 items-center gap-3 rounded-[18px] px-4 py-3 text-left text-sm font-black transition-all active:scale-[0.96] ${active ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)] hover:bg-[var(--dr-surface)]/80'}`}
                 >
                   <Icon className="h-5 w-5" />
                   {tab.label}
@@ -900,13 +900,13 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
 
               {/* Derslerde Genel Durum */}
-              <div className="border-t border-slate-100/60 pt-6">
+              <div className="border-t border-[var(--dr-std-border-strong)]/10 pt-6">
                 <div className="mb-4 flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-slate-700" />
-                  <h4 className="font-black text-slate-950">Derslerde genel durum</h4>
+                  <BookOpen className="h-5 w-5 text-[var(--dr-orange)]" />
+                  <h4 className="font-black text-[var(--dr-text-primary)]">Derslerde genel durum</h4>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {topCourses.length === 0 && <div className="ios-widget rounded-[22px] p-4 text-sm text-slate-500">Ders analizi icin yeterli veri yok.</div>}
+                  {topCourses.length === 0 && <div className="ios-widget rounded-[22px] p-4 text-sm text-[var(--dr-text-secondary)]">Ders analizi icin yeterli veri yok.</div>}
                   {topCourses.map((course) => {
                     const courseUnits = (curriculum && curriculum[course.courseName]) || [];
                     const totalTopics = courseUnits.flatMap((u) => u.topics || []);
@@ -916,16 +916,16 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                     const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
                     return (
-                      <div key={course.courseId} className="space-y-2 bg-slate-50 border border-slate-100 rounded-[20px] p-3.5 shadow-sm">
+                      <div key={course.courseId} className="space-y-2 ios-card rounded-[20px] p-3.5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
                         <button
                           type="button"
                           onClick={() => setSelectedCourseDetailId(course.courseId)}
                           data-testid={`course-summary-btn-${course.courseId}`}
                           data-selected={selectedCourseDetailId === course.courseId ? '1' : '0'}
-                          className={`flex w-full items-center justify-between gap-3 rounded-[14px] px-2 py-1 text-left text-sm transition ${selectedCourseDetailId === course.courseId ? 'bg-white shadow-sm' : 'hover:bg-white/55'}`}
+                          className={`flex w-full items-center justify-between gap-3 rounded-[12px] px-2.5 py-1.5 text-left text-xs font-black transition-all active:scale-[0.97] ${selectedCourseDetailId === course.courseId ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}
                         >
-                          <span className="break-words font-extrabold text-slate-800">{course.courseName}</span>
-                          <span className="font-semibold text-slate-500 text-xs">{completedCount} / {totalCount} Konu</span>
+                          <span className="break-words font-extrabold">{course.courseName}</span>
+                          <span className="font-semibold text-xs">{completedCount} / {totalCount} Konu</span>
                         </button>
                         <ProgressBar value={completionPercent} tone={course.weakTopicCount > 0 ? 'bg-[#FFE08A]' : 'bg-[#7EE7C7]'} />
                       </div>
@@ -934,12 +934,12 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 </div>
                 {selectedCourseDetail && (
                   <div
-                    className="ios-widget mt-4 rounded-[20px] p-4 text-xs text-slate-600 bg-slate-50 border border-slate-100"
+                    className="ios-widget mt-4 rounded-[20px] p-4 text-xs border border-[var(--dr-std-border-strong)]/20 bg-[var(--dr-surface)]/50 text-[var(--dr-text-primary)] shadow-sm"
                     data-testid="course-detail-panel"
                     data-course-id={selectedCourseDetail.courseId}
                   >
-                    <div className="break-words font-extrabold text-slate-800 text-sm">Ders detayı: {selectedCourseDetail.courseName}</div>
-                    <div className="mt-1.5 font-medium text-slate-500">Konuyu Anlama Seviyesi: %{selectedCourseDetail.averageMastery} | Çalışma Verimliliği: %{selectedCourseDetail.averageEfficiency} | Destek isteyen konu sayısı: {selectedCourseDetail.weakTopicCount}</div>
+                    <div className="break-words font-extrabold text-sm text-[var(--dr-text-primary)]">Ders detayı: {selectedCourseDetail.courseName}</div>
+                    <div className="mt-1.5 font-medium text-[var(--dr-text-secondary)]">Konuyu Anlama Seviyesi: %{selectedCourseDetail.averageMastery} | Çalışma Verimliliği: %{selectedCourseDetail.averageEfficiency} | Destek isteyen konu sayısı: {selectedCourseDetail.weakTopicCount}</div>
                   </div>
                 )}
               </div>
@@ -1016,7 +1016,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                         onClick={handleCreateRevisionTask}
                         disabled={!riskiestTopic || isCreatingAction}
                         data-testid="create-revision-task-btn"
-                        className={`rounded-[16px] px-3 py-2 text-xs font-black ${(!riskiestTopic || isCreatingAction) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[#7663c9] hover:bg-[#6351b8] text-white shadow-sm transition-all active:scale-[0.98]'}`}
+                        className={`rounded-[16px] px-3 py-2.5 text-xs font-black transition-all active:scale-[0.96] ${(!riskiestTopic || isCreatingAction) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[var(--dr-orange)] text-white shadow-sm hover:opacity-90'}`}
                       >
                         Tekrar gorevi olustur
                       </button>
@@ -1029,7 +1029,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                         }}
                         disabled={isCreatingAction || (!riskiestTopic && topCourses.length === 0)}
                         data-testid="set-question-goal-btn"
-                        className={`rounded-[16px] px-3 py-2 text-xs font-black ${(isCreatingAction || (!riskiestTopic && topCourses.length === 0)) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[#7663c9] hover:bg-[#6351b8] text-white shadow-sm transition-all active:scale-[0.98]'}`}
+                        className={`rounded-[16px] px-3 py-2.5 text-xs font-black transition-all active:scale-[0.96] ${(isCreatingAction || (!riskiestTopic && topCourses.length === 0)) ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' : 'bg-[var(--dr-orange)] text-white shadow-sm hover:opacity-90'}`}
                       >
                         15 soru hedefi ver
                       </button>
@@ -1083,24 +1083,24 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
 
           {/* LGS Akademik Durum Özetleri */}
           <div className="grid gap-3 sm:grid-cols-3 text-xs">
-            <div className="rounded-[16px] bg-white border border-slate-100 p-4 shadow-sm">
-              <div className="font-bold text-slate-500 uppercase tracking-wide text-[10px]">Ünite Tamamlama</div>
-              <div className="mt-2 text-2xl font-black text-slate-900">{curriculumCompletionRate === null ? '-' : `%${curriculumCompletionRate}`}</div>
+            <div className="ios-card rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none">
+              <div className="font-bold text-[var(--dr-text-secondary)] uppercase tracking-wide text-[10px]">Ünite Tamamlama</div>
+              <div className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">{curriculumCompletionRate === null ? '-' : `%${curriculumCompletionRate}`}</div>
             </div>
-            <div className="rounded-[16px] bg-white border border-slate-100 p-4 shadow-sm">
-              <div className="font-bold text-slate-500 uppercase tracking-wide text-[10px]">Deneme Trendi</div>
-              <div className={`mt-2 flex items-center gap-1 text-2xl font-black ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-slate-900' : examDeltaDisplay.tone}`}>
+            <div className="ios-card rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none">
+              <div className="font-bold text-[var(--dr-text-secondary)] uppercase tracking-wide text-[10px]">Deneme Trendi</div>
+              <div className={`mt-2 flex items-center gap-1 text-2xl font-black ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-[var(--dr-text-primary)]' : examDeltaDisplay.tone}`}>
                 {latestCompositeAverage === null || previousCompositeAverage === null
                   ? '-'
                   : `${examDeltaDisplay.arrow} ${examDeltaDisplay.short}`}
               </div>
-              <div className={`mt-1 text-[11px] font-semibold ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-slate-400' : examDeltaDisplay.tone}`}>
+              <div className={`mt-1 text-[11px] font-semibold ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-[var(--dr-text-secondary)]' : examDeltaDisplay.tone}`}>
                 {latestCompositeAverage === null || previousCompositeAverage === null ? 'Yetersiz deneme verisi' : examDeltaDisplay.text}
               </div>
             </div>
-            <div className="rounded-[16px] bg-white border border-slate-100 p-4 shadow-sm">
-              <div className="font-bold text-slate-500 uppercase tracking-wide text-[10px]">Hedef Net Farkı</div>
-              <div className="mt-2 text-2xl font-black text-slate-900">
+            <div className="ios-card rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none">
+              <div className="font-bold text-[var(--dr-text-secondary)] uppercase tracking-wide text-[10px]">Hedef Net Farkı</div>
+              <div className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">
                 {lgsReadinessGap === null ? '-' : lgsReadinessGap <= 0 ? `+${Math.abs(lgsReadinessGap)}` : `-${lgsReadinessGap}`}
               </div>
             </div>
@@ -1124,7 +1124,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mb-6">
-              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500">
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-[var(--dr-text-secondary)]">
                 <span>Haftalık Soru Hedefi</span>
                 <input
                   type="number"
@@ -1132,10 +1132,10 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                   max={2000}
                   value={goalConfig.weeklyQuestionTarget}
                   onChange={(event) => setGoalConfig((prev) => ({ ...prev, weeklyQuestionTarget: safeClampNumber(Number(event.target.value) || 0, 0, 2000) }))}
-                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 text-[var(--dr-text-primary)] focus:border-[var(--dr-orange)] focus:ring-1 focus:ring-[var(--dr-orange)] outline-none transition"
                 />
               </label>
-              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500">
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-[var(--dr-text-secondary)]">
                 <span>Ders Süresi Hedefi (Dk)</span>
                 <input
                   type="number"
@@ -1143,10 +1143,10 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                   max={5000}
                   value={goalConfig.weeklyStudyMinuteTarget}
                   onChange={(event) => setGoalConfig((prev) => ({ ...prev, weeklyStudyMinuteTarget: safeClampNumber(Number(event.target.value) || 0, 0, 5000) }))}
-                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 text-[var(--dr-text-primary)] focus:border-[var(--dr-orange)] focus:ring-1 focus:ring-[var(--dr-orange)] outline-none transition"
                 />
               </label>
-              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500">
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-[var(--dr-text-secondary)]">
                 <span>Konu Bitirme Hedefi</span>
                 <input
                   type="number"
@@ -1154,10 +1154,10 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                   max={100}
                   value={goalConfig.topicCompletionTarget}
                   onChange={(event) => setGoalConfig((prev) => ({ ...prev, topicCompletionTarget: safeClampNumber(Number(event.target.value) || 0, 0, 100) }))}
-                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 text-[var(--dr-text-primary)] focus:border-[var(--dr-orange)] focus:ring-1 focus:ring-[var(--dr-orange)] outline-none transition"
                 />
               </label>
-              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500">
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-[var(--dr-text-secondary)]">
                 <span>LGS Hedef Neti</span>
                 <input
                   type="number"
@@ -1165,21 +1165,21 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                   max={500}
                   value={goalConfig.lgsTargetNet}
                   onChange={(event) => setGoalConfig((prev) => ({ ...prev, lgsTargetNet: safeClampNumber(Number(event.target.value) || 0, 0, 500) }))}
-                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 text-[var(--dr-text-primary)] focus:border-[var(--dr-orange)] focus:ring-1 focus:ring-[var(--dr-orange)] outline-none transition"
                 />
               </label>
-              <label className="flex flex-col gap-1.5 text-xs font-bold text-slate-500 sm:col-span-2 md:col-span-1">
+              <label className="flex flex-col gap-1.5 text-xs font-bold text-[var(--dr-text-secondary)] sm:col-span-2 md:col-span-1">
                 <span>LGS Hedef Tarihi</span>
                 <input
                   type="date"
                   value={goalConfig.lgsTargetDate}
                   onChange={(event) => setGoalConfig((prev) => ({ ...prev, lgsTargetDate: event.target.value }))}
-                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold text-slate-800 border border-slate-100 hover:border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  className="ios-button w-full rounded-[14px] px-3.5 py-2.5 text-sm font-bold bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 text-[var(--dr-text-primary)] focus:border-[var(--dr-orange)] focus:ring-1 focus:ring-[var(--dr-orange)] outline-none transition"
                 />
               </label>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-5 space-y-4">
+            <div className="bg-[var(--dr-surface)]/60 border border-[var(--dr-std-border-strong)]/10 rounded-[20px] p-5 space-y-4 shadow-inner">
               <h4 className="text-xs font-black uppercase tracking-wide text-slate-400">Haftalık Hedef Gerçekleşme Durumu</h4>
               
               <div className="space-y-4">

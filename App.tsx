@@ -33,7 +33,7 @@ import {
   PlanBlockType,
   ParentDashboardProps,
 } from './types';
-import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown, PlusCircle, Search, BookOpen } from './components/icons';
+import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown, PlusCircle, BookOpen } from './components/icons';
 import { ALL_ICONS } from './constants';
 import { INITIAL_REAL_COURSES, INITIAL_REAL_CURRICULUM, INITIAL_REAL_PERFORMANCE } from './initialRealCurriculum';
 import { calculateTaskPoints } from './utils/scoringAlgorithm';
@@ -165,16 +165,6 @@ interface ToastMessage {
 
 type ParentWorkspaceView = 'overview' | 'curriculum-panel' | 'planning' | 'analysis';
 type OverviewStudyPeriod = 'week1' | 'week3' | 'month' | 'quarter' | 'total';
-type SearchScope = 'all' | 'tasks' | 'courses' | 'topics' | 'exams' | 'rewards';
-
-interface AppSearchResult {
-  id: string;
-  scope: SearchScope;
-  title: string;
-  subtitle: string;
-  detail: string;
-  view: ParentWorkspaceView;
-}
 
 interface ObservabilityEvent {
   id: string;
@@ -203,14 +193,6 @@ interface AnalysisPipelineState {
   cacheMisses: number;
 }
 
-const searchScopes: Array<{ id: SearchScope; label: string }> = [
-  { id: 'all', label: 'Tümü' },
-  { id: 'tasks', label: 'Görev' },
-  { id: 'topics', label: 'Konu' },
-  { id: 'exams', label: 'Sınav' },
-  { id: 'courses', label: 'Ders' },
-  { id: 'rewards', label: 'Ödül' },
-];
 
 const WorkspaceLoadingFallback: React.FC<{ label?: string }> = ({ label = 'Yukleniyor...' }) => (
   <div className="ios-card rounded-[24px] p-4 text-sm font-semibold text-slate-600">
@@ -2410,7 +2392,7 @@ const App: React.FC = () => {
   const tasksRef = useRef<Task[]>(tasks);
   const topbarNotificationsRef = useRef<HTMLDivElement | null>(null);
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
-  const topbarSearchRef = useRef<HTMLDivElement | null>(null);
+  const topbarNotificationsPopoverRef = useRef<HTMLDivElement | null>(null);
   const topbarQuickActionsRef = useRef<HTMLDivElement | null>(null);
   const settingsPopoverRef = useRef<HTMLDivElement | null>(null);
   const topbarToolbarRef = useRef<HTMLDivElement | null>(null);
@@ -2443,9 +2425,6 @@ const App: React.FC = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
-  const [globalSearchScope, setGlobalSearchScope] = useState<SearchScope>('all');
   const [curriculumEditorOpen, setCurriculumEditorOpen] = useState(false);
   const [dataAccessModalOpen, setDataAccessModalOpen] = useState(false);
   const [dataAccessPassword, setDataAccessPassword] = useState('');
@@ -2490,18 +2469,17 @@ const App: React.FC = () => {
   }, [parentWorkspaceView, parentDecisionV1Enabled, setParentWorkspaceView]);
 
   useEffect(() => {
-    if (!notificationsOpen && !settingsOpen && !searchOpen && !quickActionsOpen) return;
+    if (!notificationsOpen && !settingsOpen && !quickActionsOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (topbarNotificationsRef.current?.contains(target)) return;
       if (topbarSettingsRef.current?.contains(target)) return;
       if (settingsPopoverRef.current?.contains(target)) return;
-      if (topbarSearchRef.current?.contains(target)) return;
+      if (topbarNotificationsPopoverRef.current?.contains(target)) return;
       if (topbarQuickActionsRef.current?.contains(target)) return;
       setNotificationsOpen(false);
       setSettingsOpen(false);
-      setSearchOpen(false);
       setQuickActionsOpen(false);
     };
 
@@ -2509,7 +2487,7 @@ const App: React.FC = () => {
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
     };
-  }, [notificationsOpen, settingsOpen, searchOpen, quickActionsOpen]);
+  }, [notificationsOpen, settingsOpen, quickActionsOpen]);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -3789,111 +3767,6 @@ const App: React.FC = () => {
     };
   }, [courses, tasks, examRecords, compositeExamResults, examScheduleEntries, performanceData, weeklySchedule]);
 
-  const globalSearchResults = useMemo<AppSearchResult[]>(() => {
-    const courseNameById = new Map(courses.map((course) => [course.id, repairedText(course.name)]));
-    const query = normalizeForLookup(globalSearchQuery);
-    const results: AppSearchResult[] = [];
-
-    const addResult = (result: AppSearchResult, searchableText: string) => {
-      if (userType === UserType.Child && result.scope === 'exams') return;
-      if (globalSearchScope !== 'all' && result.scope !== globalSearchScope) return;
-      const normalizedText = normalizeForLookup(searchableText);
-      if (query && !normalizedText.includes(query)) return;
-      results.push(result);
-    };
-
-    courses.forEach((course) => {
-      const name = repairedText(course.name);
-      addResult({
-        id: `course:${course.id}`,
-        scope: 'courses',
-        title: name,
-        subtitle: 'Ders',
-        detail: 'Müfredat, plan ve konu bağlantıları',
-        view: 'planning',
-      }, name);
-    });
-
-    tasks.forEach((task) => {
-      const courseName = courseNameById.get(task.courseId) || task.courseId;
-      const title = repairedText(task.bookTitle || task.title);
-      const unit = repairedText(task.curriculumUnitName);
-      const topic = repairedText(task.curriculumTopicName);
-      addResult({
-        id: `task:${task.id}`,
-        scope: 'tasks',
-        title,
-        subtitle: isCompletedTask(task) ? 'Tamamlanan görev' : 'Bekleyen görev',
-        detail: [courseName, unit, topic, `${task.plannedDuration} dk`].filter(Boolean).join(' / '),
-        view: 'planning',
-      }, [title, task.description, courseName, unit, topic, task.taskType, task.status].join(' '));
-    });
-
-    Object.entries(curriculum).forEach(([courseName, units]) => {
-      units.forEach((unit) => {
-        unit.topics.forEach((topic) => {
-          addResult({
-            id: `topic:${courseName}:${unit.name}:${topic.name}`,
-            scope: 'topics',
-            title: topic.name,
-            subtitle: 'Konu',
-            detail: `${courseName} / ${unit.name}`,
-            view: 'planning',
-          }, [courseName, unit.name, topic.name].join(' '));
-        });
-      });
-    });
-
-    examRecords.forEach((record) => {
-      addResult({
-        id: `exam:${record.id}`,
-        scope: 'exams',
-        title: record.title,
-        subtitle: 'Okul sınavı',
-        detail: `${record.courseName} / ${record.date} / ${record.score}`,
-        view: 'planning',
-      }, [record.title, record.courseName, record.date, record.notes, record.score].join(' '));
-    });
-
-    compositeExamResults.forEach((record) => {
-      addResult({
-        id: `composite:${record.id}`,
-        scope: 'exams',
-        title: record.title,
-        subtitle: 'Genel sınav',
-        detail: `${record.date}${record.totalScore ? ` / ${record.totalScore}` : ''}`,
-        view: 'planning',
-      }, [record.title, record.date, record.notes, record.totalScore, ...record.courses.map((course) => course.courseName)].join(' '));
-    });
-
-    rewards.forEach((reward) => {
-      addResult({
-        id: `reward:${reward.id}`,
-        scope: 'rewards',
-        title: repairedText(reward.name),
-        subtitle: 'Ödül',
-        detail: `${reward.cost} BP`,
-        view: 'overview',
-      }, [reward.name, reward.cost].join(' '));
-    });
-
-    const startsWithQuery = (item: AppSearchResult) => query && normalizeForLookup(item.title).startsWith(query);
-    return results
-      .sort((left, right) => Number(startsWithQuery(right)) - Number(startsWithQuery(left)) || left.title.localeCompare(right.title, 'tr'))
-      .slice(0, 8);
-  }, [compositeExamResults, courses, curriculum, examRecords, globalSearchQuery, globalSearchScope, rewards, tasks, userType]);
-
-  const searchSuggestionTokens = useMemo(() => {
-    const activeCourses = getActiveCourses(courses);
-    const suggestions = [
-      overviewSummary.weakTopics[0]?.topicName,
-      overviewSummary.lastCompletedTask?.title,
-      activeCourses[0]?.name,
-      tasks.find((task) => task.status === 'bekliyor')?.title,
-    ].map((item) => repairedText(item)).filter(Boolean);
-
-    return [...new Set(suggestions)].slice(0, 4);
-  }, [courses, overviewSummary.lastCompletedTask, overviewSummary.weakTopics, tasks]);
   const overviewTodayName = useMemo(() => {
     const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
     return dayNames[new Date().getDay()];
@@ -4551,17 +4424,8 @@ const App: React.FC = () => {
     setQuickActionsOpen(false);
     setNotificationsOpen(false);
     setSettingsOpen(false);
-    setSearchOpen(false);
     setParentWorkspaceView(view);
     addToast(message, 'success');
-  };
-
-  const handleOpenGlobalSearch = () => {
-    playHaptic('selection');
-    setSearchOpen(true);
-    setNotificationsOpen(false);
-    setSettingsOpen(false);
-    setQuickActionsOpen(false);
   };
 
   const handleToolbarKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -4586,15 +4450,6 @@ const App: React.FC = () => {
 
     event.preventDefault();
     controls[nextIndex]?.focus();
-  };
-
-  const handleSearchResultSelect = (result: AppSearchResult) => {
-    playHaptic('selection');
-    setSearchOpen(false);
-    setGlobalSearchQuery(result.title);
-    if (!isParentLocked) {
-      setParentWorkspaceView(result.view);
-    }
   };
 
   const notificationItems = useMemo(() => {
@@ -4867,27 +4722,20 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleKeyboardCommands = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (!notificationsOpen && !settingsOpen && !searchOpen && !quickActionsOpen && !parentMenuOpen) return;
+        if (!notificationsOpen && !settingsOpen && !quickActionsOpen && !parentMenuOpen) return;
         event.preventDefault();
         setNotificationsOpen(false);
         setSettingsOpen(false);
-        setSearchOpen(false);
         setQuickActionsOpen(false);
         setParentMenuOpen(false);
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase('tr-TR') === 'k') {
-        const canSearch = userType === UserType.Child || (userType === UserType.Parent && !isParentLocked);
-        if (!canSearch) return;
-        event.preventDefault();
-        handleOpenGlobalSearch();
-      }
     };
 
     window.addEventListener('keydown', handleKeyboardCommands);
     return () => window.removeEventListener('keydown', handleKeyboardCommands);
-  }, [notificationsOpen, settingsOpen, searchOpen, quickActionsOpen, parentMenuOpen, userType, isParentLocked]);
+  }, [notificationsOpen, settingsOpen, quickActionsOpen, parentMenuOpen]);
 
   const parentDashboardProps = useMemo<Omit<ParentDashboardProps, 'loading' | 'error' | 'viewMode'>>(() => ({
     courses,
@@ -5106,71 +4954,6 @@ const App: React.FC = () => {
               </button>
             </div>
             <div className="dr-toolbar-group" aria-label="Yardımcı komutlar">
-            {(userType === UserType.Child || (userType === UserType.Parent && !isParentLocked)) && <div ref={topbarSearchRef} className="relative">
-              <div className={`ios-button flex h-11 items-center gap-2 rounded-full px-3 transition-all ${searchOpen ? 'w-[22rem]' : 'w-11 justify-center'}`}>
-                <Search className="h-5 w-5 text-slate-500" />
-                {searchOpen && (
-                  <>
-                    <input
-                      value={globalSearchQuery}
-                      onChange={(event) => setGlobalSearchQuery(event.target.value)}
-                      placeholder="Görev, ders, konu, sınav veya ödül"
-                      className="min-h-0 flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
-                      autoFocus
-                    />
-                    {globalSearchQuery && (
-                      <button type="button" onClick={() => setGlobalSearchQuery('')} className="flex h-8 min-h-8 w-8 items-center justify-center rounded-full text-slate-500" aria-label="Aramayı temizle">
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </>
-                )}
-                {!searchOpen && (
-                  <button type="button" onClick={handleOpenGlobalSearch} className="absolute inset-0 rounded-full" aria-label="Uygulama içinde ara" title="Ara - Ctrl veya Command K" />
-                )}
-              </div>
-              {searchOpen && (
-                <div className="ios-card absolute right-0 top-12 z-50 w-[min(34rem,calc(100vw-2rem))] rounded-[28px] p-3">
-                  <div className="mb-3 flex gap-2 overflow-x-auto">
-                    {searchScopes.map((scope) => (
-                      <button
-                        key={scope.id}
-                        type="button"
-                        onClick={() => setGlobalSearchScope(scope.id)}
-                        className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold ${globalSearchScope === scope.id ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}
-                      >
-                        {scope.label}
-                      </button>
-                    ))}
-                  </div>
-                  {!globalSearchQuery && searchSuggestionTokens.length > 0 && (
-                    <div className="mb-3 flex flex-wrap gap-2">
-                      {searchSuggestionTokens.map((suggestion) => (
-                        <button key={suggestion} type="button" onClick={() => setGlobalSearchQuery(suggestion)} className="ios-widget rounded-full px-3 py-2 text-xs font-bold text-slate-600">
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    {globalSearchResults.length === 0 ? (
-                      <div className="ios-widget rounded-[20px] px-4 py-5 text-sm text-slate-500">Sonuç bulunamadı. Daha genel bir kelime ya da farklı kapsam deneyin.</div>
-                    ) : globalSearchResults.map((result) => (
-                      <button key={result.id} type="button" onClick={() => handleSearchResultSelect(result)} className="ios-widget w-full rounded-[20px] p-3 text-left transition hover:bg-white/75">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-bold text-slate-900">{result.title}</div>
-                            <div className="mt-1 truncate text-xs text-slate-500">{result.detail}</div>
-                          </div>
-                          <span className="shrink-0 rounded-full bg-white/65 px-2 py-1 text-[10px] font-bold text-slate-500">{result.subtitle}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3 text-[11px] leading-5 text-slate-500">Arama geçmişi tutulmaz; öneriler mevcut görev, ders ve analiz bağlamından üretilir.</div>
-                </div>
-              )}
-            </div>}
             {(userType === UserType.Child || (userType === UserType.Parent && !isParentLocked)) && <div ref={topbarNotificationsRef} className="relative">
               <button
                 data-testid="topbar-notifications-toggle"
@@ -5179,41 +4962,11 @@ const App: React.FC = () => {
                 aria-label="Bildirimleri aç veya kapat"
                 aria-expanded={notificationsOpen}
                 title="Bildirimler"
-                className="ios-button relative rounded-full p-2 text-slate-500 transition hover:text-slate-800"
+                className="ios-button relative rounded-full p-2 text-[var(--dr-muted)] transition hover:text-[var(--dr-text)]"
               >
                 <Bell className="h-5 w-5" />
                 {showNotificationDot && !notificationsMuted && unreadNotificationItems.length > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />}
               </button>
-              {notificationsOpen && (
-                <div className="ios-card absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3" data-testid="notifications-popover">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="text-sm font-bold text-slate-800">Bildirimler</div>
-                    <button data-testid="notifications-mark-all-read-btn" onClick={handleMarkAllNotificationsRead} className="ios-button rounded-full px-3 py-1 text-[11px] font-bold text-slate-700">Tümünü okundu yap</button>
-                  </div>
-                  {notificationsMuted ? (
-                    <div data-testid="notifications-muted-state" className="ios-widget rounded-[18px] px-3 py-2 text-xs text-slate-500">Bildirimler sessizde.</div>
-                  ) : unreadNotificationItems.length === 0 ? (
-                    <div data-testid="notifications-empty-state" className="ios-widget rounded-[18px] px-3 py-2 text-xs text-slate-500">Yeni bildirim yok.</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {unreadNotificationItems.map((item, index) => (
-                        <button
-                          key={item.key}
-                          data-testid={`notification-item-${index}`}
-                          data-notification-key={item.key}
-                          data-cooldown-group={getNotificationGroupKey(item.key)}
-                          data-notification-tier={item.tier || 'normal'}
-                          onClick={() => handleNotificationAction(item)}
-                          className="ios-widget w-full rounded-[18px] px-3 py-2 text-left transition hover:bg-white/80"
-                        >
-                          <div className="text-xs font-bold text-slate-800">{item.title}</div>
-                          <div className="mt-1 text-[11px] text-slate-500">{item.description}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>}
             {userType === UserType.Parent && !isParentLocked && <div ref={topbarSettingsRef} className="relative">
               <button onClick={() => { setSettingsOpen((prev) => !prev); setNotificationsOpen(false); setQuickActionsOpen(false); }} aria-label="Uygulama ayarlarını aç veya kapat" aria-expanded={settingsOpen} title="Uygulama ayarları" className="ios-button rounded-full p-2 text-slate-500 transition hover:text-slate-800">
@@ -5224,6 +4977,42 @@ const App: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {notificationsOpen && (
+        <div
+          ref={topbarNotificationsPopoverRef}
+          className="ios-card fixed right-3 z-[90] w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3 text-[var(--dr-text)]"
+          style={{ top: 'calc(5rem + env(safe-area-inset-top) + 0.75rem)' }}
+          data-testid="notifications-popover"
+        >
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="text-sm font-bold text-[var(--dr-text)]">Bildirimler</div>
+            <button data-testid="notifications-mark-all-read-btn" onClick={handleMarkAllNotificationsRead} className="ios-button rounded-full px-3 py-1 text-[11px] font-bold text-[var(--dr-text)]">Tümünü okundu yap</button>
+          </div>
+          {notificationsMuted ? (
+            <div data-testid="notifications-muted-state" className="ios-widget rounded-[18px] px-3 py-2 text-xs text-[var(--dr-muted)]">Bildirimler sessizde.</div>
+          ) : unreadNotificationItems.length === 0 ? (
+            <div data-testid="notifications-empty-state" className="ios-widget rounded-[18px] px-3 py-2 text-xs text-[var(--dr-muted)]">Yeni bildirim yok.</div>
+          ) : (
+            <div className="dr-soft-scroll max-h-[22rem] space-y-2 overflow-y-auto pr-1">
+              {unreadNotificationItems.map((item, index) => (
+                <button
+                  key={item.key}
+                  data-testid={`notification-item-${index}`}
+                  data-notification-key={item.key}
+                  data-cooldown-group={getNotificationGroupKey(item.key)}
+                  data-notification-tier={item.tier || 'normal'}
+                  onClick={() => handleNotificationAction(item)}
+                  className="ios-widget w-full rounded-[18px] px-3 py-2 text-left text-[var(--dr-text)] transition hover:bg-[var(--dr-surface-strong)]"
+                >
+                  <div className="text-xs font-bold text-[var(--dr-text)]">{item.title}</div>
+                  <div className="mt-1 text-[11px] text-[var(--dr-muted)]">{item.description}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <main className={`dr-main transition-all ${userType === UserType.Parent && !isParentLocked && parentSidebarOpen ? 'xl:pl-64' : ''}`}>
         {userType === UserType.Parent ? (

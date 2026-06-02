@@ -715,14 +715,14 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
               </div>
 
               {showFreeStudy && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-3" onClick={() => setShowFreeStudy(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <form onSubmit={handleCreateFreeStudy} className="ios-card dr-compact-modal dr-modal-scroll w-[min(40rem,calc(100vw-1.5rem))] max-h-[min(76dvh,36rem)] overflow-y-auto p-4 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md text-white" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-xl p-3" onClick={() => setShowFreeStudy(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <form onSubmit={handleCreateFreeStudy} className="ios-card dr-compact-modal dr-modal-scroll w-[min(40rem,calc(100vw-1.5rem))] max-h-[min(76dvh,36rem)] overflow-y-auto p-4 text-[var(--dr-text-primary)]" onClick={(e) => e.stopPropagation()}>
                     <div className="mb-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <PlusCircle className="h-5 w-5 text-indigo-400" />
-                        <h3 className="text-lg font-black text-white">Serbest Çalışma Başlat</h3>
+                        <PlusCircle className="h-5 w-5 text-[var(--dr-orange)]" />
+                        <h3 className="text-lg font-black text-[var(--dr-text-primary)]">Serbest Çalışma Başlat</h3>
                       </div>
-                      <button type="button" onClick={() => setShowFreeStudy(false)} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition">
+                      <button type="button" onClick={() => setShowFreeStudy(false)} className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--dr-text-secondary)] hover:bg-[var(--dr-std-border-strong)]/10 transition">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
@@ -731,8 +731,8 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                       {/* Sol Sütun: Çalışma Alanı Tanımları */}
                       <div className="space-y-3.5">
                         <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ders</label>
-                          <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)] mb-1">Ders</label>
+                          <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="dr-form-field text-xs font-semibold rounded-[16px] w-full px-3 py-2.5 outline-none cursor-pointer">
                             {safeCourses.map((course) => <option key={course.id} value={course.id}>{safeText(course.name, course.id)}</option>)}
                           </select>
                         </div>
@@ -740,15 +740,15 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                         {freeType !== 'kitap okuma' && activeUnits.length > 0 && (
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ünite</label>
-                              <select value={freeUnitName} onChange={(e) => setFreeUnitName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-2.5 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)] mb-1">Ünite</label>
+                              <select value={freeUnitName} onChange={(e) => setFreeUnitName(e.target.value)} className="dr-form-field text-xs font-semibold rounded-[16px] w-full px-3 py-2.5 outline-none cursor-pointer">
                                 <option value="">Ünite seç</option>
                                 {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
                               </select>
                             </div>
                             <div>
-                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Konu</label>
-                              <select value={freeTopicName} onChange={(e) => setFreeTopicName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-2.5 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer" disabled={!freeUnitName}>
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)] mb-1">Konu</label>
+                              <select value={freeTopicName} onChange={(e) => setFreeTopicName(e.target.value)} className="dr-form-field text-xs font-semibold rounded-[16px] w-full px-3 py-2.5 outline-none cursor-pointer" disabled={!freeUnitName}>
                                 <option value="">Konu seç</option>
                                 {activeTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}
                               </select>
@@ -760,8 +760,8 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                       {/* Sağ Sütun: Çalışma Türü ve Süre Parametreleri */}
                       <div className="space-y-3.5">
                         <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Çalışma Türü</label>
-                          <select value={freeType} onChange={(e) => setFreeType(e.target.value as any)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)] mb-1">Çalışma Türü</label>
+                          <select value={freeType} onChange={(e) => setFreeType(e.target.value as any)} className="dr-form-field text-xs font-semibold rounded-[16px] w-full px-3 py-2.5 outline-none cursor-pointer">
                             <option value="ders çalışma">Ders çalışması</option>
                             <option value="konu tekrarı">Konu tekrarı</option>
                             <option value="eksik konu tamamlama">Eksik konu tamamlama</option>
@@ -772,20 +772,20 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
 
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Süre (dk)</label>
-                            <input value={freeDuration} onChange={(e) => setFreeDuration(e.target.value)} type="number" min="1" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="30" required />
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)] mb-1">Süre (dk)</label>
+                            <input value={freeDuration} onChange={(e) => setFreeDuration(e.target.value)} type="number" min="1" className="dr-form-field text-xs font-semibold rounded-[16px] w-full px-3 py-2.5 outline-none" placeholder="30" required />
                           </div>
 
                           {freeType === 'soru çözme' && (
                             <div>
-                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Soru Sayısı</label>
-                              <input value={freeQuestionCount} onChange={(e) => setFreeQuestionCount(e.target.value)} type="number" min="1" className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="20" />
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)] mb-1">Soru Sayısı</label>
+                              <input value={freeQuestionCount} onChange={(e) => setFreeQuestionCount(e.target.value)} type="number" min="1" className="dr-form-field text-xs font-semibold rounded-[16px] w-full px-3 py-2.5 outline-none" placeholder="20" />
                             </div>
                           )}
                           {freeType === 'kitap okuma' && (
                             <div>
-                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kitap Adı</label>
-                              <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-white text-xs px-3 py-2.5 rounded-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500 placeholder-slate-600" placeholder="Kitap adı girin" required />
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)] mb-1">Kitap Adı</label>
+                              <input value={freeBookTitle} onChange={(e) => setFreeBookTitle(e.target.value)} className="dr-form-field text-xs font-semibold rounded-[16px] w-full px-3 py-2.5 outline-none placeholder-[var(--dr-text-secondary)]/50" placeholder="Kitap adı girin" required />
                             </div>
                           )}
                         </div>
@@ -793,25 +793,19 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                     </div>
 
                     {freeStudyError && (
-                      <div className="mt-3.5 rounded-[12px] bg-rose-950/50 border border-rose-900/50 px-3 py-2 text-xs font-bold leading-5 text-rose-300 text-center">
+                      <div className="mt-3.5 rounded-[12px] bg-rose-500/8 border border-rose-500/20 px-3 py-2 text-xs font-bold leading-5 text-rose-600 dark:text-rose-400 text-center">
                         {freeStudyError}
                       </div>
                     )}
 
                     <div className="mt-5 flex gap-2 w-full justify-end md:max-w-xs md:ml-auto">
-                      <button type="button" onClick={() => setShowFreeStudy(false)} className="flex-1 rounded-[12px] px-4 py-2.5 text-xs font-bold text-slate-300 bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">
+                      <button type="button" onClick={() => setShowFreeStudy(false)} className="ios-button flex-1 rounded-[16px] px-4 py-2.5 text-xs font-bold text-[var(--dr-text-secondary)] active:scale-[0.96] transition-transform">
                         İptal
                       </button>
                       <button
                         type="submit"
                         disabled={creatingFreeStudy}
-                        className="flex-1 rounded-[12px] px-4 py-2.5 text-xs font-bold transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                        style={{
-                          background: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)',
-                          color: '#ffffff',
-                          border: '1px solid #1e40af',
-                          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
-                        }}
+                        className="ios-button-active flex-1 rounded-[16px] px-4 py-2.5 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.96]"
                       >
                         {creatingFreeStudy ? 'Başlatılıyor...' : 'Oluştur ve Başlat'}
                       </button>

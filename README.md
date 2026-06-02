@@ -271,6 +271,17 @@ Uygulamanın görsel tasarımı, modern mobil ve masaüstü web standartlarını
 *   **[2026-06-01]**: Geliştirme sunucusunun (Vite dev server) 'npm run dev:stable' komutuyla 3000 portunda başarıyla başlatılması. - **[Durum: Tamamlandı]**
 *   **[2026-06-01]**: Ebeveyn planlama alanının ve haftalık program panelinin basitleştirilerek ultra-premium 'CurriculumManager' çift sütunlu arayüzüne, mini-toolbar aksiyon yapısına ve tüm haftayı tek ekranda sunan 'Weekly Preview Grid' modalına kavuşturulması. - **[Durum: Tamamlandı]**
 *   **[2026-06-01]**: Ebeveyn ödül yönetim panelinin (`ParentRewardWorkspace.tsx`) yerleşimi korunarak 'Midnight Glassmorphism' görsel detayları, dinamik neon cam rozetleri ve ContextHelp açıklama bileşeni ile en baştan tasarlanması. - **[Durum: Tamamlandı]**
+*   **[2026-06-02]**: Vanguard Premium Apparel tasarım sistemine ait asil Elektrik Turuncusu (#FF4F18) ve Sıcak Kum Sarısı (#A08C6C) renk paletinin Seçenek B kapsamında ebeveyn ödüller sayfasındaki buton ve rozetlere giydirilmesi. - **[Durum: Tamamlandı]**
+*   **[2026-06-02]**: Ödül sayfasının (`ParentRewardWorkspace.tsx`) Vanguard görsel şemasına göre derin kadife zemin (#111112), mat koyu form girdileri, yüksek kontrastlı tam dolgulu Elektrik Turuncusu aksiyon butonları ve geniş harfli asil MacBook/iPhone tepe etiketleriyle yeniden giydirilmesi. - **[Durum: Tamamlandı]**
+*   **[2026-06-02]**: Vanguard Premium Apparel tasarım sisteminin Açık Moda (Light Mode) uyarlanması: Arka planın sıcak keten/ivory dokusuna (#FAF8F5 / #F5F2EB), sınırların şampanya kum sarısına (#A08C6C), birincil buton ve sekmelerin ise yüksek kontrastlı solid Elektrik Turuncusuna (#FF4F18) kavuşturularak sistem genelinde lüks MacBook/iPhone akıcılığının tamamlanması. - **[Durum: Tamamlandı]**
+*   **[2026-06-02]**: Uygulama genelindeki tüm kart (`.ios-card`), ara kart (`.ios-widget`) ve butonların (`.ios-button`) fluluk ve kadife hissiyatının artırılması: Açık modda 32px, koyu modda 36px ultra-yoğun 'frosted glass' bulanıklığı, speküler beyaz ışık yansımaları (`inset border highlight`) ve mobil-tablet için dokunsal yaylanma (`active:scale-[0.96]`) entegrasyonu. - **[Durum: Tamamlandı]**
+*   **[2026-06-02]**: Ebeveyn ve çocuk panellerinin tamamının (Overview, Analysis, Tasks, WeeklySchedule, ChildDashboard) hem Açık hem de Karanlık modda Vanguard Velvet lüks tasarım standartlarına göre yaygınlaştırılması, typecheck ve kabul testleriyle doğrulanması. - **[Durum: Tamamlandı]**
+*   **[2026-06-02]**: Zaman, Planlama ve Müfredat alanlarının (ParentPlanningWorkspace, WeeklySchedulePanel ve CurriculumManagerPanel) sayfaya özel tüm eski sınıflardan ve mavi tonlardan temizlenerek doğrudan küresel premium Vanguard Velvet (.ios-card, .ios-widget, .ios-button-active, .ios-button) standartlarına ve haptik esneme tepkisine geçirimi. - **[Durum: Tamamlandı]**
+*   **[2026-06-02]**: Ebeveyn kilit ekranının (`ParentLockScreen.tsx`) ve performans analiz grafiklerinin (`BestPeriodAnalysis.tsx`, `CompletionSpeedAnalysis.tsx`, `CourseTimeDistribution.tsx`) en ince ayrıntılarına kadar eski mavi/slate renklerden arındırılarak Vanguard Velvet standardına ve Elektrik Turuncusu / Sand renk teorisine tam entegrasyonu. - **[Durum: Tamamlandı]**
+
+
+
+
 
 
 

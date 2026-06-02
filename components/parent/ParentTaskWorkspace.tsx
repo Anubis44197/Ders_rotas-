@@ -489,45 +489,45 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
     const taskMetrics = Array.from(new Set([...normalizedSelectedMetrics, ...legacySelectedMetrics]));
 
     return (
-      <div key={task.id} className={`ios-widget rounded-[22px] p-4 ${isOverdue ? 'ios-coral' : ''}`}>
+      <div key={task.id} className={`ios-widget rounded-[20px] p-4 border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none transition-all active:scale-[0.98] ${isOverdue ? 'ios-coral' : ''}`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--dr-text-secondary)]">
               <span>{courseNameMap.get(task.courseId) || task.courseId}</span>
               <span>/</span>
               <span>{task.plannedDuration} dk</span>
               {typeof task.questionCount === 'number' && task.questionCount > 0 && <><span>/</span><span>{task.questionCount} soru</span></>}
               <span>/</span>
               <span>{task.dueDate}</span>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">{formatPlanSource(task.planSource, task.planLabel)}</span>
-              {task.isSelfAssigned && <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">Serbest</span>}
-              {isOverdue && <span className="rounded-full bg-rose-100 px-2 py-1 text-rose-700">Takipte</span>}
+              <span className="rounded-full bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/10 px-2.5 py-0.5 text-[var(--dr-text-secondary)]">{formatPlanSource(task.planSource, task.planLabel)}</span>
+              {task.isSelfAssigned && <span className="rounded-full bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/15 px-2.5 py-0.5 text-[var(--dr-orange)]">Serbest</span>}
+              {isOverdue && <span className="rounded-full bg-[var(--dr-orange)]/10 border border-[var(--dr-orange)]/25 px-2.5 py-0.5 text-[var(--dr-orange)] font-bold">Takipte</span>}
             </div>
-            <div className="mt-2 font-semibold text-slate-900">{task.title}</div>
-            <div className="mt-2 text-xs leading-5 text-slate-500">
+            <div className="mt-2 font-semibold text-[var(--dr-text-primary)]">{task.title}</div>
+            <div className="mt-2 text-xs leading-5 text-[var(--dr-text-secondary)]">
               {[task.curriculumUnitName, task.curriculumTopicName, task.taskGoalType ? formatTaskGoal(task.taskGoalType) : '', typeof task.questionCount === 'number' && task.questionCount > 0 ? `${task.questionCount} soru` : '', taskMetrics[0] ? assignmentMetricLabelMap[taskMetrics[0]] : '']
                 .filter(Boolean)
                 .join(' / ') || 'Detay eklenmedi'}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isCompletedTask(task) ? 'bg-green-100 text-green-700' : isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-yellow-100 text-yellow-700'}`}>
-              {isCompletedTask(task) ? 'TamamlandÄ±' : isOverdue ? 'Takipte' : 'Bekliyor'}
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold border ${isCompletedTask(task) ? 'bg-emerald-500/8 border-emerald-500/20 text-emerald-500 dark:bg-emerald-500/6 dark:border-emerald-500/15 dark:text-emerald-400' : isOverdue ? 'bg-[var(--dr-orange)]/8 border-[var(--dr-orange)]/25 text-[var(--dr-orange)]' : 'bg-[var(--dr-std-border-strong)]/8 border-[var(--dr-std-border-strong)]/20 text-[var(--dr-std-border-strong)] dark:bg-[var(--dr-std-border-strong)]/6 dark:border-[var(--dr-std-border-strong)]/15 dark:text-[var(--dr-std-border-strong)]'}`}>
+              {isCompletedTask(task) ? 'Tamamlandı' : isOverdue ? 'Takipte' : 'Bekliyor'}
             </span>
             <div className="dr-context-menu-shell" ref={openTaskMenuId === task.id ? taskMenuRef : null}>
               <button
                 type="button"
                 onClick={() => setOpenTaskMenuId((current) => (current === task.id ? null : task.id))}
                 className="dr-icon-button"
-                aria-label={`${task.title} gÃ¶rev iÅŸlemleri`}
+                aria-label={`${task.title} görev işlemleri`}
                 aria-haspopup="menu"
                 aria-expanded={openTaskMenuId === task.id}
-                title="GÃ¶rev iÅŸlemleri"
+                title="Görev işlemleri"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </button>
               {openTaskMenuId === task.id && (
-                <div className="dr-context-menu" role="menu" aria-label={`${task.title} gÃ¶rev iÅŸlemleri`}>
+                <div className="dr-context-menu" role="menu" aria-label={`${task.title} görev işlemleri`}>
                   <div className="dr-context-menu-preview truncate">{task.title}</div>
                   <button
                     type="button"
@@ -539,7 +539,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
-                    GÃ¶revi sil
+                    Görevi sil
                   </button>
                 </div>
               )}
@@ -849,7 +849,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
       </div>}
 
       {showDeleteDataModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-3 backdrop-blur-sm" role="presentation">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl" role="presentation">
           <div className="ios-card dr-compact-modal w-[min(26rem,calc(100vw-1.5rem))] p-4" role="dialog" aria-modal="true" aria-labelledby="delete-data-title">
             <div className="mb-4 flex items-start gap-3">
               <div className="ios-coral flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] text-rose-800">
@@ -939,7 +939,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         </div>
 
         {examFormOpen && (
-          <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-xl">
+          <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl">
             <div className="ios-card dr-compact-modal flex max-h-[min(76dvh,38rem)] w-[min(42rem,calc(100vw-1.5rem))] flex-col overflow-hidden" role="dialog" aria-modal="true" aria-label="Sınav sonucu ekle">
               <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
                 <div>

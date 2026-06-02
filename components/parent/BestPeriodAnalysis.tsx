@@ -17,18 +17,18 @@ const HOURS = Array.from({ length: 24 }, (_, index) => `${String(index).padStart
 
 const LoadingSpinner: React.FC = () => (
   <div className="flex h-48 items-center justify-center">
-    <Loader className="h-8 w-8 animate-spin text-primary-600" />
-    <span className="ml-2 text-slate-600">Veriler yükleniyor...</span>
+    <Loader className="h-8 w-8 animate-spin text-[var(--dr-orange)]" />
+    <span className="ml-2 text-[var(--dr-text-secondary)]">Veriler yükleniyor...</span>
   </div>
 );
 
 const ErrorState: React.FC<{ error: string }> = ({ error }) => (
   <div className="flex h-48 flex-col items-center justify-center text-center">
-    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-      <span className="text-xl text-red-500">!</span>
+    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/20">
+      <span className="text-xl text-rose-500">!</span>
     </div>
-    <p className="mb-2 text-slate-600">Veriler yüklenirken bir sorun oluştu.</p>
-    <p className="text-sm text-slate-500">{error}</p>
+    <p className="mb-2 text-[var(--dr-text-primary)]">Veriler yüklenirken bir sorun oluştu.</p>
+    <p className="text-sm text-[var(--dr-text-secondary)]">{error}</p>
   </div>
 );
 
@@ -76,7 +76,7 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
   if (loading) {
     return (
       <div className="ios-card rounded-[28px] p-6">
-        <h3 className="mb-4 flex items-center text-xl font-bold"><Clock className="mr-2 h-6 w-6 text-primary-600" />En verimli zaman</h3>
+        <h3 className="mb-4 flex items-center text-xl font-bold text-[var(--dr-text-primary)]"><Clock className="mr-2 h-6 w-6 text-[var(--dr-orange)]" />En verimli zaman</h3>
         <LoadingSpinner />
       </div>
     );
@@ -85,31 +85,31 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
   if (error) {
     return (
       <div className="ios-card rounded-[28px] p-6">
-        <h3 className="mb-4 flex items-center text-xl font-bold"><Clock className="mr-2 h-6 w-6 text-primary-600" />En verimli zaman</h3>
+        <h3 className="mb-4 flex items-center text-xl font-bold text-[var(--dr-text-primary)]"><Clock className="mr-2 h-6 w-6 text-[var(--dr-orange)]" />En verimli zaman</h3>
         <ErrorState error={error} />
       </div>
     );
   }
 
   if (!completed.length) {
-    return <EmptyState icon={<Clock className="h-8 w-8 text-slate-400" />} title="Verimli zaman analizi için veri yok" message="Tamamlanan görevler geldikçe hangi gün ve saatlerde daha verimli olunduğu burada görünecek." />;
+    return <EmptyState icon={<Clock className="h-8 w-8 text-[var(--dr-text-secondary)]" />} title="Verimli zaman analizi için veri yok" message="Tamamlanan görevler geldikçe hangi gün ve saatlerde daha verimli olunduğu burada görünecek." />;
   }
 
   return (
-    <div className="ios-card rounded-[28px] p-6">
+    <div className="ios-card rounded-[28px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="flex items-center text-xl font-bold"><Clock className="mr-2 h-6 w-6 text-primary-600" />En verimli zaman</h3>
-          <p className="text-sm text-slate-500">Tamamlanan görevlerde skor ortalaması hangi gün ve saatlerde yükseliyor.</p>
+          <h3 className="flex items-center text-xl font-bold text-[var(--dr-text-primary)]"><Clock className="mr-2 h-6 w-6 text-[var(--dr-orange)]" />En verimli zaman</h3>
+          <p className="text-sm text-[var(--dr-text-secondary)]">Tamamlanan görevlerde skor ortalaması hangi gün ve saatlerde yükseliyor.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">En güçlü gün: <strong>{bestDay?.day || '-'}</strong></div>
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">En güçlü saat: <strong>{bestHour?.hour || '-'}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">En güçlü gün: <strong className="text-[var(--dr-text-primary)]">{bestDay?.day || '-'}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">En güçlü saat: <strong className="text-[var(--dr-text-primary)]">{bestHour?.hour || '-'}</strong></div>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <div>
-          <h4 className="mb-2 font-semibold text-slate-800">Gün bazlı skor</h4>
+          <h4 className="mb-2 font-semibold text-[var(--dr-text-primary)]">Gün bazlı skor</h4>
           <SafeResponsiveContainer width="100%" height={220}>
             <BarChart data={weekdayData}>
               <CartesianGrid {...chartGridProps} />
@@ -122,7 +122,7 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
           </SafeResponsiveContainer>
         </div>
         <div>
-          <h4 className="mb-2 font-semibold text-slate-800">Saat bazlı skor</h4>
+          <h4 className="mb-2 font-semibold text-[var(--dr-text-primary)]">Saat bazlı skor</h4>
           <SafeResponsiveContainer width="100%" height={220}>
             <BarChart data={hourData}>
               <CartesianGrid {...chartGridProps} />

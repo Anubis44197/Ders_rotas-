@@ -22,9 +22,9 @@ const normalizeSubjectName = (value: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 const fieldClass = 'dr-form-field rounded-2xl px-3 py-3 text-sm outline-none';
-const primaryButtonClass = 'ios-button-active rounded-2xl px-4 py-3 text-sm font-bold';
-const iconPrimaryButtonClass = 'ios-button-active rounded-2xl px-3 py-3';
-const destructiveIconButtonClass = 'dr-destructive-button rounded-full p-2';
+const primaryButtonClass = 'ios-button-active rounded-[16px] px-4 py-3 text-sm font-bold text-white transition-all active:scale-[0.96] cursor-pointer';
+const iconPrimaryButtonClass = 'ios-button-active rounded-[16px] px-3 py-3 text-white transition-all active:scale-[0.96] cursor-pointer';
+const destructiveIconButtonClass = 'dr-destructive-button rounded-full p-2 transition-all active:scale-[0.92] cursor-pointer';
 
 const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curriculum, onSave }) => {
   const [draft, setDraft] = useState<SubjectCurriculum>(() => cloneCurriculum(curriculum));
@@ -136,13 +136,13 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
   return (
     <div className="space-y-4 p-1">
       <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="ios-widget rounded-[24px] p-4">
+        <aside className="ios-widget rounded-[24px] p-4 border border-[var(--dr-std-border-strong)]/20 shadow-sm bg-[var(--dr-surface)]/50">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <div className="text-sm font-bold text-slate-800">Dersler</div>
-              <div className="text-xs text-slate-500">Aktif dersi seç, ünite ve konu düzenle.</div>
+              <div className="text-sm font-bold text-[var(--dr-text-primary)]">Dersler</div>
+              <div className="text-xs text-[var(--dr-text-secondary)]">Aktif dersi seç, ünite ve konu düzenle.</div>
             </div>
-            <div className="ios-button rounded-full px-2.5 py-1 text-xs font-semibold text-slate-600">{subjects.length}</div>
+            <div className="ios-button rounded-full px-2.5 py-1 text-xs font-semibold text-[var(--dr-text-primary)] border border-[var(--dr-std-border-strong)]/15">{subjects.length}</div>
           </div>
 
           <div className="mb-4 flex gap-2">
@@ -159,19 +159,19 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
           </div>
 
           <div className="space-y-2">
-            {subjects.length === 0 && <p className="ios-widget rounded-2xl px-4 py-4 text-sm text-slate-500">Henüz ders eklenmedi.</p>}
+            {subjects.length === 0 && <p className="ios-widget rounded-2xl px-4 py-4 text-sm text-[var(--dr-text-secondary)] border border-[var(--dr-std-border-strong)]/10">Henüz ders eklenmedi.</p>}
             {subjects.map((subject) => {
               const isActive = activeSubject === subject;
               const unitCount = draft[subject]?.length || 0;
               const topicCount = (draft[subject] || []).reduce((sum, unit) => sum + unit.topics.length, 0);
               return (
-                <div key={subject} className={`rounded-2xl transition ${isActive ? 'ios-button-active' : 'ios-button text-slate-700'}`}>
+                <div key={subject} className={`rounded-2xl transition ${isActive ? 'ios-button-active text-white border border-transparent shadow-md' : 'ios-button text-[var(--dr-text-primary)]'}`}>
                   <div className="flex items-center justify-between gap-2 px-4 py-3">
                     <button onClick={() => setActiveSubject(subject)} className="min-w-0 flex-1 text-left">
                       <div className="truncate font-bold">{subject}</div>
-                      <div className={`mt-1 text-xs ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>{unitCount} ünite • {topicCount} konu</div>
+                      <div className={`mt-1 text-xs ${isActive ? 'text-orange-100/90' : 'text-[var(--dr-text-secondary)]'}`}>{unitCount} ünite • {topicCount} konu</div>
                     </button>
-                    <button onClick={() => handleDeleteSubject(subject)} className={isActive ? 'inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-2 text-xs font-black text-white hover:bg-white/25' : `${destructiveIconButtonClass} inline-flex items-center gap-1 text-xs font-black`} title="Dersi sil">
+                    <button onClick={() => handleDeleteSubject(subject)} className={isActive ? 'inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-2 text-xs font-black text-white hover:bg-white/25 transition-all active:scale-[0.92]' : `${destructiveIconButtonClass} inline-flex items-center gap-1 text-xs font-black`} title="Dersi sil">
                       <Trash2 className="h-4 w-4" />
                       <span>Sil</span>
                     </button>
@@ -184,17 +184,17 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
 
         <div className="min-w-0">
           {!activeSubject ? (
-            <div className="ios-widget rounded-[24px] border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
+            <div className="ios-widget rounded-[24px] border border-dashed border-[var(--dr-std-border-strong)]/30 p-10 text-center text-sm font-semibold text-[var(--dr-text-secondary)]">
               Önce bir ders ekleyin veya soldan bir ders seçin.
             </div>
           ) : (
             <div className="space-y-5">
-              <div className="ios-widget rounded-[24px] p-5">
+              <div className="ios-widget rounded-[24px] border border-[var(--dr-std-border-strong)]/20 shadow-sm bg-[var(--dr-surface)]/50 p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-[0.22em] text-primary-600">Aktif Ders</div>
-                    <h3 className="mt-2 text-2xl font-black text-slate-900">{activeSubject}</h3>
-                    <p className="mt-1 text-sm text-slate-500">Önce üniteyi kur, sonra konu listesini netleştir. Tamamlanan konular burada işaretlenir.</p>
+                    <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">Aktif Ders</div>
+                    <h3 className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">{activeSubject}</h3>
+                    <p className="mt-1 text-sm text-[var(--dr-text-secondary)]">Önce üniteyi kur, sonra konu listesini netleştir. Tamamlanan konular burada işaretlenir.</p>
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -211,7 +211,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
               </div>
 
               {activeUnits.length === 0 && (
-                <div className="ios-widget rounded-[24px] border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
+                <div className="ios-widget rounded-[24px] border border-dashed border-[var(--dr-std-border-strong)]/30 p-10 text-center text-sm font-semibold text-[var(--dr-text-secondary)]">
                   Bu ders için henüz ünite eklenmedi.
                 </div>
               )}
@@ -221,16 +221,16 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
                   const topicKey = `${activeSubject}-${unitIndex}`;
                   const completedCount = unit.topics.filter((topic) => topic.completed).length;
                   return (
-                    <div key={`${activeSubject}-${unit.name}-${unitIndex}`} className="ios-widget rounded-[24px] p-5">
+                    <div key={`${activeSubject}-${unit.name}-${unitIndex}`} className="ios-widget rounded-[24px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/50 p-5 shadow-sm">
                       <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <div className="truncate text-xl font-black text-slate-900">{unit.name}</div>
+                            <div className="truncate text-xl font-black text-[var(--dr-text-primary)]">{unit.name}</div>
                             <button onClick={() => handleDeleteUnit(activeSubject, unitIndex)} className={destructiveIconButtonClass} title="Üniteyi sil">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
-                          <div className="mt-1 text-sm text-slate-500">{unit.topics.length} konu • {completedCount} tamamlanan</div>
+                          <div className="mt-1 text-sm text-[var(--dr-text-secondary)]">{unit.topics.length} konu • {completedCount} tamamlanan</div>
                         </div>
                         <div className="flex gap-2">
                           <input
@@ -246,17 +246,17 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
                       </div>
 
                       <div className="space-y-2">
-                        {unit.topics.length === 0 && <div className="ios-widget rounded-2xl px-4 py-4 text-sm text-slate-500">Bu ünite için konu eklenmedi.</div>}
+                        {unit.topics.length === 0 && <div className="ios-widget rounded-2xl px-4 py-4 text-sm text-[var(--dr-text-secondary)] border border-[var(--dr-std-border-strong)]/10">Bu ünite için konu eklenmedi.</div>}
                         {unit.topics.map((topic, topicIndex) => (
-                          <div key={`${topic.name}-${topicIndex}`} className="ios-widget flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm text-slate-700">
+                          <div key={`${topic.name}-${topicIndex}`} className="ios-widget flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-primary)]/90 border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/40">
                             <div className="min-w-0">
-                              <div className={`font-semibold ${topic.completed ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{topic.name}</div>
+                              <div className={`font-semibold ${topic.completed ? 'text-[var(--dr-text-secondary)]/60 line-through' : 'text-[var(--dr-text-primary)]'}`}>{topic.name}</div>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() => handleToggleTopic(activeSubject, unitIndex, topicIndex)}
-                                className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${topic.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}
+                                className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold transition-all active:scale-[0.92] ${topic.completed ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300/40 dark:border-slate-700/40'}`}
                               >
                                 <CheckCircle className="mr-1 h-4 w-4" />
                                 {topic.completed ? 'Tamamlandı' : 'Açık'}
@@ -277,18 +277,18 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
         </div>
       </div>
 
-      <div className={`ios-widget mt-6 flex flex-col gap-3 rounded-[24px] px-5 py-4 transition ${hasChanges ? 'ios-blue' : ''}`}>
+      <div className={`ios-widget mt-6 flex flex-col gap-3 rounded-[24px] border border-[var(--dr-std-border-strong)]/20 px-5 py-4 transition bg-[var(--dr-surface)]/50 shadow-sm ${hasChanges ? 'border-[var(--dr-orange)]/45' : ''}`}>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-              <Sparkles className="h-4 w-4 text-primary-600" />
+            <div className="flex items-center gap-2 text-sm font-bold text-[var(--dr-text-primary)]">
+              <Sparkles className="h-4 w-4 text-[var(--dr-orange)]" />
               Kayıt Durumu
             </div>
-            <div className="mt-1 text-sm text-slate-500">{hasChanges ? 'Kaydedilmemiş değişiklikler var.' : saved ? 'Müfredat kaydedildi.' : 'Güncel müfredat kayıtlı.'}</div>
+            <div className="mt-1 text-sm text-[var(--dr-text-secondary)]">{hasChanges ? 'Kaydedilmemiş değişiklikler var.' : saved ? 'Müfredat kaydedildi.' : 'Güncel müfredat kayıtlı.'}</div>
           </div>
           <button
             onClick={handleSave}
-            className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${saved ? 'ios-button' : 'ios-button-active'}`}
+            className={`rounded-[16px] px-5 py-3 text-sm font-black transition-all active:scale-[0.96] cursor-pointer ${saved ? 'ios-button text-[var(--dr-text-primary)]' : 'ios-button-active text-white'}`}
           >
             {saved ? 'Kaydedildi' : 'Müfredatı Kaydet'}
           </button>

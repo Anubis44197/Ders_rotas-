@@ -35,11 +35,7 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
   const numericRewardCost = Number(rewardCost);
   const rewardButtonTone = !Number.isFinite(numericRewardCost) || numericRewardCost <= 0
     ? 'ios-button text-slate-500 border border-transparent'
-    : numericRewardCost < 150
-      ? 'border border-emerald-400/40 text-slate-900 dark:text-white bg-emerald-500/10 hover:bg-emerald-500/20'
-      : numericRewardCost < 350
-        ? 'border border-amber-400/40 text-slate-900 dark:text-white bg-amber-500/10 hover:bg-amber-500/20'
-        : 'border border-rose-400/40 text-slate-900 dark:text-white bg-rose-500/10 hover:bg-rose-500/20';
+    : 'border border-[#FF4F18]/45 text-[#FF4F18] bg-[#FF4F18]/10 hover:bg-[#FF4F18]/20 hover:shadow-md hover:shadow-[#FF4F18]/5';
 
   const handleAddReward = (event: React.FormEvent) => {
     event.preventDefault();
@@ -77,28 +73,34 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
   };
 
   return (
-    <section className="ios-card rounded-[28px] p-5">
+    <section className="rounded-[24px] p-6 bg-white dark:bg-[#111112] border border-slate-200/60 dark:border-[#1e2230] shadow-xl dark:shadow-2xl dark:shadow-black/60 transition duration-300">
       {actionMessage && (
-        <div className={`mb-4 rounded-[18px] px-4 py-3 text-sm font-semibold ${actionMessage.type === 'success' ? 'ios-mint text-emerald-900' : 'ios-coral text-rose-900'}`}>
-          {actionMessage.text}
+        <div className={`mb-5 rounded-xl px-4 py-3 text-xs font-bold border transition-all duration-300 ${
+          actionMessage.type === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
+        }`}>
+          {actionMessage.type === 'success' ? '✓' : '✕'} {actionMessage.text}
         </div>
       )}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Ebeveyn kontrol merkezi</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#A08C6C]">
+            🏆 REWARDS SYSTEM / Ebeveyn kontrol merkezi
+          </div>
           <div className="mt-1 flex items-center gap-2">
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">Ödül Tanımla</h3>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">Ödül Tanımla</h3>
             <ContextHelp title="Ödül Mağazası" tone="blue">
               Çocuğunuz kazandığı Başarı Puanlarını (BP) burada belirlediğiniz ödülleri satın almak için kullanabilir. Ödüller ve puan maliyetleri veli kontrolündedir.
             </ContextHelp>
           </div>
         </div>
-        <form onSubmit={handleAddReward} className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-[minmax(0,1fr)_100px_auto] lg:max-w-2xl">
+        <form onSubmit={handleAddReward} className="grid w-full grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_100px_auto] lg:max-w-2xl">
           <input
             value={rewardName}
             onChange={(e) => setRewardName(e.target.value)}
             placeholder="Ödül adı (örn. 30 dk Bilgisayar Süresi)"
-            className="dr-form-field rounded-xl px-3 py-2 text-xs font-semibold outline-none"
+            className="w-full bg-slate-50 dark:bg-[#18181f] border border-slate-200 dark:border-[#2e2e38] text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-xs font-semibold outline-none focus:border-[#FF4F18] focus:ring-1 focus:ring-[#FF4F18] placeholder:text-slate-500 transition duration-200"
           />
           <input
             value={rewardCost}
@@ -106,62 +108,71 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
             placeholder="Puan"
             type="number"
             min="1"
-            className="dr-form-field rounded-xl px-3 py-2 text-xs font-semibold outline-none"
+            className="w-full bg-slate-50 dark:bg-[#18181f] border border-slate-200 dark:border-[#2e2e38] text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-xs font-semibold outline-none focus:border-[#FF4F18] focus:ring-1 focus:ring-[#FF4F18] placeholder:text-slate-500 transition duration-200"
           />
           <button
             type="submit"
             disabled={isAddingReward}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition duration-300 ${isAddingReward ? 'cursor-not-allowed opacity-50' : rewardButtonTone}`}
+            className={`rounded-xl px-5 py-2.5 text-xs font-black transition duration-300 shadow-md ${
+              isAddingReward
+                ? 'cursor-not-allowed opacity-50 bg-slate-300 text-slate-500'
+                : 'bg-[#FF4F18] text-[#111827] hover:bg-[#ff6c3b] active:scale-95 shadow-[#FF4F18]/15'
+            }`}
           >
             <span className="block">{isAddingReward ? 'Ekleniyor...' : 'Ödülü Ata'}</span>
-            <span className="mt-0.5 block text-[10px] font-semibold opacity-70">Mevcut: {availablePoints} BP</span>
+            <span className="mt-0.5 block text-[9px] font-bold opacity-80">Mevcut: {availablePoints} BP</span>
           </button>
         </form>
       </div>
       {rewards.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-white/5 pt-4">
-          {(showAllRewards ? rewards : rewards.slice(0, 8)).map((reward) => {
-            const isAffordable = reward.cost <= availablePoints;
-            const badgeTone = isAffordable
-              ? 'border-emerald-400/40 text-slate-900 dark:text-white bg-emerald-500/10 shadow-sm shadow-emerald-500/5'
-              : 'border-amber-400/30 text-slate-900 dark:text-white bg-amber-500/10';
+        <div className="mt-6 border-t border-slate-100 dark:border-white/5 pt-5">
+          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#A08C6C] mb-4">
+            📐 ACTIVE REWARDS / AKTİF ÖDÜLLER
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            {(showAllRewards ? rewards : rewards.slice(0, 8)).map((reward) => {
+              const isAffordable = reward.cost <= availablePoints;
+              const badgeTone = isAffordable
+                ? 'border-[#FF4F18]/40 text-[#FF4F18] bg-[#FF4F18]/5 shadow-sm shadow-[#FF4F18]/5'
+                : 'border-[#A08C6C]/30 text-slate-700 dark:text-[#A08C6C] bg-[#A08C6C]/5';
 
-            return (
-              <div
-                key={reward.id}
-                className={`inline-flex items-center gap-2.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold backdrop-blur-md transition duration-300 hover:scale-[1.03] ${badgeTone}`}
-              >
-                <Trophy className={`h-3.5 w-3.5 ${isAffordable ? 'text-amber-500 dark:text-amber-400 animate-pulse' : 'text-slate-400'}`} />
-                <span>{reward.name}</span>
-                <span className="opacity-40">•</span>
-                <span className="font-bold">{reward.cost} BP</span>
-                <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                  isAffordable
-                    ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                }`}>
-                  {isAffordable ? 'Ulaşılabilir' : 'Birikiyor'}
-                </span>
-                <button
-                  onClick={() => deleteReward(reward.id)}
-                  className="ml-1 flex h-4 w-4 items-center justify-center rounded-full text-slate-400 hover:bg-rose-500/25 hover:text-rose-600 transition duration-200"
-                  type="button"
-                  aria-label={`${reward.name} ödülünü sil`}
+              return (
+                <div
+                  key={reward.id}
+                  className={`inline-flex items-center gap-2.5 rounded-full border px-4 py-2 text-xs font-semibold backdrop-blur-md transition duration-300 hover:scale-[1.03] ${badgeTone}`}
                 >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </div>
-            );
-          })}
-          {rewards.length > 8 && (
-            <button
-              type="button"
-              onClick={() => setShowAllRewards((prev) => !prev)}
-              className="ios-button rounded-full px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300"
-            >
-              {showAllRewards ? 'Daha az göster' : `Tümünü göster (${rewards.length})`}
-            </button>
-          )}
+                  <Trophy className={`h-3.5 w-3.5 ${isAffordable ? 'text-[#FF4F18] animate-pulse' : 'text-[#A08C6C]/70'}`} />
+                  <span className="text-slate-900 dark:text-slate-100">{reward.name}</span>
+                  <span className="opacity-40">•</span>
+                  <span className="font-bold">{reward.cost} BP</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                    isAffordable
+                      ? 'bg-[#FF4F18]/15 text-[#FF4F18]'
+                      : 'bg-[#A08C6C]/15 text-slate-500 dark:text-[#A08C6C]'
+                  }`}>
+                    {isAffordable ? 'Ulaşılabilir' : 'Birikiyor'}
+                  </span>
+                  <button
+                    onClick={() => deleteReward(reward.id)}
+                    className="ml-1 flex h-4 w-4 items-center justify-center rounded-full text-slate-400 hover:bg-rose-500/25 hover:text-rose-600 transition duration-200"
+                    type="button"
+                    aria-label={`${reward.name} ödülünü sil`}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            })}
+            {rewards.length > 8 && (
+              <button
+                type="button"
+                onClick={() => setShowAllRewards((prev) => !prev)}
+                className="ios-button rounded-full px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2e2e38]"
+              >
+                {showAllRewards ? 'Daha az göster' : `Tümünü göster (${rewards.length})`}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </section>

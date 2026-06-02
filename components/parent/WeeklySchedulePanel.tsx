@@ -497,54 +497,54 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
 
   return (
     <>
-      <section className="dr-planning-card dr-weekly-card dr-compact-section">
+      <section className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg">
       <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <div className="dr-planning-kicker flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-600">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">
             <Calendar className="h-4 w-4" />
             Haftalık zaman
           </div>
           <div className="mt-2 flex items-center gap-2">
-            <h2 className="dr-planning-section-title text-2xl font-black text-slate-900 dark:text-white">Haftalık Program</h2>
+            <h2 className="dr-planning-section-title text-2xl font-black text-[var(--dr-text-primary)]">Haftalık Program</h2>
             <ContextHelp title="Haftalık Program" tone="blue">
               Ders/konu girişi müfredatta kalır. Burada sadece okul saatleri ve plan motorunun kullanacağı ev çalışma pencereleri yönetilir.
             </ContextHelp>
           </div>
         </div>
         {saved && (
-          <div className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold text-emerald-700 shrink-0 self-start">
+          <div className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold text-emerald-600 shrink-0 self-start">
             Program kaydedildi
           </div>
         )}
       </div>
 
       {/* Planlama Aksiyonları Kartı */}
-      <div className="dr-plan-action-bar flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="dr-plan-action-title text-sm font-bold text-slate-700">Akademik Planlama İşlemleri</div>
-        <div className="dr-plan-action-buttons flex flex-wrap gap-2">
+      <div className="ios-panel flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between rounded-[20px] border border-[var(--dr-std-border-strong)]/20 bg-[var(--dr-surface)]/50 shadow-sm">
+        <div className="text-sm font-bold text-[var(--dr-text-primary)]">Akademik Planlama İşlemleri</div>
+        <div className="flex flex-wrap gap-2">
           {onAddExam && (
             <button
               type="button"
               onClick={onAddExam}
-              className="dr-planning-secondary-action inline-flex items-center justify-center gap-2 rounded-[14px] px-3 py-2 text-xs font-bold"
+              className="ios-button inline-flex items-center justify-center gap-2 rounded-[14px] px-3.5 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer"
             >
-              <PlusCircle className="h-4 w-4 text-primary-600" />
+              <PlusCircle className="h-4 w-4 text-[var(--dr-orange)]" />
               Sınav ekle
             </button>
           )}
           <button
             type="button"
             onClick={() => openEditorForDay(activeDay, 'school')}
-            className="dr-planning-secondary-action inline-flex items-center justify-center gap-2 rounded-[14px] px-3 py-2 text-xs font-bold"
+            className="ios-button inline-flex items-center justify-center gap-2 rounded-[14px] px-3.5 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer"
           >
-            <PlusCircle className="h-4 w-4 text-primary-600" />
+            <PlusCircle className="h-4 w-4 text-[var(--dr-orange)]" />
             Okul programını düzenle
           </button>
           <button
             type="button"
             onClick={openTaskAssignment}
             disabled={!addTask}
-            className="dr-planning-primary-action inline-flex items-center justify-center gap-2 rounded-[14px] px-3 py-2 text-xs font-black disabled:opacity-50"
+            className="ios-button-active inline-flex items-center justify-center gap-2 rounded-[14px] px-3.5 py-2 text-xs font-black text-white transition-all active:scale-[0.96] disabled:opacity-50 cursor-pointer"
           >
             <ClipboardList className="h-4 w-4" />
             Görev ata
@@ -594,32 +594,32 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       </section>
 
       {isEditorOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={handleCloseEditor}>
-          <div className="ios-card dr-compact-modal flex max-h-[min(76dvh,36rem)] w-[min(38rem,calc(100vw-1.5rem))] flex-col overflow-hidden" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Haftalık program düzenleme">
-            <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl" onClick={handleCloseEditor}>
+          <div className="ios-card dr-compact-modal flex max-h-[min(76dvh,36rem)] w-[min(38rem,calc(100vw-1.5rem))] flex-col overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Haftalık program düzenleme">
+            <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-[var(--dr-std-border-strong)]/15 p-4 bg-[var(--dr-surface)]/20">
               <div>
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-600">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">
                   <PlusCircle className="h-4 w-4" />
                   Haftalık zaman düzeni
                 </div>
-                <h3 className="mt-1 text-base font-black text-slate-900 dark:text-white">{activeDay}</h3>
-                <p className="mt-0.5 max-w-md text-[11px] text-slate-500">Okul ve ev çalışma saatlerini ayrı girin.</p>
+                <h3 className="mt-1 text-base font-black text-[var(--dr-text-primary)]">{activeDay}</h3>
+                <p className="mt-0.5 max-w-md text-[11px] text-[var(--dr-text-secondary)]">Okul ve ev çalışma saatlerini ayrı girin.</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setShowEditorPreview((current) => !current)}
-                  className="ios-button inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-slate-700"
+                  className="ios-button inline-flex items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer"
                   aria-expanded={showEditorPreview}
                   aria-label="Seçili günün ön izlemesini aç veya kapat"
                 >
-                  <Calendar className="h-4 w-4 text-primary-600" />
+                  <Calendar className="h-4 w-4 text-[var(--dr-orange)]" />
                   Ön izleme
                 </button>
                 <button
                   type="button"
                   onClick={handleCloseEditor}
-                  className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-slate-600"
+                  className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer"
                   aria-label="Program düzenlemeyi kapat"
                 >
                   <X className="h-4 w-4" />
@@ -628,26 +628,26 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
             </div>
 
             {showEditorPreview && (
-              <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={() => setShowEditorPreview(false)}>
+              <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl" onClick={() => setShowEditorPreview(false)}>
                 <section
-                  className="dr-week-preview-modal w-[min(46rem,calc(100vw-1.5rem))] overflow-hidden p-3"
+                  className="ios-card dr-week-preview-modal w-[min(46rem,calc(100vw-1.5rem))] overflow-hidden p-5 border border-[var(--dr-std-border-strong)]/20 shadow-2xl bg-[var(--dr-surface)]"
                   role="dialog"
                   aria-modal="true"
                   aria-label="Haftalık program ön izleme"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <div className="mb-3 flex items-start justify-between gap-4">
+                  <div className="mb-4 flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-500">Haftalık ön izleme</div>
-                      <h3 className="mt-1 text-lg font-black text-slate-900 dark:text-white">Tüm hafta planı</h3>
-                      <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--dr-orange)]">Haftalık ön izleme</div>
+                      <h3 className="mt-1 text-lg font-black text-[var(--dr-text-primary)]">Tüm hafta planı</h3>
+                      <p className="mt-1 text-xs font-semibold text-[var(--dr-text-secondary)]">
                         Okul blokları ve ev çalışma pencereleri tek ekranda.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowEditorPreview(false)}
-                      className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-slate-600"
+                      className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer"
                       aria-label="Haftalık ön izlemeyi kapat"
                     >
                       <X className="h-4 w-4" />
@@ -810,7 +810,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                           <div
                             key={`detail-${slot.id}`}
                             onDoubleClick={() => openSchoolCurriculumEditor(activeDay, slot)}
-                            className={`dr-school-slot-row flex items-center justify-between gap-3 rounded-xl border px-2.5 py-1.5 ${slot.schoolCurriculumStatus === 'not-covered' ? 'dr-school-slot-not-covered' : slot.schoolCurriculumStatus === 'covered' ? 'dr-school-slot-covered' : 'border-white/10 bg-white/5'}`}
+                            className={`dr-school-slot-row flex items-center justify-between gap-3 rounded-xl border px-2.5 py-1.5 ${slot.schoolCurriculumStatus === 'not-covered' ? 'dr-school-slot-not-covered' : slot.schoolCurriculumStatus === 'covered' ? 'dr-school-slot-covered' : 'border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:shadow-none'}`}
                             title="Okulda işlenen konuyu seçmek için çift tıklayın"
                           >
                             <div className="min-w-0">
@@ -858,7 +858,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                         <div className="rounded-xl border border-dashed border-white/20 px-3 py-2 text-xs text-slate-500">Çalışma zamanı eklenmedi.</div>
                       ) : (
                         sortWindows(activeDaySchedule.availableWindows).map((window, index) => (
-                          <div key={`detail-${createWindowKey(window, index)}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5">
+                          <div key={`detail-${createWindowKey(window, index)}`} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:shadow-none px-2.5 py-1.5">
                             <div className="min-w-0">
                               <div className="text-xs font-bold text-slate-900 dark:text-white">{QUALITY_META[window.quality].label}</div>
                               <div className="mt-0.5 text-[10px] text-slate-500">{window.startTime} - {window.endTime}</div>
@@ -904,7 +904,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       )}
 
       {schoolCurriculumSlot && activeSchoolCurriculumSlot && (
-        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={closeSchoolCurriculumEditor}>
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl" onClick={closeSchoolCurriculumEditor}>
           <section
             className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden"
             role="dialog"
@@ -985,52 +985,52 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
               <button
                 type="button"
                 onClick={() => handleToggleNotCovered(schoolCurriculumSlot.day, activeSchoolCurriculumSlot)}
-                className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-slate-700"
+                className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer"
               >
                 {activeSchoolCurriculumSlot.schoolCurriculumStatus === 'not-covered' ? 'İşlenmedi kaldır' : 'Konu işlenmedi'}
               </button>
-              <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-slate-700">Vazgeç</button>
-              <button type="button" onClick={handleSaveSchoolCurriculum} disabled={schoolCurriculumUnits.length === 0} className="ios-button-active rounded-xl px-3.5 py-2 text-xs font-black text-slate-900 disabled:opacity-50">Kaydet</button>
+              <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer">Vazgeç</button>
+              <button type="button" onClick={handleSaveSchoolCurriculum} disabled={schoolCurriculumUnits.length === 0} className="ios-button-active rounded-xl px-3.5 py-2 text-xs font-black text-white transition-all active:scale-[0.96] disabled:opacity-50 cursor-pointer">Kaydet</button>
             </div>
           </section>
         </div>
       )}
 
       {isTaskAssignmentOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={closeTaskAssignment}>
-          <form className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden" onSubmit={handleAssignTask} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Çocuğa görev ata">
-            <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl" onClick={closeTaskAssignment}>
+          <form className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl" onSubmit={handleAssignTask} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Çocuğa görev ata">
+            <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-[var(--dr-std-border-strong)]/15 p-4 bg-[var(--dr-surface)]/20">
               <div>
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-600">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">
                   <ClipboardList className="h-4 w-4" />
                   Çocuğa görev ata
                 </div>
-                <h3 className="mt-1 text-base font-black text-slate-900 dark:text-white">Plan içinden hızlı görev</h3>
-                <p className="mt-0.5 text-[11px] text-slate-500">Ders, ünite ve konu seçerek görevi gönder.</p>
+                <h3 className="mt-1 text-base font-black text-[var(--dr-text-primary)]">Plan içinden hızlı görev</h3>
+                <p className="mt-0.5 text-[11px] text-[var(--dr-text-secondary)]">Ders, ünite ve konu seçerek görevi gönder.</p>
               </div>
-              <button type="button" onClick={closeTaskAssignment} className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-slate-600" aria-label="Görev atama penceresini kapat">
+              <button type="button" onClick={closeTaskAssignment} className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Görev atama penceresini kapat">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="dr-modal-scroll dr-compact-modal-body flex-1 overflow-y-auto">
+            <div className="dr-modal-scroll dr-compact-modal-body flex-1 overflow-y-auto p-4 bg-[var(--dr-surface)]/20">
               <div className="grid gap-2 sm:grid-cols-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Ders<select value={assignmentCourseName} onChange={(event) => { setAssignmentCourseName(event.target.value); setAssignmentUnitName(''); setAssignmentTopicName(''); setAssignmentMessage(null); }} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"><option value="">Ders seç</option>{assignmentSubjectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Görev tipi<select value={assignmentTaskTypeKey} onChange={(event) => setAssignmentTaskTypeKey(event.target.value as TaskTypeKey)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"><option value="study">Ders çalışma</option><option value="revision">Konu tekrarı</option><option value="question">Soru çözme</option><option value="branch-exam">Branş deneme (ders bazlı)</option><option value="general-exam">Genel deneme sınavı</option></select></label>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Ünite<select value={assignmentUnitName} onChange={(event) => { setAssignmentUnitName(event.target.value); setAssignmentTopicName(''); setAssignmentMessage(null); }} disabled={!assignmentUnits.length} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Ünite seç</option>{assignmentUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select></label>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Konu<select value={assignmentTopicName} onChange={(event) => { setAssignmentTopicName(event.target.value); setAssignmentMessage(null); }} disabled={!assignmentTopics.length} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Konu seç</option>{assignmentTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}</select></label>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Teslim tarihi<input type="date" value={assignmentDueDate} onChange={(event) => setAssignmentDueDate(event.target.value)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Süre (dk)<input type="number" min="5" step="5" value={assignmentDuration} onChange={(event) => setAssignmentDuration(event.target.value)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
-                {(assignmentTaskTypeKey === 'question' || assignmentTaskTypeKey === 'branch-exam') && <label className="text-xs font-bold text-slate-700 dark:text-slate-300 sm:col-span-2">Soru sayısı<input type="number" min="1" value={assignmentQuestionCount} onChange={(event) => setAssignmentQuestionCount(event.target.value)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>}
+                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Ders<select value={assignmentCourseName} onChange={(event) => { setAssignmentCourseName(event.target.value); setAssignmentUnitName(''); setAssignmentTopicName(''); setAssignmentMessage(null); }} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"><option value="">Ders seç</option>{assignmentSubjectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Görev tipi<select value={assignmentTaskTypeKey} onChange={(event) => setAssignmentTaskTypeKey(event.target.value as TaskTypeKey)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"><option value="study">Ders çalışma</option><option value="revision">Konu tekrarı</option><option value="question">Soru çözme</option><option value="branch-exam">Branş deneme (ders bazlı)</option><option value="general-exam">Genel deneme sınavı</option></select></label>
+                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Ünite<select value={assignmentUnitName} onChange={(event) => { setAssignmentUnitName(event.target.value); setAssignmentTopicName(''); setAssignmentMessage(null); }} disabled={!assignmentUnits.length} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Ünite seç</option>{assignmentUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select></label>
+                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Konu<select value={assignmentTopicName} onChange={(event) => { setAssignmentTopicName(event.target.value); setAssignmentMessage(null); }} disabled={!assignmentTopics.length} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Konu seç</option>{assignmentTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}</select></label>
+                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Teslim tarihi<input type="date" value={assignmentDueDate} onChange={(event) => setAssignmentDueDate(event.target.value)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
+                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Süre (dk)<input type="number" min="5" step="5" value={assignmentDuration} onChange={(event) => setAssignmentDuration(event.target.value)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
+                {(assignmentTaskTypeKey === 'question' || assignmentTaskTypeKey === 'branch-exam') && <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300 sm:col-span-2">Soru sayısı<input type="number" min="1" value={assignmentQuestionCount} onChange={(event) => setAssignmentQuestionCount(event.target.value)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>}
               </div>
 
-              {assignmentUnits.length === 0 && assignmentCourseName && <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300">Bu ders için müfredat ünitesi bulunamadı. Görev atamak için önce Müfredatı Düzenle ekranında ünite ve konu ekleyin.</div>}
-              {assignmentMessage && <div className={['mt-3 rounded-xl px-3 py-2 text-xs font-bold', assignmentMessage.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'].join(' ')}>{assignmentMessage.text}</div>}
+              {assignmentUnits.length === 0 && assignmentCourseName && <div className="mt-3 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-300">Bu ders için müfredat ünitesi bulunamadı. Görev atamak için önce Müfredatı Düzenle ekranında ünite ve konu ekleyin.</div>}
+              {assignmentMessage && <div className={['mt-3 rounded-xl border px-3 py-2 text-xs font-bold', assignmentMessage.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-300' : 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-300'].join(' ')}>{assignmentMessage.text}</div>}
             </div>
 
-            <div className="dr-compact-modal-footer flex flex-col gap-2 border-t border-white/10 sm:flex-row sm:items-center sm:justify-end">
-              <button type="button" onClick={closeTaskAssignment} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-slate-700">Vazgeç</button>
-              <button type="submit" disabled={isAssigningTask || !assignmentCourseName || !assignmentUnitName || !assignmentTopicName} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 disabled:opacity-50"><ClipboardList className="h-4 w-4" />{isAssigningTask ? 'Ekleniyor...' : 'Görevi ata'}</button>
+            <div className="dr-compact-modal-footer flex flex-col gap-2 border-t border-[var(--dr-std-border-strong)]/15 p-4 bg-[var(--dr-surface)]/20 sm:flex-row sm:items-center sm:justify-end">
+              <button type="button" onClick={closeTaskAssignment} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer">Vazgeç</button>
+              <button type="submit" disabled={isAssigningTask || !assignmentCourseName || !assignmentUnitName || !assignmentTopicName} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all active:scale-[0.96] disabled:opacity-50 cursor-pointer"><ClipboardList className="h-4 w-4" />{isAssigningTask ? 'Ekleniyor...' : 'Görevi ata'}</button>
             </div>
           </form>
         </div>

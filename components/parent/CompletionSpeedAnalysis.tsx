@@ -14,18 +14,18 @@ interface CompletionSpeedAnalysisProps {
 
 const LoadingSpinner: React.FC = () => (
   <div className="flex h-48 items-center justify-center">
-    <Loader className="h-8 w-8 animate-spin text-primary-600" />
-    <span className="ml-2 text-slate-600">Veriler yükleniyor...</span>
+    <Loader className="h-8 w-8 animate-spin text-[var(--dr-orange)]" />
+    <span className="ml-2 text-[var(--dr-text-secondary)]">Veriler yükleniyor...</span>
   </div>
 );
 
 const ErrorState: React.FC<{ error: string }> = ({ error }) => (
   <div className="flex h-48 flex-col items-center justify-center text-center">
-    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-      <span className="text-xl text-red-500">!</span>
+    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/20">
+      <span className="text-xl text-rose-500">!</span>
     </div>
-    <p className="mb-2 text-slate-600">Veriler yüklenirken bir sorun oluştu.</p>
-    <p className="text-sm text-slate-500">{error}</p>
+    <p className="mb-2 text-[var(--dr-text-primary)]">Veriler yüklenirken bir sorun oluştu.</p>
+    <p className="text-sm text-[var(--dr-text-secondary)]">{error}</p>
   </div>
 );
 
@@ -57,7 +57,7 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
   if (loading) {
     return (
       <div className="ios-card rounded-[28px] p-6">
-        <h3 className="mb-4 flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hızı</h3>
+        <h3 className="mb-4 flex items-center text-xl font-bold text-[var(--dr-text-primary)]"><Zap className="mr-2 h-6 w-6 text-[var(--dr-orange)]" />Tamamlanma hızı</h3>
         <LoadingSpinner />
       </div>
     );
@@ -66,27 +66,27 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
   if (error) {
     return (
       <div className="ios-card rounded-[28px] p-6">
-        <h3 className="mb-4 flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hızı</h3>
+        <h3 className="mb-4 flex items-center text-xl font-bold text-[var(--dr-text-primary)]"><Zap className="mr-2 h-6 w-6 text-[var(--dr-orange)]" />Tamamlanma hızı</h3>
         <ErrorState error={error} />
       </div>
     );
   }
 
   if (!completed.length) {
-    return <EmptyState icon={<Zap className="h-8 w-8 text-slate-400" />} title="Tamamlanma hızı analizi için veri yok" message="Planlanan ve gerçek süre karşılaştırması tamamlanan görevler geldikçe burada görünecek." />;
+    return <EmptyState icon={<Zap className="h-8 w-8 text-[var(--dr-text-secondary)]" />} title="Tamamlanma hızı analizi için veri yok" message="Planlanan ve gerçek süre karşılaştırması tamamlanan görevler geldikçe burada görünecek." />;
   }
 
   return (
-    <div className="ios-card rounded-[28px] p-6">
+    <div className="ios-card rounded-[28px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="flex items-center text-xl font-bold"><Zap className="mr-2 h-6 w-6 text-primary-600" />Tamamlanma hızı</h3>
-          <p className="text-sm text-slate-500">Son 20 tamamlanan görevde planlanan süre ile gerçek süre farkı.</p>
+          <h3 className="flex items-center text-xl font-bold text-[var(--dr-text-primary)]"><Zap className="mr-2 h-6 w-6 text-[var(--dr-orange)]" />Tamamlanma hızı</h3>
+          <p className="text-sm text-[var(--dr-text-secondary)]">Son 20 tamamlanan görevde planlanan süre ile gerçek süre farkı.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Ort. plan: <strong>{averagePlanned} dk</strong></div>
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Ort. gerçek: <strong>{averageActual} dk</strong></div>
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-slate-600">Verim: <strong>{averageEfficiency}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">Ort. plan: <strong className="text-[var(--dr-text-primary)]">{averagePlanned} dk</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">Ort. gerçek: <strong className="text-[var(--dr-text-primary)]">{averageActual} dk</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">Verim: <strong className="text-[var(--dr-text-primary)]">{averageEfficiency}</strong></div>
         </div>
       </div>
 

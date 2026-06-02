@@ -857,7 +857,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               key={`top-period-${option.value}`}
               type="button"
               onClick={() => onOverviewStudyPeriodChange(option.value)}
-              className={`rounded-[12px] px-3 py-2 text-xs font-black ${overviewStudyPeriod === option.value ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
+              className={`rounded-[12px] px-3 py-2 text-xs font-black transition-all active:scale-[0.96] ${overviewStudyPeriod === option.value ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}
             >
               {option.label}
             </button>
@@ -867,52 +867,52 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     >
       <section className="grid grid-cols-12 gap-5">
         <div className="col-span-12 space-y-5">
-          <div className="dr-hig-primary-box rounded-[26px] p-6">
-            <div className="dr-hig-caption uppercase tracking-[0.14em] font-semibold text-slate-500 dark:text-slate-400">{periodSummaryTitle}</div>
+          <div className="ios-panel rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md">
+            <div className="dr-hig-caption uppercase tracking-[0.14em] font-semibold text-[var(--dr-text-secondary)]">{periodSummaryTitle}</div>
             <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="dr-hig-secondary-card rounded-[18px] p-5">
+              <div className="ios-card rounded-[20px] p-5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Tamamlanan Görev</div>
+                  <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Tamamlanan Görev</div>
                   <ContextHelp title="Tamamlanan Görev" tone="blue">
                     Çocuğunuzun teslim tarihi bugün veya geçmiş olan görevleri bitirme oranıdır. Haftalık plan hedefine ne kadar yaklaştığını gösterir.
                   </ContextHelp>
                 </div>
-                <div className="mt-2 dr-hig-large-title text-slate-900 dark:text-white">{overviewWeeklyStats.completedCount}</div>
-                <div className="mt-1 dr-hig-caption text-slate-500 dark:text-slate-400">/ {weeklyCompletionTarget} gorev</div>
-                <div className="mt-2.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
-                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${weeklyCompletionPercent}%` }} />
+                <div className="mt-2 dr-hig-large-title text-[var(--dr-text-primary)]">{overviewWeeklyStats.completedCount}</div>
+                <div className="mt-1 dr-hig-caption text-[var(--dr-text-secondary)]">/ {weeklyCompletionTarget} gorev</div>
+                <div className="mt-2.5 h-1.5 rounded-full bg-slate-200/50 dark:bg-slate-800/50">
+                  <div className="h-full rounded-full bg-[var(--dr-orange)]" style={{ width: `${weeklyCompletionPercent}%` }} />
                 </div>
-                <div className="mt-1 dr-hig-caption text-slate-500 dark:text-slate-400">%{weeklyCompletionPercent}</div>
+                <div className="mt-1 dr-hig-caption text-[var(--dr-text-secondary)]">%{weeklyCompletionPercent}</div>
               </div>
-              <div className="dr-hig-secondary-card rounded-[18px] p-5">
+              <div className="ios-card rounded-[20px] p-5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Çalışma Süresi</div>
+                  <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Çalışma Süresi</div>
                   <ContextHelp title="Çalışma Süresi" tone="blue">
                     Çocuğunuzun ders çalışırken kronometreyle kaydettiği net çalışma süresidir. Mola ve duraklatma süreleri bu hesaba dahil edilmez.
                   </ContextHelp>
                 </div>
-                <div className="mt-2 dr-hig-large-title text-slate-900 dark:text-white">{formatMinutes(overviewWeeklyStats.totalMinutes)}</div>
+                <div className="mt-2 dr-hig-large-title text-[var(--dr-text-primary)]">{formatMinutes(overviewWeeklyStats.totalMinutes)}</div>
                 <div className={`mt-2.5 flex items-center gap-1 dr-hig-caption font-semibold ${minuteDelta.tone}`}>
                   <span className="text-sm leading-none">{minuteDelta.arrow}</span>
                   {minuteDelta.text}
                 </div>
               </div>
-              <div className="dr-hig-secondary-card rounded-[18px] p-5">
+              <div className="ios-card rounded-[20px] p-5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Çözülen Soru</div>
+                  <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Çözülen Soru</div>
                   <ContextHelp title="Çözülen Soru" tone="blue">
                     Çocuğunuzun bu periyotta çözdüğü toplam soru sayısıdır. Altındaki yeşil ok, önceki döneme göre soru çözme hacmindeki değişimi gösterir.
                   </ContextHelp>
                 </div>
-                <div className="mt-2 dr-hig-large-title text-slate-900 dark:text-white">{overviewWeeklyStats.solvedQuestionCount}</div>
+                <div className="mt-2 dr-hig-large-title text-[var(--dr-text-primary)]">{overviewWeeklyStats.solvedQuestionCount}</div>
                 <div className={`mt-2.5 flex items-center gap-1 dr-hig-caption font-semibold ${solvedDelta.tone}`}>
                   <span className="text-sm leading-none">{solvedDelta.arrow}</span>
                   {solvedDelta.text}
                 </div>
               </div>
-              <div className="dr-hig-secondary-card rounded-[18px] p-5">
+              <div className="ios-card rounded-[20px] p-5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Deneme Performansı</div>
+                  <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Deneme Performansı</div>
                   <ContextHelp title="Deneme Performansı" tone="blue">
                     Çocuğunuzun son LGS deneme sınavlarındaki başarı grafik eğrisidir. Dalgalanmalar çocuğunuzun sınav stresini veya konu eksikliklerini tespit etmenizi kolaylaştırır.
                   </ContextHelp>
@@ -921,13 +921,13 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   <span className="text-xl leading-none">{examDelta.arrow}</span>
                   <span>{examDelta.short}</span>
                 </div>
-                <div className={`mt-1 dr-hig-caption font-semibold ${overviewWeeklyStats.hasExamTrendData ? examDelta.tone : 'text-slate-500'}`}>
+                <div className={`mt-1 dr-hig-caption font-semibold ${overviewWeeklyStats.hasExamTrendData ? examDelta.tone : 'text-[var(--dr-text-secondary)]'}`}>
                   {overviewWeeklyStats.hasExamTrendData
                     ? examDelta.text
                     : 'Karşılaştırma için seçili periyotta en az 2 deneme gerekir'}
                 </div>
                 <div className="mt-2.5 h-8">
-                  <svg viewBox="0 0 120 30" className="h-full w-full text-violet-500" aria-hidden="true">
+                  <svg viewBox="0 0 120 30" className="h-full w-full text-[var(--dr-orange)]" aria-hidden="true">
                     <path d={accuracySparklinePath} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
@@ -1067,20 +1067,20 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               }, 0);
             }, 0);
             return (
-              <div className="dr-hig-secondary-card rounded-[26px] p-6" data-testid="overview-weekly-schedule-panel">
+              <div className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg" data-testid="overview-weekly-schedule-panel">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h4 className="dr-hig-headline text-slate-900 dark:text-white">Haftalık Çalışma Programı</h4>
+                    <h4 className="dr-hig-headline text-[var(--dr-text-primary)]">Haftalık Çalışma Programı</h4>
                     <ContextHelp title="Haftalık Çalışma Programı" tone="blue">
                       Çocuğunuzun okul saatleri, etütleri ve evdeki çalışma programının haftalık görünümüdür. Günlük planlanan ders saatlerini ve serbest çalışma pencerelerini buradan izleyebilirsiniz.
                     </ContextHelp>
                   </div>
-                  <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">
+                  <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">
                     {scheduledDays.length} gün · {totalSlots} ders · {formatMinutes(totalMinutesScheduled)}
                   </div>
                 </div>
                 {scheduledDays.length === 0 ? (
-                  <div className="rounded-[14px] bg-slate-100 px-3 py-3 text-xs font-semibold text-slate-500">
+                  <div className="rounded-[18px] border border-[var(--dr-std-border-strong)]/20 bg-[var(--dr-surface)]/60 px-4 py-4 text-xs font-semibold text-[var(--dr-text-secondary)]">
                     Henüz haftalık çalışma programı oluşturulmamış. Planlama sayfasından program ekleyebilirsiniz.
                   </div>
                 ) : (
@@ -1093,13 +1093,13 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       return (
                         <div
                           key={`schedule-day-${dayName}`}
-                          className={`ios-widget rounded-[18px] p-4 ${isToday ? 'ring-2 ring-emerald-400/60' : ''}`}
+                          className={`ios-widget rounded-[20px] p-4 border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/50 ${isToday ? 'ring-2 ring-[var(--dr-orange)]/60' : ''}`}
                         >
                           <div className="mb-2 flex items-center justify-between">
-                            <span className={`text-sm font-black ${isToday ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
+                            <span className={`text-sm font-black ${isToday ? 'text-[var(--dr-orange)]' : 'text-[var(--dr-text-primary)]'}`}>
                               {dayName}{isToday ? ' (Bugün)' : ''}
                             </span>
-                            <span className="text-[11px] font-semibold text-slate-400">
+                            <span className="text-[11px] font-semibold text-[var(--dr-text-secondary)]">
                               {slots.length} ders
                             </span>
                           </div>
@@ -1109,28 +1109,28 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                                 key={`sched-slot-${slot.id}`}
                                 type="button"
                                 onDoubleClick={() => openSchoolCurriculumEditor(dayName, slot)}
-                                className={`dr-school-slot-row flex w-full items-center justify-between rounded-[10px] border px-2.5 py-1.5 text-left text-xs ${
+                                className={`dr-school-slot-row flex w-full items-center justify-between rounded-[12px] border px-2.5 py-1.5 text-left text-xs transition-all active:scale-[0.97] ${
                                   slot.schoolCurriculumStatus === 'not-covered'
                                     ? 'dr-school-slot-not-covered'
                                     : slot.schoolCurriculumStatus === 'covered'
                                       ? 'dr-school-slot-covered'
-                                      : 'bg-slate-50 border-slate-200/60 dark:bg-white/5 dark:border-white/10'
+                                      : 'bg-[var(--dr-surface)]/80 border-[var(--dr-std-border-strong)]/20 dark:bg-white/5 dark:border-white/10 text-[var(--dr-text-primary)]'
                                 }`}
                                 title="Okulda islenen konuyu secmek icin cift tiklayin"
                               >
-                                <span className="font-bold text-slate-700 dark:text-slate-200">{slot.startTime} - {slot.endTime}</span>
-                                <span className="min-w-0 truncate pl-2 text-right font-semibold text-slate-500 dark:text-slate-300">
+                                <span className="font-bold text-[var(--dr-text-primary)]">{slot.startTime} - {slot.endTime}</span>
+                                <span className="min-w-0 truncate pl-2 text-right font-semibold text-[var(--dr-text-secondary)]">
                                   {slot.schoolCurriculumStatus === 'covered' && (
-                                    <CheckCircle className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-amber-300" aria-hidden="true" />
+                                    <CheckCircle className="mr-1 inline h-3.5 w-3.5 align-[-2px] text-[var(--dr-orange)]" aria-hidden="true" />
                                   )}
                                   {slot.schoolCurriculumStatus === 'not-covered' ? 'Konu islenmedi' : slot.courseName || 'Genel'}
                                 </span>
                               </button>
                             ))}
                             {windows.map((win, wIdx) => (
-                              <div key={`sched-win-${dayName}-${wIdx}`} className="flex items-center justify-between rounded-[10px] bg-blue-50 border border-blue-200/60 px-2.5 py-1.5 text-xs">
-                                <span className="font-bold text-blue-700">{win.startTime} - {win.endTime}</span>
-                                <span className="font-semibold text-blue-500 truncate ml-2">Çalışma Zamanı</span>
+                              <div key={`sched-win-${dayName}-${wIdx}`} className="flex items-center justify-between rounded-[12px] bg-[var(--dr-surface)]/90 border border-[var(--dr-std-border-strong)]/20 px-2.5 py-1.5 text-xs text-[var(--dr-text-primary)]">
+                                <span className="font-bold text-[var(--dr-orange)]">{win.startTime} - {win.endTime}</span>
+                                <span className="font-semibold text-[var(--dr-text-secondary)] truncate ml-2">Çalışma Zamanı</span>
                               </div>
                             ))}
                           </div>
@@ -1144,26 +1144,26 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           })()}
 
           {schoolCurriculumSlot && activeSchoolCurriculumSlot && (
-            <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm" onClick={closeSchoolCurriculumEditor}>
+            <div className="fixed inset-0 z-[140] flex items-center justify-center bg-[#070911]/75 p-3 backdrop-blur-xl" onClick={closeSchoolCurriculumEditor}>
               <section
-                className="ios-card dr-compact-modal w-[min(30rem,calc(100vw-1.5rem))] overflow-hidden"
+                className="ios-card dr-compact-modal w-[min(30rem,calc(100vw-1.5rem))] overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl"
                 role="dialog"
                 aria-modal="true"
                 aria-label="Okulda islenen konu"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="dr-compact-modal-header flex items-start justify-between gap-3 border-b border-white/10">
+                <div className="dr-compact-modal-header flex items-start justify-between gap-3 border-b border-[var(--dr-std-border-strong)]/15">
                   <div className="min-w-0">
-                    <div className="dr-planning-kicker text-[10px] font-black uppercase tracking-[0.22em]">Okulda islenen konu</div>
-                    <h3 className="mt-1 truncate text-base font-black text-slate-900 dark:text-white">{activeSchoolCurriculumSlot.courseName}</h3>
-                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                    <div className="dr-planning-kicker text-[10px] font-black uppercase tracking-[0.22em] text-[var(--dr-orange)]">Okulda islenen konu</div>
+                    <h3 className="mt-1 truncate text-base font-black text-[var(--dr-text-primary)]">{activeSchoolCurriculumSlot.courseName}</h3>
+                    <p className="mt-0.5 text-[11px] font-semibold text-[var(--dr-text-secondary)]">
                       {schoolCurriculumSlot.dayName} · {activeSchoolCurriculumSlot.startTime} - {activeSchoolCurriculumSlot.endTime}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={closeSchoolCurriculumEditor}
-                    className="ios-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-0 text-slate-600"
+                    className="ios-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]"
                     aria-label="Kapat"
                   >
                     <X className="h-4 w-4" />
@@ -1172,7 +1172,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
 
                 <div className="dr-compact-modal-body space-y-3">
                   {schoolCurriculumUnits.length === 0 ? (
-                    <div className="dr-planning-empty rounded-[14px] px-3 py-3 text-xs font-semibold">
+                    <div className="dr-planning-empty rounded-[14px] px-3 py-3 text-xs font-semibold text-[var(--dr-text-secondary)]">
                       Bu ders icin mufredat bulunamadi. Once mufredat yonetiminde unite ve konu ekleyin.
                     </div>
                   ) : (
@@ -1184,7 +1184,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                           setSchoolTopicName('');
                           setSchoolCurriculumMessage(null);
                         }}
-                        className="dr-form-field w-full rounded-xl px-3 py-2 text-xs font-bold outline-none"
+                        className="dr-form-field w-full rounded-xl px-3 py-2.5 text-xs font-bold bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 text-[var(--dr-text-primary)] outline-none"
                       >
                         <option value="">Unite sec</option>
                         {schoolCurriculumUnits.map((unit) => (
@@ -1194,7 +1194,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
 
                       <div className="dr-modal-scroll max-h-48 space-y-1.5 overflow-y-auto pr-1">
                         {schoolUnitName && schoolCurriculumTopics.length === 0 && (
-                          <div className="dr-planning-empty rounded-[14px] px-3 py-3 text-xs font-semibold">Bu unitede konu yok.</div>
+                          <div className="dr-planning-empty rounded-[14px] px-3 py-3 text-xs font-semibold text-[var(--dr-text-secondary)]">Bu unitede konu yok.</div>
                         )}
                         {schoolCurriculumTopics.map((topic) => (
                           <button
@@ -1204,7 +1204,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                               setSchoolTopicName(topic.name);
                               setSchoolCurriculumMessage(null);
                             }}
-                            className={`dr-school-topic-option w-full rounded-xl px-3 py-2 text-left text-xs font-bold ${schoolTopicName === topic.name ? 'dr-school-topic-option-active' : ''}`}
+                            className={`w-full rounded-xl px-3 py-2.5 text-left text-xs font-bold transition-all active:scale-[0.98] ${schoolTopicName === topic.name ? 'bg-[var(--dr-orange)] text-white font-black' : 'bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/10 text-[var(--dr-text-primary)] hover:bg-[var(--dr-surface)]/80'}`}
                           >
                             {topic.name}
                           </button>
@@ -1223,7 +1223,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleSchoolNotCovered(schoolCurriculumSlot.dayName, activeSchoolCurriculumSlot)}
-                      className="ios-button rounded-xl px-3 py-2 text-xs font-black text-slate-700"
+                      className="ios-button rounded-xl px-3 py-2 text-xs font-black text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]"
                     >
                       {activeSchoolCurriculumSlot.schoolCurriculumStatus === 'not-covered' ? 'Islenmedi kaldir' : 'Konu islenmedi'}
                     </button>
@@ -1237,14 +1237,14 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                         <Trash2 className="h-3.5 w-3.5" />
                         Sil
                       </button>
-                      <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+                      <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]">
                         Vazgec
                       </button>
                       <button
                         type="button"
                         onClick={saveSchoolCurriculum}
                         disabled={schoolCurriculumUnits.length === 0}
-                        className="ios-button-active rounded-xl px-4 py-2 text-xs font-black text-slate-900 disabled:opacity-50"
+                        className="ios-button-active rounded-xl px-4 py-2 text-xs font-black text-white bg-[var(--dr-orange)] active:scale-[0.96] transition-all disabled:opacity-50"
                       >
                         Kaydet
                       </button>
@@ -1256,15 +1256,15 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           )}
 
           {selectedCourseDetail && (
-            <div className="dr-hig-secondary-card rounded-[26px] p-6" data-testid="overview-course-deep-dive-panel">
+            <div className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg" data-testid="overview-course-deep-dive-panel">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h4 className="dr-hig-headline text-slate-900 dark:text-white">Ders Detay Sayfasi ({selectedCourseDetail.courseName})</h4>
+                  <h4 className="dr-hig-headline text-[var(--dr-text-primary)]">Ders Detay Sayfasi ({selectedCourseDetail.courseName})</h4>
                   <ContextHelp title="Ders Detay Sayfası" tone="blue">
                     Seçtiğiniz dersin genel durumunu gösterir. Çocuğunuzun o dersteki konu hakimiyeti, ortalama odaklanma puanı ve tekrar edilmesi gereken zayıf konu sayısını özetler.
                   </ContextHelp>
                 </div>
-                <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Periyot: {periodOptions.find((option) => option.value === overviewStudyPeriod)?.label || '1A'}</div>
+                <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Periyot: {periodOptions.find((option) => option.value === overviewStudyPeriod)?.label || '1A'}</div>
               </div>
               <div className="mb-4 flex flex-wrap gap-2">
                 {overviewCoursesForDetail.map((course) => (
@@ -1272,7 +1272,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     key={`overview-course-v2-${course.courseName}`}
                     type="button"
                     onClick={() => setSelectedOverviewCourse(course.courseName)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-bold ${selectedCourseDetail.courseName === course.courseName ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}
+                    className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.96] ${selectedCourseDetail.courseName === course.courseName ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}
                   >
                     {course.courseName}
                   </button>
@@ -1280,67 +1280,67 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[170px_minmax(0,1fr)]">
-                <div className="ios-widget rounded-[18px] p-4">
-                  <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border-[8px] border-emerald-400/85 bg-white text-center">
+                <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4 flex items-center justify-center">
+                  <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border-[8px] border-[var(--dr-orange)] bg-[var(--dr-surface)] text-center shadow-lg">
                     <div>
-                      <div className="text-3xl font-black text-slate-900">%{selectedCourseDetail.progress}</div>
-                      <div className={`text-xs font-bold ${selectedCourseDetail.progress >= 75 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      <div className="text-3xl font-black text-[var(--dr-text-primary)]">%{selectedCourseDetail.progress}</div>
+                      <div className={`text-xs font-bold ${selectedCourseDetail.progress >= 75 ? 'text-emerald-600' : 'text-[var(--dr-orange)]'}`}>
                         {selectedCourseDetail.progress >= 75 ? 'Iyi gidiyor' : 'Takipte'}
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="ios-widget rounded-[18px] p-4">
+                <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4">
                   <div className="grid gap-2 text-sm sm:grid-cols-2">
-                    <div className="border-b border-white/50 pb-2">
-                      <span className="text-slate-500">Hakimiyet</span>
-                      <div className="font-black text-slate-900">%{selectedCourseDetail.progress}</div>
+                    <div className="border-b border-[var(--dr-std-border-strong)]/10 pb-2">
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Hakimiyet</span>
+                      <div className="font-black text-[var(--dr-text-primary)]">%{selectedCourseDetail.progress}</div>
                     </div>
-                    <div className="border-b border-white/50 pb-2">
-                      <span className="text-slate-500">Haftalık değişim</span>
-                      <div className={`font-black ${selectedCourseDelta ? selectedCourseDelta.tone : 'text-slate-500'}`}>
+                    <div className="border-b border-[var(--dr-std-border-strong)]/10 pb-2">
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Haftalık değişim</span>
+                      <div className={`font-black ${selectedCourseDelta ? selectedCourseDelta.tone : 'text-[var(--dr-text-secondary)]'}`}>
                         {selectedCourseDelta ? `${selectedCourseDelta.arrow} ${selectedCourseDelta.short}` : 'veri yok'}
                       </div>
                     </div>
                     <div>
-                      <span className="text-slate-500">Riskli konu sayisi</span>
-                      <div className="font-black text-slate-900">{selectedCourseDetail.weakCount}</div>
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Riskli konu sayisi</span>
+                      <div className="font-black text-[var(--dr-text-primary)]">{selectedCourseDetail.weakCount}</div>
                     </div>
                     <div>
-                      <span className="text-slate-500">Konu adedi</span>
-                      <div className="font-black text-slate-900">{selectedCourseTopics.length}</div>
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Konu adedi</span>
+                      <div className="font-black text-[var(--dr-text-primary)]">{selectedCourseTopics.length}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="ios-widget mt-4 rounded-[18px] p-4">
-                <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-slate-300">Son 4 Haftalık Trend</div>
+              <div className="ios-widget mt-4 rounded-[20px] p-4 border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md">
+                <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Son 4 Haftalık Trend</div>
                 {selectedCourseTrend.length === 4 ? (
-                  <div className="rounded-[14px] bg-slate-50 border border-slate-200/50 shadow-sm p-3">
+                  <div className="rounded-[18px] bg-[var(--dr-surface)]/80 border border-[var(--dr-std-border-strong)]/10 p-3 shadow-inner">
                     <svg viewBox="0 0 520 180" className="h-44 w-full" role="img" aria-label="Son 4 haftalik ders trendi">
                       <line x1="24" y1="146" x2="500" y2="146" stroke="var(--dr-border, #CBD5E1)" strokeWidth="1" />
                       <line x1="24" y1="116" x2="500" y2="116" stroke="var(--dr-border-subtle, #E2E8F0)" strokeWidth="1" />
                       <line x1="24" y1="86" x2="500" y2="86" stroke="var(--dr-border-subtle, #E2E8F0)" strokeWidth="1" />
                       <line x1="24" y1="56" x2="500" y2="56" stroke="var(--dr-border-subtle, #E2E8F0)" strokeWidth="1" />
                       <line x1="24" y1="26" x2="500" y2="26" stroke="var(--dr-border-subtle, #E2E8F0)" strokeWidth="1" />
-                      <text x="6" y="150" fill="currentColor" className="text-slate-500 text-[10px]">%0</text>
-                      <text x="2" y="120" fill="currentColor" className="text-slate-500 text-[10px]">%25</text>
-                      <text x="2" y="90" fill="currentColor" className="text-slate-500 text-[10px]">%50</text>
-                      <text x="2" y="60" fill="currentColor" className="text-slate-500 text-[10px]">%75</text>
-                      <text x="2" y="30" fill="currentColor" className="text-slate-500 text-[10px]">%100</text>
+                      <text x="6" y="150" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">%0</text>
+                      <text x="2" y="120" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">%25</text>
+                      <text x="2" y="90" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">%50</text>
+                      <text x="2" y="60" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">%75</text>
+                      <text x="2" y="30" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">%100</text>
                       {(() => {
                         const xPoints = [70, 200, 330, 460];
                         const yPoints = selectedCourseTrend.map((score) => 146 - Math.max(0, Math.min(100, score)) * 1.2);
                         const path = `M ${xPoints[0]} ${yPoints[0]} C ${xPoints[0] + 35} ${yPoints[0]} ${xPoints[1] - 35} ${yPoints[1]} ${xPoints[1]} ${yPoints[1]} C ${xPoints[1] + 35} ${yPoints[1]} ${xPoints[2] - 35} ${yPoints[2]} ${xPoints[2]} ${yPoints[2]} C ${xPoints[2] + 35} ${yPoints[2]} ${xPoints[3] - 35} ${yPoints[3]} ${xPoints[3]} ${yPoints[3]}`;
                         return (
                           <>
-                            <path d={path} fill="none" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" />
+                            <path d={path} fill="none" stroke="var(--dr-orange)" strokeWidth="3.5" strokeLinecap="round" />
                             {selectedCourseTrend.map((score, index) => (
                               <g key={`overview-trend-dot-v2-${index}`}>
-                                <circle cx={xPoints[index]} cy={yPoints[index]} r="4" fill="#16A34A" />
-                                <text x={xPoints[index] - 14} y={yPoints[index] - 10} fill="currentColor" className="text-slate-800 text-[11px] font-bold">%{score}</text>
-                                <text x={xPoints[index] - 24} y="168" fill="currentColor" className="text-slate-500 text-[10px]">{index + 1}. Hafta</text>
+                                <circle cx={xPoints[index]} cy={yPoints[index]} r="4.5" fill="var(--dr-orange)" />
+                                <text x={xPoints[index] - 14} y={yPoints[index] - 10} fill="currentColor" className="text-[var(--dr-text-primary)] text-[11px] font-bold">%{score}</text>
+                                <text x={xPoints[index] - 24} y="168" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">{index + 1}. Hafta</text>
                               </g>
                             ))}
                           </>
@@ -1349,7 +1349,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     </svg>
                   </div>
                 ) : (
-                  <div className="rounded-[14px] bg-slate-50 border border-slate-200/50 shadow-sm p-3 text-sm text-slate-500">
+                  <div className="rounded-[18px] bg-[var(--dr-surface)]/80 border border-[var(--dr-std-border-strong)]/10 p-4 text-sm text-[var(--dr-text-secondary)]">
                     Bu periyotta ders trend verisi yok. Planlama ekranından bu ders için soru çözümü veya tekrar görevi ekleyin.
                   </div>
                 )}
@@ -1358,23 +1358,23 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           )}
 
           {selectedTopicDetail && (
-            <div className="dr-hig-secondary-card rounded-[26px] p-6" data-testid="overview-topic-deep-dive-panel">
+            <div className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg" data-testid="overview-topic-deep-dive-panel">
               <div className="mb-4 flex items-center justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h4 className="dr-hig-headline text-slate-900 dark:text-white">Konu Performansi</h4>
+                    <h4 className="dr-hig-headline text-[var(--dr-text-primary)]">Konu Performansi</h4>
                     <ContextHelp title="Konu Performansı" tone="blue">
                       Ders altındaki konuların tamamlanma ve başarı durumunu listeler. Güçlü olunan veya ekstra çalışma/tekrar gerektiren konuları renk kodlarıyla anında ayırt edebilirsiniz.
                     </ContextHelp>
                   </div>
-                  <div className="mt-1 truncate dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">
+                  <div className="mt-1 truncate dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">
                     Secili konu: {selectedTopicDetail.topicName}
                   </div>
                 </div>
-                <div className="ios-button rounded-[12px] px-3 py-1 text-xs font-bold text-slate-700">Son 14 Gun</div>
+                <div className="ios-button rounded-[12px] px-3 py-1 text-xs font-bold text-[var(--dr-text-secondary)]">Son 14 Gun</div>
               </div>
-              <div className="mb-4 grid gap-2 md:grid-cols-3">
-                <label className="text-[11px] font-semibold text-slate-500">
+              <div className="mb-4 grid gap-3 md:grid-cols-3">
+                <label className="text-[11px] font-semibold text-[var(--dr-text-secondary)]">
                   Ders
                   <select
                     value={effectiveCourseFilter}
@@ -1383,7 +1383,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       setPerformanceUnitFilter('ALL');
                       setPerformanceTopicFilter('ALL');
                     }}
-                    className="ios-button mt-1 w-full rounded-[12px] px-2 py-2 text-xs font-bold text-slate-700"
+                    className="ios-button mt-1 w-full rounded-[12px] px-2 py-2 text-xs font-bold bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 text-[var(--dr-text-primary)] outline-none"
                   >
                     <option value="ALL">Tum dersler</option>
                     {courseOptionsForPerformance.map((courseName) => (
@@ -1391,7 +1391,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     ))}
                   </select>
                 </label>
-                <label className="text-[11px] font-semibold text-slate-500">
+                <label className="text-[11px] font-semibold text-[var(--dr-text-secondary)]">
                   Unite
                   <select
                     value={effectiveUnitFilter}
@@ -1399,7 +1399,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       setPerformanceUnitFilter(event.target.value);
                       setPerformanceTopicFilter('ALL');
                     }}
-                    className="ios-button mt-1 w-full rounded-[12px] px-2 py-2 text-xs font-bold text-slate-700"
+                    className="ios-button mt-1 w-full rounded-[12px] px-2 py-2 text-xs font-bold bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 text-[var(--dr-text-primary)] outline-none"
                   >
                     <option value="ALL">Tum uniteler</option>
                     {unitOptionsForPerformance.map((unitName) => (
@@ -1407,12 +1407,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     ))}
                   </select>
                 </label>
-                <label className="text-[11px] font-semibold text-slate-500">
+                <label className="text-[11px] font-semibold text-[var(--dr-text-secondary)]">
                   Konu
                   <select
                     value={effectiveTopicFilter}
                     onChange={(event) => setPerformanceTopicFilter(event.target.value)}
-                    className="ios-button mt-1 w-full rounded-[12px] px-2 py-2 text-xs font-bold text-slate-700"
+                    className="ios-button mt-1 w-full rounded-[12px] px-2 py-2 text-xs font-bold bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 text-[var(--dr-text-primary)] outline-none"
                   >
                     <option value="ALL">Tum konular</option>
                     {topicOptionsForPerformance.map((topic) => (
@@ -1421,37 +1421,37 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   </select>
                 </label>
               </div>
-              <div className="mb-4 rounded-[12px] bg-slate-100 px-3 py-2 text-[11px] font-semibold text-slate-600">
+              <div className="mb-4 rounded-[12px] bg-[var(--dr-surface)]/80 border border-[var(--dr-std-border-strong)]/15 px-3 py-2 text-[11px] font-semibold text-[var(--dr-text-secondary)]">
                 Filtreler "Tüm" seçimindeyken son aktif ders/konu verisi gösterilir. Daha net takip için ders ve ünite seçin.
               </div>
               <div className="grid gap-4 lg:grid-cols-[170px_minmax(0,1fr)]">
-                <div className="ios-widget rounded-[18px] p-4">
-                  <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border-[8px] border-rose-300/80 bg-white text-center">
+                <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4">
+                  <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border-[8px] border-[var(--dr-orange)] bg-[var(--dr-surface)] text-center shadow-lg">
                     <div>
-                      <div className="text-3xl font-black text-slate-900">%{selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail.currentAccuracy ?? 0}</div>
-                      <div className={`text-xs font-bold ${((selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail.currentAccuracy ?? 0) < 65) ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      <div className="text-3xl font-black text-[var(--dr-text-primary)]">%{selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail.currentAccuracy ?? 0}</div>
+                      <div className={`text-xs font-bold ${((selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail.currentAccuracy ?? 0) < 65) ? 'text-[var(--dr-orange)]' : 'text-emerald-600'}`}>
                         {(selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail.currentAccuracy ?? 0) < 65 ? 'Tekrar gerekiyor' : 'Iyi gidiyor'}
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="ios-widget rounded-[18px] p-4">
+                <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4">
                   <div className="grid gap-2 text-sm sm:grid-cols-2">
-                    <div className="border-b border-white/50 pb-2">
-                      <span className="text-slate-500">Çalışma</span>
-                      <div className="font-black text-slate-900">{Math.floor((selectedTopicTaskMetrics?.minutes ?? 0) / 60)} sa {(selectedTopicTaskMetrics?.minutes ?? 0) % 60} dk</div>
+                    <div className="border-b border-[var(--dr-std-border-strong)]/10 pb-2">
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Çalışma</span>
+                      <div className="font-black text-[var(--dr-text-primary)]">{Math.floor((selectedTopicTaskMetrics?.minutes ?? 0) / 60)} sa {(selectedTopicTaskMetrics?.minutes ?? 0) % 60} dk</div>
                     </div>
-                    <div className="border-b border-white/50 pb-2">
-                      <span className="text-slate-500">Soru Cozum</span>
-                      <div className="font-black text-slate-900">{selectedTopicTaskMetrics?.solved ?? 0} soru</div>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Dogruluk Orani</span>
-                      <div className="font-black text-slate-900">%{selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail.currentAccuracy ?? 0}</div>
+                    <div className="border-b border-[var(--dr-std-border-strong)]/10 pb-2">
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Soru Cozum</span>
+                      <div className="font-black text-[var(--dr-text-primary)]">{selectedTopicTaskMetrics?.solved ?? 0} soru</div>
                     </div>
                     <div>
-                      <span className="text-slate-500">Tekrar Ihtiyaci</span>
-                      <div className={`font-black ${selectedTopicTaskMetrics?.retryNeed === 'Yuksek' ? 'text-rose-600' : selectedTopicTaskMetrics?.retryNeed === 'Orta' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Dogruluk Orani</span>
+                      <div className="font-black text-[var(--dr-text-primary)]">%{selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail.currentAccuracy ?? 0}</div>
+                    </div>
+                    <div>
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Tekrar Ihtiyaci</span>
+                      <div className={`font-black ${selectedTopicTaskMetrics?.retryNeed === 'Yuksek' ? 'text-[var(--dr-orange)]' : selectedTopicTaskMetrics?.retryNeed === 'Orta' ? 'text-amber-600' : 'text-emerald-600'}`}>
                         {selectedTopicTaskMetrics?.retryNeed || 'Dusuk'}
                       </div>
                     </div>
@@ -1459,119 +1459,119 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 </div>
               </div>
               {selectedTopicAction && (
-                <div className="mt-4 rounded-[14px] bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
-                  Neden: {selectedTopicAction.reason} · Bugun yapilacak: {selectedTopicAction.action} · Gorev: {selectedTopicAction.taskStatus}
+                <div className="mt-4 rounded-[18px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/80 px-4 py-3 text-xs font-semibold text-[var(--dr-text-primary)] shadow-sm">
+                  <span className="text-[var(--dr-orange)] font-bold">Neden:</span> {selectedTopicAction.reason} · <span className="text-[var(--dr-orange)] font-bold">Bugün Yapılacak:</span> {selectedTopicAction.action} · <span className="text-[var(--dr-text-secondary)] font-bold">Görev:</span> {selectedTopicAction.taskStatus}
                 </div>
               )}
               {!selectedTopicAction && (
-                <div className="mt-4 rounded-[14px] bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
-                  Bu konu icin ek karar notu bulunmuyor.
+                <div className="mt-4 rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/40 px-4 py-3 text-xs font-semibold text-[var(--dr-text-secondary)]">
+                  Bu konu için ek karar notu bulunmuyor.
                 </div>
               )}
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <div className="ios-widget rounded-[18px] p-4">
-                  <div className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-300">Konu Performansi</div>
+                <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4">
+                  <div className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Konu Performansi</div>
                   <div className="space-y-3 text-sm">
                     <div className="grid grid-cols-[110px_minmax(0,1fr)_42px] items-center gap-2">
-                      <span className="text-slate-200">Çalışma</span>
-                      <div className="h-2 rounded-full bg-white/15">
-                        <div className="h-full rounded-full bg-rose-400" style={{ width: `${Math.max(10, Math.min(100, Math.round(((selectedTopicTaskMetrics?.minutes ?? 0) / 240) * 100)))}%` }} />
+                      <span className="text-[var(--dr-text-secondary)]">Çalışma</span>
+                      <div className="h-2 rounded-full bg-slate-200/50 dark:bg-slate-800/50">
+                        <div className="h-full rounded-full bg-[var(--dr-orange)]" style={{ width: `${Math.max(10, Math.min(100, Math.round(((selectedTopicTaskMetrics?.minutes ?? 0) / 240) * 100)))}%` }} />
                       </div>
-                      <span className="text-right font-black text-slate-100">%{Math.max(10, Math.min(100, Math.round(((selectedTopicTaskMetrics?.minutes ?? 0) / 240) * 100)))}</span>
+                      <span className="text-right font-black text-[var(--dr-text-primary)]">%{Math.max(10, Math.min(100, Math.round(((selectedTopicTaskMetrics?.minutes ?? 0) / 240) * 100)))}</span>
                     </div>
                     <div className="grid grid-cols-[110px_minmax(0,1fr)_42px] items-center gap-2">
-                      <span className="text-slate-200">Soru Cozumu</span>
-                      <div className="h-2 rounded-full bg-white/15">
-                        <div className="h-full rounded-full bg-rose-400" style={{ width: `${selectedTopicTaskMetrics?.practicePerf ?? 0}%` }} />
+                      <span className="text-[var(--dr-text-secondary)]">Soru Cozumu</span>
+                      <div className="h-2 rounded-full bg-slate-200/50 dark:bg-slate-800/50">
+                        <div className="h-full rounded-full bg-[var(--dr-orange)]" style={{ width: `${selectedTopicTaskMetrics?.practicePerf ?? 0}%` }} />
                       </div>
-                      <span className="text-right font-black text-slate-100">%{selectedTopicTaskMetrics?.practicePerf ?? 0}</span>
+                      <span className="text-right font-black text-[var(--dr-text-primary)]">%{selectedTopicTaskMetrics?.practicePerf ?? 0}</span>
                     </div>
                     <div className="grid grid-cols-[110px_minmax(0,1fr)_42px] items-center gap-2">
-                      <span className="text-slate-200">Deneme</span>
-                      <div className="h-2 rounded-full bg-white/15">
-                        <div className="h-full rounded-full bg-rose-400" style={{ width: `${selectedTopicTaskMetrics?.testPerf ?? 0}%` }} />
+                      <span className="text-[var(--dr-text-secondary)]">Deneme</span>
+                      <div className="h-2 rounded-full bg-slate-200/50 dark:bg-slate-800/50">
+                        <div className="h-full rounded-full bg-[var(--dr-orange)]" style={{ width: `${selectedTopicTaskMetrics?.testPerf ?? 0}%` }} />
                       </div>
-                      <span className="text-right font-black text-slate-100">%{selectedTopicTaskMetrics?.testPerf ?? 0}</span>
+                      <span className="text-right font-black text-[var(--dr-text-primary)]">%{selectedTopicTaskMetrics?.testPerf ?? 0}</span>
                     </div>
                     <div className="grid grid-cols-[110px_minmax(0,1fr)_42px] items-center gap-2">
-                      <span className="text-slate-200">Gunluk Tekrar</span>
-                      <div className="h-2 rounded-full bg-white/15">
-                        <div className="h-full rounded-full bg-rose-400" style={{ width: `${selectedTopicTaskMetrics?.dailyPerf ?? 0}%` }} />
+                      <span className="text-[var(--dr-text-secondary)]">Gunluk Tekrar</span>
+                      <div className="h-2 rounded-full bg-slate-200/50 dark:bg-slate-800/50">
+                        <div className="h-full rounded-full bg-[var(--dr-orange)]" style={{ width: `${selectedTopicTaskMetrics?.dailyPerf ?? 0}%` }} />
                       </div>
                       <span className="text-right font-black text-slate-100">%{selectedTopicTaskMetrics?.dailyPerf ?? 0}</span>
                     </div>
                   </div>
                 </div>
-                <div className="ios-widget rounded-[18px] p-4">
+                <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Soru Sonuc Ozeti</div>
-                    <div className="text-[11px] font-semibold text-slate-400">
+                    <div className="text-xs font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Soru Sonuc Ozeti</div>
+                    <div className="text-[11px] font-semibold text-[var(--dr-text-secondary)]">
                       {aggregatedPerformanceMetrics.lastCompletedAt
                         ? `Son aktivite ${aggregatedPerformanceMetrics.lastCompletedAt}`
                         : 'Son aktivite yok'}
                     </div>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    <div className="rounded-[12px] bg-slate-50 border border-slate-200/60 shadow-sm px-3 py-2 text-xs">
-                      <div className="text-slate-500 font-semibold">Toplam Soru</div>
-                      <div className="mt-1 text-lg font-black text-slate-800">{aggregatedPerformanceMetrics.totalQuestions}</div>
+                    <div className="rounded-[14px] bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 shadow-inner px-3 py-2.5 text-xs">
+                      <div className="text-[var(--dr-text-secondary)] font-semibold">Toplam Soru</div>
+                      <div className="mt-1 text-lg font-black text-[var(--dr-text-primary)]">{aggregatedPerformanceMetrics.totalQuestions}</div>
                     </div>
-                    <div className="rounded-[12px] bg-slate-50 border border-slate-200/60 shadow-sm px-3 py-2 text-xs">
-                      <div className="text-slate-500 font-semibold">Dogru</div>
+                    <div className="rounded-[14px] bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 shadow-inner px-3 py-2.5 text-xs">
+                      <div className="text-[var(--dr-text-secondary)] font-semibold">Dogru</div>
                       <div className="mt-1 text-lg font-black text-emerald-600">{aggregatedPerformanceMetrics.correctCount}</div>
                     </div>
-                    <div className="rounded-[12px] bg-slate-50 border border-slate-200/60 shadow-sm px-3 py-2 text-xs">
-                      <div className="text-slate-500 font-semibold">Yanlis</div>
-                      <div className="mt-1 text-lg font-black text-rose-600">{aggregatedPerformanceMetrics.incorrectCount}</div>
+                    <div className="rounded-[14px] bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 shadow-inner px-3 py-2.5 text-xs">
+                      <div className="text-[var(--dr-text-secondary)] font-semibold">Yanlis</div>
+                      <div className="mt-1 text-lg font-black text-[var(--dr-orange)]">{aggregatedPerformanceMetrics.incorrectCount}</div>
                     </div>
-                    <div className="rounded-[12px] bg-slate-50 border border-slate-200/60 shadow-sm px-3 py-2 text-xs">
-                      <div className="text-slate-500 font-semibold">Bos</div>
-                      <div className="mt-1 text-lg font-black text-amber-600">{aggregatedPerformanceMetrics.emptyCount}</div>
+                    <div className="rounded-[14px] bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 shadow-inner px-3 py-2.5 text-xs">
+                      <div className="text-[var(--dr-text-secondary)] font-semibold">Bos</div>
+                      <div className="mt-1 text-lg font-black text-amber-500">{aggregatedPerformanceMetrics.emptyCount}</div>
                     </div>
-                    <div className="rounded-[12px] bg-slate-50 border border-slate-200/60 shadow-sm px-3 py-2 text-xs">
-                      <div className="text-slate-500 font-semibold">Dogruluk %</div>
-                      <div className="mt-1 text-lg font-black text-slate-800">%{aggregatedPerformanceMetrics.accuracyPercent}</div>
+                    <div className="rounded-[14px] bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 shadow-inner px-3 py-2.5 text-xs">
+                      <div className="text-[var(--dr-text-secondary)] font-semibold">Dogruluk %</div>
+                      <div className="mt-1 text-lg font-black text-[var(--dr-text-primary)]">%{aggregatedPerformanceMetrics.accuracyPercent}</div>
                     </div>
-                    <div className="rounded-[12px] bg-slate-50 border border-slate-200/60 shadow-sm px-3 py-2 text-xs">
-                      <div className="text-slate-500 font-semibold">Çalışma Süresi</div>
-                      <div className="mt-1 text-lg font-black text-slate-800">{formatMinutes(aggregatedPerformanceMetrics.minutes)}</div>
+                    <div className="rounded-[14px] bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/20 shadow-inner px-3 py-2.5 text-xs">
+                      <div className="text-[var(--dr-text-secondary)] font-semibold">Çalışma Süresi</div>
+                      <div className="mt-1 text-lg font-black text-[var(--dr-text-primary)]">{formatMinutes(aggregatedPerformanceMetrics.minutes)}</div>
                     </div>
                   </div>
-                  <div className="mt-3 text-[11px] font-semibold text-slate-400">
+                  <div className="mt-3 text-[11px] font-semibold text-[var(--dr-text-secondary)]">
                     {aggregatedPerformanceMetrics.taskCount > 0
                       ? `${aggregatedPerformanceMetrics.taskCount} gorev kaydindan hesaplandi.`
                       : 'Secilen filtrede soru verisi bulunmuyor.'}
                   </div>
                 </div>
               </div>
-              <div className="mt-4 rounded-[14px] bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
-                Oneri: Bu konuda duzenli tekrar ve bol soru cozum ile %70+ seviyeye ulasilabilir.
+              <div className="mt-4 rounded-[18px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/80 px-4 py-3 text-xs font-semibold text-[var(--dr-text-primary)] shadow-sm">
+                <span className="text-[var(--dr-orange)] font-bold">Öneri:</span> Bu konuda düzenli tekrar ve bol soru çözümü ile %70+ seviyeye ulaşılabilir.
               </div>
             </div>
           )}
 
-          <div className="dr-hig-secondary-card rounded-[26px] p-6">
+          <div className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h4 className="dr-hig-headline text-slate-900 dark:text-white">Rapor Sayfasi</h4>
+                <h4 className="dr-hig-headline text-[var(--dr-text-primary)]">Rapor Sayfasi</h4>
                 <ContextHelp title="Rapor Sayfası" tone="blue">
                   Çocuğunuzun seçilen periyottaki akademik ilerlemesini, çözdüğü soruları, çalışma sürelerini ve sınav gelişimlerini özetleyen veli analiz raporudur.
                 </ContextHelp>
               </div>
-              <div className="dr-hig-caption font-semibold text-slate-500 dark:text-slate-400">Periyot: {periodOptions.find((option) => option.value === overviewStudyPeriod)?.label || '1A'}</div>
+              <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Periyot: {periodOptions.find((option) => option.value === overviewStudyPeriod)?.label || '1A'}</div>
             </div>
             <div className="mb-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => setReportCardTab('general')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold ${reportCardTab === 'general' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Genel Rapor</button>
-              <button type="button" onClick={() => setReportCardTab('course')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold ${reportCardTab === 'course' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Ders Raporu</button>
-              <button type="button" onClick={() => setReportCardTab('topic')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold ${reportCardTab === 'topic' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Konu Raporu</button>
-              <button type="button" onClick={() => setReportCardTab('time')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold ${reportCardTab === 'time' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Zaman Raporu</button>
+              <button type="button" onClick={() => setReportCardTab('general')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.96] ${reportCardTab === 'general' ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}>Genel Rapor</button>
+              <button type="button" onClick={() => setReportCardTab('course')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.96] ${reportCardTab === 'course' ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}>Ders Raporu</button>
+              <button type="button" onClick={() => setReportCardTab('topic')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.96] ${reportCardTab === 'topic' ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}>Konu Raporu</button>
+              <button type="button" onClick={() => setReportCardTab('time')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.96] ${reportCardTab === 'time' ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}>Zaman Raporu</button>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               {reportSummaryItems.map((item) => (
-                <div key={`report-summary-${item.label}`} className="ios-widget rounded-[14px] px-3 py-2.5">
-                  <div className="text-[11px] text-slate-500">{item.label}</div>
-                  <div className="mt-1 truncate text-base font-black text-slate-900">{item.value}</div>
-                  <div className="mt-1 text-[11px] font-semibold text-slate-500">{item.hint}</div>
+                <div key={`report-summary-${item.label}`} className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 px-3 py-3 shadow-inner">
+                  <div className="text-[11px] text-[var(--dr-text-secondary)] font-semibold">{item.label}</div>
+                  <div className="mt-1 truncate text-base font-black text-[var(--dr-text-primary)]">{item.value}</div>
+                  <div className="mt-1 text-[11px] font-semibold text-[var(--dr-text-secondary)]">{item.hint}</div>
                 </div>
               ))}
             </div>
