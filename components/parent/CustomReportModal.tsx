@@ -47,8 +47,8 @@ const CustomReportModal: React.FC<Props> = ({ tasks, courses, performanceData, s
   }, [performanceData]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 backdrop-blur-sm">
+      <div className="dr-compact-modal dr-modal-scroll relative max-h-[min(76dvh,38rem)] w-[min(46rem,calc(100vw-1.5rem))] overflow-y-auto bg-white p-4 shadow-lg">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black text-slate-900">Durum raporu</h2>

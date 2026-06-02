@@ -122,8 +122,8 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
   return (
     <>
       {wasTaskDeleted && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-          <div className="ios-card w-full max-w-sm rounded-[28px] p-6 text-center">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-sm">
+          <div className="ios-card dr-compact-modal w-[min(22rem,calc(100vw-1.5rem))] p-4 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100"><Trash2 className="h-6 w-6 text-red-600" /></div>
             <h3 className="mb-2 text-xl font-black">Görev silindi</h3>
             <p className="mb-6 text-sm leading-6 text-slate-600">Bu okuma görevi ebeveyn tarafından silindiği için seans devam ettirilemez.</p>
@@ -133,8 +133,8 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
       )}
 
       {showCompleteModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
-          <div className="ios-card w-full max-w-md rounded-[28px] p-6">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-3 backdrop-blur-sm">
+          <div className="ios-card dr-compact-modal w-[min(26rem,calc(100vw-1.5rem))] p-4">
             <h3 className="text-2xl font-black text-slate-900">Okuma seansını tamamla</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">Bu seansta kaç sayfa okuduğunu gir.</p>
             <input type="number" value={pagesRead} onChange={(e) => setPagesRead(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Örn: 25" min="1" autoFocus className="ios-button mt-5 w-full rounded-[24px] px-4 py-4 text-center text-3xl font-black text-slate-900 focus:outline-none" />

@@ -269,4 +269,8 @@ Uygulamanın görsel tasarımı, modern mobil ve masaüstü web standartlarını
 *   **[2026-06-01]**: Çocuk aktif seans ekranındaki ultra-premium 'Midnight Glassmorphism Space' tasarım estetiğinin (derin uzay dikey renk geçişleri, pürüzsüz gece camı kartları ve özel parlayan aktif buton tasarımları) tüm uygulamanın geneline (Koyu Tema) entegre edilmesi. - **[Durum: Tamamlandı]**
 *   **[2026-06-01]**: Koyu Modda 'Canlı Seans' rozet metninin okunabilirliğini bozan CSS '!important' öncelik çakışmasının giderilmesi ve rozete göz yormayan, premium bir gece camı dokusu (glowing green/dark emerald) kazandırılması. - **[Durum: Tamamlandı]**
 *   **[2026-06-01]**: Geliştirme sunucusunun (Vite dev server) 'npm run dev:stable' komutuyla 3000 portunda başarıyla başlatılması. - **[Durum: Tamamlandı]**
+*   **[2026-06-01]**: Ebeveyn planlama alanının ve haftalık program panelinin basitleştirilerek ultra-premium 'CurriculumManager' çift sütunlu arayüzüne, mini-toolbar aksiyon yapısına ve tüm haftayı tek ekranda sunan 'Weekly Preview Grid' modalına kavuşturulması. - **[Durum: Tamamlandı]**
+*   **[2026-06-01]**: Ebeveyn ödül yönetim panelinin (`ParentRewardWorkspace.tsx`) yerleşimi korunarak 'Midnight Glassmorphism' görsel detayları, dinamik neon cam rozetleri ve ContextHelp açıklama bileşeni ile en baştan tasarlanması. - **[Durum: Tamamlandı]**
+
+
 

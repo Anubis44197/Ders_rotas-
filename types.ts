@@ -280,6 +280,10 @@ export interface WeeklyScheduleSlot {
   startTime: string;
   endTime: string;
   note?: string;
+  schoolCurriculumStatus?: 'covered' | 'not-covered';
+  schoolUnitName?: string;
+  schoolTopicName?: string;
+  schoolCurriculumUpdatedAt?: string;
 }
 
 export interface WeeklyScheduleDay {

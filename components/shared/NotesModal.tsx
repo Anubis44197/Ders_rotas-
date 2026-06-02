@@ -31,8 +31,8 @@ const NotesModal: React.FC<NotesModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" onClick={handleClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="notes-modal-title" style={{ maxWidth: '356px', width: '100%', margin: '0 auto' }} onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-3" onClick={handleClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="ios-card dr-compact-modal w-[min(22rem,calc(100vw-1.5rem))] p-4 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="notes-modal-title" onClick={(event) => event.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-blue-500" />

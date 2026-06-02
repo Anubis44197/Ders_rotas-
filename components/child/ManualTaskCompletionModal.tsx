@@ -73,18 +73,18 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm">
-      <form className="ios-card w-full max-w-xl rounded-[28px] p-6" onSubmit={handleSubmit}>
-        <div className="mb-5 flex items-start justify-between gap-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-3 backdrop-blur-sm">
+      <form className="ios-card dr-compact-modal dr-modal-scroll max-h-[min(76dvh,34rem)] w-[min(34rem,calc(100vw-1.5rem))] overflow-y-auto p-4" onSubmit={handleSubmit}>
+        <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Geçmiş kayıt</div>
-            <h3 className="mt-1 text-2xl font-black text-slate-900">Görevi manuel tamamla</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Bu görev geçmiş tarihte yapıldıysa süre ve sonuç bilgisini buradan gir.</p>
+            <h3 className="mt-1 text-xl font-black text-slate-900">Görevi manuel tamamla</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Geçmiş tarihli süre ve sonuç bilgisini gir.</p>
           </div>
           <button type="button" onClick={onClose} className="ios-button rounded-full px-3 py-2 text-sm font-bold text-slate-500">Kapat</button>
         </div>
 
-        <div className="ios-widget mb-5 rounded-[24px] p-4">
+        <div className="ios-widget mb-4 rounded-[18px] p-3">
           <div className="text-sm font-bold text-slate-900">{task.bookTitle || task.title}</div>
           <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
             <span className="rounded-full bg-white px-3 py-1">{task.dueDate}</span>
@@ -95,8 +95,8 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1fr]">
-          <section className="ios-widget ios-blue rounded-[24px] p-4">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr]">
+          <section className="ios-widget ios-blue rounded-[18px] p-3">
             <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Süre bilgisi</div>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm font-semibold text-slate-700">
@@ -110,7 +110,7 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
             </div>
           </section>
 
-          <section className="ios-widget ios-mint rounded-[24px] p-4">
+          <section className="ios-widget ios-mint rounded-[18px] p-3">
             <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Sonuç bilgisi</div>
             <div className="space-y-3">
               {task.taskType === 'kitap okuma' && (
@@ -160,7 +160,7 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
 
         {error && <div className="ios-coral mt-4 rounded-[18px] px-4 py-3 text-sm font-semibold text-rose-900">{error}</div>}
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button type="button" onClick={onClose} className="ios-button rounded-[18px] px-5 py-3 text-sm font-bold text-slate-700">Iptal</button>
           <button type="submit" className="ios-mint rounded-[18px] px-5 py-3 text-sm font-bold text-emerald-950">Kaydet ve tamamla</button>
         </div>

@@ -105,13 +105,12 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
     .sort((a, b) => a.date.localeCompare(b.date));
   const upcomingExams = sortedExamEntries.filter((e) => e.date >= today);
   const pastExams = sortedExamEntries.filter((e) => e.date < today);
-
   return (
-    <div className="space-y-6">
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="dr-planning-workspace space-y-5">
+      <section className="dr-planning-hero flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="dr-hig-large-title text-slate-900 dark:text-white">Zaman ve Görevler</h2>
+            <h2 className="dr-planning-title dr-hig-large-title text-slate-900 dark:text-white">Zaman ve Görevler</h2>
             <ContextHelp title="Zaman ve Görevler" tone="blue">
               Ders, okul programı ve çalışma zemini ile görevler yönetilir.
             </ContextHelp>
@@ -135,15 +134,15 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         </section>
       )}
 
-      <section className="dr-hig-secondary-card rounded-[28px] p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <section className="dr-planning-card dr-planning-curriculum">
+        <div className="dr-planning-card-head flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 dr-hig-caption font-bold uppercase tracking-[0.18em] text-primary-600">
+            <div className="dr-planning-kicker flex items-center gap-2 dr-hig-caption font-bold uppercase tracking-[0.18em] text-primary-600">
               <BookOpen className="h-4 w-4" />
               Müfredat
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <h3 className="dr-hig-headline text-slate-900 dark:text-white">Müfredat Yönetimi</h3>
+              <h3 className="dr-planning-section-title dr-hig-headline text-slate-900 dark:text-white">Müfredat Yönetimi</h3>
               <ContextHelp title="Müfredat Yönetimi" tone="blue">
                 Ders ekle/kaldır, pasif dersi geri al. Bu listedeki dersler görev atama ve analiz ekranlarında kullanılır.
               </ContextHelp>
@@ -152,45 +151,45 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
           <button
             type="button"
             onClick={onOpenCurriculumEditor}
-            className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-slate-900"
+            className="dr-planning-primary-action inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black"
           >
             <PlusCircle className="h-4 w-4" />
             Ders Ekle / Kaldır
           </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div className="dr-hig-secondary-card rounded-[22px] p-4">
+        <div className="dr-planning-metrics mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="dr-planning-metric">
             <div className="dr-hig-caption font-bold uppercase text-slate-500">Aktif ders</div>
             <div className="mt-2 dr-hig-title text-slate-900 dark:text-white">{activeCourses.length}</div>
           </div>
-          <div className="dr-hig-secondary-card rounded-[22px] p-4">
+          <div className="dr-planning-metric">
             <div className="dr-hig-caption font-bold uppercase text-slate-500">Ünite</div>
             <div className="mt-2 dr-hig-title text-slate-900 dark:text-white">{safeCurriculumSummary.unitCount}</div>
           </div>
-          <div className="dr-hig-secondary-card rounded-[22px] p-4">
+          <div className="dr-planning-metric">
             <div className="dr-hig-caption font-bold uppercase text-slate-500">Konu</div>
             <div className="mt-2 dr-hig-title text-slate-900 dark:text-white">{safeCurriculumSummary.topicCount}</div>
           </div>
-          <div className="dr-hig-secondary-card rounded-[22px] p-4">
+          <div className="dr-planning-metric">
             <div className="dr-hig-caption font-bold uppercase text-slate-500">Tamamlanan</div>
             <div className="mt-2 dr-hig-title text-slate-900 dark:text-white">{safeCurriculumSummary.completedTopicCount}</div>
           </div>
         </div>
 
         {safeCurriculumSummary.subjects.length === 0 ? (
-          <div className="mt-4 rounded-[22px] border border-dashed border-white/20 px-4 py-5 text-sm text-slate-500">
+          <div className="dr-planning-empty mt-4">
             Henüz ders eklenmedi. Görev atama ve analiz için önce müfredat iskeleti tanımlanmalı.
           </div>
         ) : (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="dr-planning-chip-row mt-4 flex flex-wrap gap-2">
             {safeCurriculumSummary.subjects.slice(0, 8).map((subject) => (
-              <span key={subject} className="ios-button rounded-full px-3 py-2 text-xs font-bold text-slate-700">
+              <span key={subject} className="dr-planning-chip">
                 {subject}
               </span>
             ))}
             {safeCurriculumSummary.subjects.length > 8 && (
-              <span className="ios-button rounded-full px-3 py-2 text-xs font-bold text-slate-500">+{safeCurriculumSummary.subjects.length - 8}</span>
+              <span className="dr-planning-chip">+{safeCurriculumSummary.subjects.length - 8}</span>
             )}
           </div>
         )}
@@ -224,15 +223,15 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
       <WeeklySchedulePanel schedule={weeklySchedule} courses={safeCourses} curriculum={curriculum} addTask={addTask} onSave={onChangeSchedule} onAddExam={() => setIsExamModalOpen(true)} />
 
       {isExamModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm transition-all">
-          <div className="ios-card flex max-h-[min(34rem,calc(100dvh-2rem))] w-[min(34rem,100%)] flex-col overflow-hidden rounded-[28px]" role="dialog" aria-modal="true" aria-label="Sınav takvimi ekle">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-3 backdrop-blur-sm transition-all">
+          <div className="ios-card dr-compact-modal flex max-h-[min(30rem,calc(100dvh-1.5rem))] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden" role="dialog" aria-modal="true" aria-label="Sınav takvimi ekle">
             <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-4 py-3">
               <h2 className="text-lg font-black text-slate-900 dark:text-white">Sınav Ekle</h2>
               <button type="button" onClick={() => setIsExamModalOpen(false)} className="ios-button flex h-9 w-9 items-center justify-center rounded-full text-slate-600 dark:text-slate-400" aria-label="Sınav formunu kapat">
                 ✕
               </button>
             </div>
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            <div className="dr-modal-scroll dr-compact-modal-body flex-1 space-y-3 overflow-y-auto">
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase text-slate-500">Ders Seçin</label>
                 <select value={selectedExamCourseId} onChange={(event) => setSelectedExamCourseId(event.target.value)} className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none">
@@ -263,19 +262,19 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         </div>
       )}
 
-      <section className="dr-hig-secondary-card rounded-[28px] p-6">
+      <section className="dr-planning-card dr-planning-exams">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary-600" />
-            <h3 className="dr-hig-headline text-slate-900 dark:text-white">Sınav Takvimi</h3>
+            <h3 className="dr-planning-section-title dr-hig-headline text-slate-900 dark:text-white">Sınav Takvimi</h3>
           </div>
-          <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700">
+          <span className="dr-planning-count-pill">
             {upcomingExams.length} yaklaşan · {pastExams.length} geçmiş
           </span>
         </div>
 
         {sortedExamEntries.length === 0 ? (
-          <div className="rounded-[18px] border border-dashed border-white/20 px-5 py-6 text-center text-sm text-slate-500">
+          <div className="dr-planning-empty text-center">
             Henüz sınav eklenmedi. Yukarıdaki "Sınav ekle" butonunu kullanarak okul sınavlarını takvime ekleyebilirsiniz.
           </div>
         ) : (
@@ -287,7 +286,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
                   {upcomingExams.map((exam) => {
                     const daysLeft = Math.round((new Date(`${exam.date}T00:00:00`).getTime() - new Date(`${today}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24));
                     return (
-                      <div key={exam.id} className="flex items-center justify-between gap-3 rounded-[18px] border-l-4 border-emerald-400 bg-emerald-50/60 px-4 py-3">
+                      <div key={exam.id} className="dr-planning-exam-row dr-planning-exam-row-upcoming flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-sm font-black text-slate-900">{exam.examName}</div>
                           <div className="mt-0.5 text-xs font-semibold text-slate-500">{exam.courseName} · {exam.date}</div>
@@ -322,7 +321,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
                 <div className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Geçmiş Sınavlar</div>
                 <div className="space-y-2">
                   {pastExams.slice().reverse().map((exam) => (
-                    <div key={exam.id} className="flex items-center justify-between gap-3 rounded-[18px] bg-slate-100/60 px-4 py-3 opacity-60">
+                    <div key={exam.id} className="dr-planning-exam-row dr-planning-exam-row-past flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="text-sm font-bold text-slate-700">{exam.examName}</div>
                         <div className="mt-0.5 text-xs font-semibold text-slate-400">{exam.courseName} · {exam.date}</div>

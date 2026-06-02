@@ -241,8 +241,8 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
   return (
     <>
       {wasTaskDeleted && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-          <div className="ios-card w-full max-w-sm rounded-[28px] p-6 text-center">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-sm">
+          <div className="ios-card dr-compact-modal w-[min(22rem,calc(100vw-1.5rem))] p-4 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100"><Trash2 className="h-6 w-6 text-red-600" /></div>
             <h3 className="mb-2 text-xl font-black">Görev silindi</h3>
             <p className="mb-6 text-sm leading-6 text-slate-600">Bu görev ebeveyn tarafından silindiği için seans devam ettirilemez.</p>
@@ -252,8 +252,8 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
       )}
 
       {showCompleteModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '356px', width: '100%', margin: '0 auto' }}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="ios-card dr-compact-modal w-[min(22rem,calc(100vw-1.5rem))] p-4 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md">
             <h3 className="text-xl font-black text-white">Seansı bitir</h3>
             <p className="mt-0.5 text-xs text-slate-400">Süre özetini kontrol et ve kaydet.</p>
             
@@ -322,8 +322,8 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
       )}
 
       {showAnalysisModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md" style={{ maxWidth: '356px', width: '100%', margin: '0 auto' }}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="ios-card dr-compact-modal w-[min(22rem,calc(100vw-1.5rem))] p-4 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md">
             <h3 className="text-xl font-black text-white">Soru analizi</h3>
             <p className="mt-0.5 text-xs text-slate-400">Doğru, yanlış ve boş sayılarını gir.</p>
             

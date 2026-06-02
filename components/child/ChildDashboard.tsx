@@ -715,8 +715,8 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
               </div>
 
               {showFreeStudy && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-4" onClick={() => setShowFreeStudy(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <form onSubmit={handleCreateFreeStudy} className="ios-card w-full rounded-[22px] p-5 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md text-white max-h-[90vh] overflow-y-auto" style={{ maxWidth: '760px', width: '100%', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[3px] p-3" onClick={() => setShowFreeStudy(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <form onSubmit={handleCreateFreeStudy} className="ios-card dr-compact-modal dr-modal-scroll w-[min(40rem,calc(100vw-1.5rem))] max-h-[min(76dvh,36rem)] overflow-y-auto p-4 bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-md text-white" onClick={(e) => e.stopPropagation()}>
                     <div className="mb-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <PlusCircle className="h-5 w-5 text-indigo-400" />

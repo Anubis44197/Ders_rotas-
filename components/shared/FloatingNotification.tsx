@@ -193,7 +193,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
             </div>
 
             {showPanel && (
-                <div className="ios-card fixed bottom-24 right-6 z-50 max-h-[70vh] w-96 max-w-[calc(100vw-3rem)] overflow-hidden rounded-[24px]" role="dialog" aria-modal="false" aria-label="Bildirimler">
+                <div className="ios-card dr-compact-modal fixed bottom-24 right-6 z-50 max-h-[min(62vh,30rem)] w-[min(22rem,calc(100vw-3rem))] overflow-hidden" role="dialog" aria-modal="false" aria-label="Bildirimler">
                     <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
                         <div>
                             <h3 className="font-bold text-lg text-slate-800">Bildirimler</h3>
@@ -211,7 +211,7 @@ const FloatingNotification: React.FC<FloatingNotificationProps> = ({
                         </div>
                     </div>
 
-                    <div className="overflow-y-auto max-h-[50vh]">
+                    <div className="dr-modal-scroll overflow-y-auto max-h-[42vh]">
                         {notifications.map((notification) => (
                             <div key={notification.id} className={`p-4 border-b border-slate-100 last:border-b-0 ${getPriorityColor(notification.priority, notification.isRead)}`}>
                                 <div className="flex items-start gap-3">

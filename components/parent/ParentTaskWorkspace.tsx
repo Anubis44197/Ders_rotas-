@@ -849,8 +849,8 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
       </div>}
 
       {showDeleteDataModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm" role="presentation">
-          <div className="ios-card w-full max-w-md rounded-[28px] p-6" role="dialog" aria-modal="true" aria-labelledby="delete-data-title">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-3 backdrop-blur-sm" role="presentation">
+          <div className="ios-card dr-compact-modal w-[min(26rem,calc(100vw-1.5rem))] p-4" role="dialog" aria-modal="true" aria-labelledby="delete-data-title">
             <div className="mb-4 flex items-start gap-3">
               <div className="ios-coral flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] text-rose-800">
                 <Trash2 className="h-5 w-5" />
@@ -939,9 +939,9 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         </div>
 
         {examFormOpen && (
-          <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/65 px-4 py-4 backdrop-blur-xl">
-            <div className="ios-card flex max-h-[min(46rem,calc(100dvh-2rem))] w-[min(48rem,100%)] flex-col overflow-hidden rounded-[30px]" role="dialog" aria-modal="true" aria-label="Sınav sonucu ekle">
-              <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
+          <div className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-xl">
+            <div className="ios-card dr-compact-modal flex max-h-[min(76dvh,38rem)] w-[min(42rem,calc(100vw-1.5rem))] flex-col overflow-hidden" role="dialog" aria-modal="true" aria-label="Sınav sonucu ekle">
+              <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
                 <div>
                   <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Sınav girişi</div>
                   <h3 className="mt-2 text-2xl font-black text-slate-900">Yeni sonuc kaydi</h3>
@@ -951,7 +951,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="overflow-y-auto px-6 py-5">
+              <div className="dr-modal-scroll dr-compact-modal-body overflow-y-auto">
                 <div className="mb-4 grid grid-cols-2 gap-2 rounded-[22px] border border-white/10 p-1">
                   <button type="button" onClick={() => setExamEntryMode('course')} className={`rounded-[18px] px-4 py-3 text-sm font-bold ${examEntryMode === 'course' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Ders bazlı sınav</button>
                   <button type="button" onClick={() => setExamEntryMode('composite')} className={`rounded-[18px] px-4 py-3 text-sm font-bold ${examEntryMode === 'composite' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-700'}`}>Genel sınav / deneme</button>
