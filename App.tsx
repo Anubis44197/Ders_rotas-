@@ -4982,7 +4982,11 @@ const App: React.FC = () => {
         <div
           ref={topbarNotificationsPopoverRef}
           className="ios-card fixed right-3 z-[90] w-[min(20rem,calc(100vw-1.5rem))] rounded-[26px] p-3 text-[var(--dr-text)]"
-          style={{ top: 'calc(5rem + env(safe-area-inset-top) + 0.75rem)' }}
+          style={{
+            position: 'fixed',
+            top: 'calc(5rem + env(safe-area-inset-top) + 0.75rem)',
+            right: '0.75rem',
+          }}
           data-testid="notifications-popover"
         >
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -5363,7 +5367,6 @@ const App: React.FC = () => {
 };
 
 export default App;
-
 
 
 
