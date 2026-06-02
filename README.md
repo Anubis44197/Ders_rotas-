@@ -70,6 +70,22 @@ http://127.0.0.1:3000
 
 ---
 
+---
+
+## Firebase Canli Senkron
+
+Uygulama Firebase Hosting uzerinde yayinlanir ve aile ici ortak veri Firestore uzerindeki tek paylasimli dokumandan senkronize edilir. Veli, cocuk ve diger cihazlar ayni uygulama linkinden girdiginde ayni canli durumu gorur.
+
+Canli veri akisi icin ucretsiz Spark katmaninda kalinir; Cloud Functions veya Blaze gerektiren servis eklenmemistir. Firebase Console > Authentication > Sign-in method alaninda Anonymous saglayicisi etkin olmalidir. Bu rol ayrimi degildir; sadece Firestore kurallarinin tek ortak aile dokumanina guvenli baglanmasi icin kullanilir.
+
+Kullanilan proje ve yayin adresi:
+
+```text
+Firebase project: ders-tak
+Hosting URL: https://ders-tak.web.app
+Shared state: families/ders-tak-main/state/current
+```
+
 ## 🧪 Kalite ve Doğrulama Komutları
 
 Uygulamanın kararlılığını korumak ve TypeScript derleme hatalarından arındırmak amacıyla geliştirilmiş test komutları:

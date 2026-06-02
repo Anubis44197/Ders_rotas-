@@ -42,6 +42,7 @@ import { deriveAnalysisSnapshot } from './utils/analysisEngine';
 import { getNotificationCooldownMs } from './utils/parentDecisionEngine';
 import { isCompletedTask } from './utils/taskStatus';
 import { playHaptic } from './utils/haptics';
+import { publishRemoteAppData, startRemoteAppDataSync, type RemoteAppData } from './utils/firebaseLiveSync';
 import { GoogleGenAI } from '@google/genai';
 
 const lazyWithRetry = <T extends { default: React.ComponentType<any> }>(
@@ -2390,6 +2391,11 @@ const App: React.FC = () => {
   const rewardClaimLockRef = useRef<Set<string>>(new Set());
   const completeTaskLockRef = useRef<Set<string>>(new Set());
   const tasksRef = useRef<Task[]>(tasks);
+  const remoteSyncReadyRef = useRef(false);
+  const remoteHydratedRef = useRef(false);
+  const remoteApplyingRef = useRef(false);
+  const remoteLastSerializedRef = useRef<string | null>(null);
+  const remotePublishTimerRef = useRef<number | null>(null);
   const topbarNotificationsRef = useRef<HTMLDivElement | null>(null);
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
   const topbarNotificationsPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -2762,6 +2768,107 @@ const App: React.FC = () => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id));
     }, 3000);
   };
+
+  const remoteAppData = useMemo<RemoteAppData>(() => ({
+    courses,
+    tasks,
+    performanceData,
+    rewards,
+    badges,
+    successPoints,
+    curriculum,
+    weeklySchedule,
+    examRecords,
+    compositeExamResults,
+    examScheduleEntries,
+    studyPlans,
+    planningEngineSnapshot,
+  }), [badges, compositeExamResults, courses, curriculum, examRecords, examScheduleEntries, performanceData, planningEngineSnapshot, rewards, studyPlans, successPoints, tasks, weeklySchedule]);
+
+  const applyRemoteAppData = useCallback((payload: RemoteAppData) => {
+    remoteApplyingRef.current = true;
+    setCourses(normalizeSafeCourses(payload.courses));
+    setTasks(normalizeSafeTasks(payload.tasks));
+    setPerformanceData(normalizeSafeArray<PerformanceData>(payload.performanceData));
+    setRewards(normalizeSafeRewards(payload.rewards));
+    setBadges(normalizeSafeBadges(payload.badges));
+    setSuccessPoints(normalizeSafeNumber(payload.successPoints));
+    setCurriculum(normalizeSafeCurriculum(payload.curriculum));
+    setWeeklySchedule(normalizeWeeklySchedule(payload.weeklySchedule || defaultWeeklySchedule));
+    setExamRecords(normalizeSafeArray<ExamRecord>(payload.examRecords));
+    setCompositeExamResults(normalizeSafeArray<CompositeExamResult>(payload.compositeExamResults));
+    setExamScheduleEntries(normalizeSafeArray<ExamScheduleEntry>(payload.examScheduleEntries));
+    setStudyPlans(normalizeStudyPlans(payload.studyPlans));
+    setPlanningEngineSnapshot(normalizePlanningEngineSnapshot(payload.planningEngineSnapshot || defaultPlanningEngineSnapshot));
+    window.setTimeout(() => {
+      remoteApplyingRef.current = false;
+    }, 0);
+  }, [setBadges, setCompositeExamResults, setCourses, setCurriculum, setExamRecords, setExamScheduleEntries, setPerformanceData, setPlanningEngineSnapshot, setRewards, setStudyPlans, setSuccessPoints, setTasks, setWeeklySchedule]);
+
+  useEffect(() => {
+    if (isE2EMode) return;
+    let unsubscribe: (() => void) | null = null;
+    let cancelled = false;
+
+    void startRemoteAppDataSync({
+      onReady: () => {
+        if (cancelled) return;
+        remoteSyncReadyRef.current = true;
+      },
+      onRemoteMissing: () => {
+        if (cancelled) return;
+        remoteHydratedRef.current = true;
+      },
+      onRemoteData: ({ appData }) => {
+        if (cancelled) return;
+        const serialized = JSON.stringify(appData);
+        if (serialized === remoteLastSerializedRef.current) {
+          remoteHydratedRef.current = true;
+          return;
+        }
+        remoteLastSerializedRef.current = serialized;
+        remoteHydratedRef.current = true;
+        applyRemoteAppData(appData);
+      },
+      onError: (error) => {
+        console.error('Firebase live sync error:', error);
+        addToast('Canli senkron baglanamadi. Yerel kayit devam ediyor.', 'error');
+      },
+    }).then((nextUnsubscribe) => {
+      if (cancelled) {
+        nextUnsubscribe();
+        return;
+      }
+      unsubscribe = nextUnsubscribe;
+    }).catch((error) => {
+      console.error('Firebase live sync startup error:', error);
+      addToast('Canli senkron baslatilamadi. Firebase Auth kontrol edilmeli.', 'error');
+    });
+
+    return () => {
+      cancelled = true;
+      if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
+      unsubscribe?.();
+    };
+  }, [addToast, applyRemoteAppData, isE2EMode]);
+
+  useEffect(() => {
+    if (isE2EMode || !remoteSyncReadyRef.current || !remoteHydratedRef.current || remoteApplyingRef.current) return;
+    const serialized = JSON.stringify(remoteAppData);
+    if (serialized === remoteLastSerializedRef.current) return;
+
+    if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
+    remotePublishTimerRef.current = window.setTimeout(() => {
+      void publishRemoteAppData(remoteAppData)
+        .then(() => {
+          remoteLastSerializedRef.current = serialized;
+        })
+        .catch((error) => {
+          console.error('Firebase live publish error:', error);
+          addToast('Canli veri Firebasee yazilamadi.', 'error');
+        });
+    }, 1000);
+  }, [addToast, isE2EMode, remoteAppData]);
 
   const handleContinueTask = (taskId: string) => {
     const task = tasks.find((item) => item.id === taskId);

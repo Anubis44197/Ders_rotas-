@@ -1,0 +1,12 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /families/ders-tak-main/state/current {
+      allow read, create, update: if request.auth != null
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.keys().hasOnly(['schemaVersion', 'appData', 'updatedAt', 'updatedBy']);
+      allow delete: if false;
+    }
+  }
+}
