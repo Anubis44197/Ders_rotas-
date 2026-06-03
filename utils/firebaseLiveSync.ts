@@ -79,6 +79,15 @@ const sectionRefs = Object.fromEntries(
 
 const lastPublishedSections = new Map<SectionId, string>();
 
+const rememberKnownSection = (sectionId: SectionId, value: SectionValue) => {
+  lastPublishedSections.set(sectionId, JSON.stringify(value));
+};
+
+const rememberKnownAppData = (appData: RemoteAppData) => {
+  const sections = splitRemoteAppData(toPlainJson(appData));
+  sectionIds.forEach((sectionId) => rememberKnownSection(sectionId, sections[sectionId]));
+};
+
 const toPlainJson = <T,>(value: T): T => JSON.parse(JSON.stringify(value, (_key, entry) => {
   if (typeof entry === 'function') return undefined;
   return entry;
@@ -177,7 +186,9 @@ export const startRemoteAppDataSync = async ({
     loadedSections.add(sectionId);
     if (snapshot.exists()) {
       const data = snapshot.data() as { value?: SectionValue; updatedAt?: { toDate?: () => Date } | string | null; updatedBy?: string | null };
-      sectionValues.set(sectionId, data.value ?? sectionDefaults[sectionId]);
+      const value = data.value ?? sectionDefaults[sectionId];
+      sectionValues.set(sectionId, value);
+      rememberKnownSection(sectionId, value);
       hasSplitState = true;
       latestUpdatedAt = parseUpdatedAt(data.updatedAt) || latestUpdatedAt;
       latestUpdatedBy = data.updatedBy || latestUpdatedBy;
@@ -196,6 +207,7 @@ export const startRemoteAppDataSync = async ({
       if (loadedSections.size === sectionIds.length) onRemoteMissing();
       return;
     }
+    rememberKnownAppData(data.appData);
     onRemoteData({
       appData: data.appData,
       updatedAt: parseUpdatedAt(data.updatedAt),
@@ -218,6 +230,7 @@ export const publishRemoteAppData = async (appData: RemoteAppData) => {
     lastPublishedSections.set(sectionId, serialized);
     return setDoc(sectionRefs[sectionId], {
       schemaVersion: 2,
+      syncVersion: 3,
       value: sections[sectionId],
       updatedAt: serverTimestamp(),
       updatedBy: user.uid,

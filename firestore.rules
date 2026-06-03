@@ -4,18 +4,16 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /families/ders-tak-main/state/current {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && request.resource.data.schemaVersion == 1
-        && request.resource.data.keys().hasOnly(['schemaVersion', 'appData', 'updatedAt', 'updatedBy']);
+      allow create, update: if false;
       allow delete: if false;
     }
 
     match /families/ders-tak-main/state/{sectionId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null
-        && sectionId in ['courses', 'tasks', 'performanceData', 'rewards', 'badges', 'curriculum', 'weeklySchedule', 'examRecords', 'compositeExamResults', 'examScheduleEntries', 'studyPlans', 'meta']
         && request.resource.data.schemaVersion == 2
-        && request.resource.data.keys().hasOnly(['schemaVersion', 'value', 'updatedAt', 'updatedBy']);
+        && request.resource.data.syncVersion == 3
+        && request.resource.data.keys().hasOnly(['schemaVersion', 'syncVersion', 'value', 'updatedAt', 'updatedBy']);
       allow delete: if false;
     }
   }
