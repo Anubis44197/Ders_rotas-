@@ -417,6 +417,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
     setAssignmentDuration('30');
     setAssignmentTaskTypeKey('study');
     setAssignmentQuestionCount('');
+    setAssignmentCourseName('');
     setAssignmentUnitName('');
     setAssignmentTopicName('');
   };
@@ -487,7 +488,8 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
     try {
       await addTask(basePayload);
       resetAssignmentForm();
-      setAssignmentMessage({ type: 'success', text: 'Görev çocuğun görev listesine eklendi.' });
+      setAssignmentMessage(null);
+      setIsTaskAssignmentOpen(false);
     } catch (error) {
       setAssignmentMessage({ type: 'error', text: error instanceof Error ? error.message : 'Görev eklenirken beklenmeyen bir hata oluştu.' });
     } finally {
