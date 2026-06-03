@@ -1,8 +1,0 @@
-{
-  "courses": [
-    { "id": "c-test-invalid", "name": "Matematik" }
-  ],
-  "tasks": [],
-  "badges": [],
-  "successPoints": 777
-}

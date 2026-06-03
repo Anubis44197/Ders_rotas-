@@ -10,7 +10,7 @@ Firebase project: ders-tak
 Firebase Hosting: https://ders-tak.web.app
 Firebase Console: https://console.firebase.google.com/project/ders-tak/overview
 Aktif yerel klasör: C:\Users\90535\Desktop\Ders_rotas-
-Aktif geliştirme dalı: codex-curriculum-panel-audit
+Aktif geliştirme dalı: main
 ```
 
 Başka bir IDE veya bilgisayarda kaldığımız yerden devam etmek için:
@@ -18,7 +18,7 @@ Başka bir IDE veya bilgisayarda kaldığımız yerden devam etmek için:
 ```bash
 git clone https://github.com/Anubis44197/Ders_rotas-.git
 cd Ders_rotas-
-git checkout codex-curriculum-panel-audit
+git checkout main
 npm install
 npm run dev:stable
 ```
@@ -203,15 +203,15 @@ Değişiklikleri kaydetmek için:
 git status
 git add <dosyalar>
 git commit -m "Kısa açıklama"
-git push origin codex-curriculum-panel-audit
+git push origin main
 ```
 
 Başka IDE'de devam ederken önce güncel dalı çek:
 
 ```bash
 git fetch origin
-git checkout codex-curriculum-panel-audit
-git pull origin codex-curriculum-panel-audit
+git checkout main
+git pull origin main
 npm install
 npm run dev:stable
 ```
