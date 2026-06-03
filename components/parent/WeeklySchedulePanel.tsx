@@ -3,6 +3,8 @@ import type { Course, CurriculumUnit, ScheduleDayWindow, SubjectCurriculum, Task
 import { Calendar, CheckCircle, ClipboardList, Clock, PlusCircle, Trash2, X } from '../icons';
 import ContextHelp from '../shared/ContextHelp';
 import {
+  formatTaskGoal,
+  getTaskDateKey,
   normalizeForLookup,
   taskTypeKeyToTaskType,
   type TaskTypeKey,
@@ -12,7 +14,9 @@ interface WeeklySchedulePanelProps {
   schedule: WeeklySchedule;
   courses: Course[];
   curriculum?: SubjectCurriculum;
+  tasks?: Task[];
   addTask?: (task: Omit<Task, 'id' | 'status'>) => Promise<Task>;
+  deleteTask?: (taskId: string) => void;
   onSave: (schedule: WeeklySchedule) => void;
   onAddExam?: () => void;
 }
@@ -50,6 +54,94 @@ const getCourseStyle = (courseName: string): string => {
     return 'border-teal-400/40 text-slate-900 dark:text-white bg-teal-500/10';
   }
   return 'border-blue-400/40 text-slate-900 dark:text-white bg-blue-500/10';
+};
+
+type CourseTaskVisual = {
+  row: string;
+  rail: string;
+  pill: string;
+  title: string;
+  detail: string;
+  meta: string;
+};
+
+const COURSE_TASK_VISUALS: Record<string, CourseTaskVisual> = {
+  matematik: {
+    row: 'border-indigo-400/28 bg-indigo-500/[0.14] shadow-[inset_0_1px_0_rgba(129,140,248,0.14)] hover:bg-indigo-500/[0.19]',
+    rail: 'border-indigo-300/60 bg-indigo-400 shadow-[0_0_18px_rgba(129,140,248,0.32)]',
+    pill: 'border-indigo-300/45 bg-indigo-400/18 text-indigo-100 dark:text-indigo-100',
+    title: 'text-indigo-50 dark:text-indigo-50',
+    detail: 'text-indigo-100/80 dark:text-indigo-100/80',
+    meta: 'text-indigo-100/85 dark:text-indigo-100/85',
+  },
+  turkce: {
+    row: 'border-emerald-400/28 bg-emerald-500/[0.13] shadow-[inset_0_1px_0_rgba(52,211,153,0.14)] hover:bg-emerald-500/[0.18]',
+    rail: 'border-emerald-300/60 bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.30)]',
+    pill: 'border-emerald-300/45 bg-emerald-400/18 text-emerald-100 dark:text-emerald-100',
+    title: 'text-emerald-50 dark:text-emerald-50',
+    detail: 'text-emerald-100/80 dark:text-emerald-100/80',
+    meta: 'text-emerald-100/85 dark:text-emerald-100/85',
+  },
+  fen: {
+    row: 'border-purple-400/28 bg-purple-500/[0.13] shadow-[inset_0_1px_0_rgba(192,132,252,0.14)] hover:bg-purple-500/[0.18]',
+    rail: 'border-purple-300/60 bg-purple-400 shadow-[0_0_18px_rgba(192,132,252,0.30)]',
+    pill: 'border-purple-300/45 bg-purple-400/18 text-purple-100 dark:text-purple-100',
+    title: 'text-purple-50 dark:text-purple-50',
+    detail: 'text-purple-100/80 dark:text-purple-100/80',
+    meta: 'text-purple-100/85 dark:text-purple-100/85',
+  },
+  inkilap: {
+    row: 'border-rose-400/28 bg-rose-500/[0.13] shadow-[inset_0_1px_0_rgba(251,113,133,0.14)] hover:bg-rose-500/[0.18]',
+    rail: 'border-rose-300/60 bg-rose-400 shadow-[0_0_18px_rgba(251,113,133,0.30)]',
+    pill: 'border-rose-300/45 bg-rose-400/18 text-rose-100 dark:text-rose-100',
+    title: 'text-rose-50 dark:text-rose-50',
+    detail: 'text-rose-100/80 dark:text-rose-100/80',
+    meta: 'text-rose-100/85 dark:text-rose-100/85',
+  },
+  din: {
+    row: 'border-amber-400/30 bg-amber-500/[0.13] shadow-[inset_0_1px_0_rgba(251,191,36,0.14)] hover:bg-amber-500/[0.18]',
+    rail: 'border-amber-300/60 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.30)]',
+    pill: 'border-amber-300/45 bg-amber-400/18 text-amber-100 dark:text-amber-100',
+    title: 'text-amber-50 dark:text-amber-50',
+    detail: 'text-amber-100/80 dark:text-amber-100/80',
+    meta: 'text-amber-100/85 dark:text-amber-100/85',
+  },
+  ingilizce: {
+    row: 'border-sky-400/30 bg-sky-500/[0.13] shadow-[inset_0_1px_0_rgba(56,189,248,0.14)] hover:bg-sky-500/[0.18]',
+    rail: 'border-sky-300/60 bg-sky-400 shadow-[0_0_18px_rgba(56,189,248,0.30)]',
+    pill: 'border-sky-300/45 bg-sky-400/18 text-sky-100 dark:text-sky-100',
+    title: 'text-sky-50 dark:text-sky-50',
+    detail: 'text-sky-100/80 dark:text-sky-100/80',
+    meta: 'text-sky-100/85 dark:text-sky-100/85',
+  },
+  paragraf: {
+    row: 'border-teal-400/30 bg-teal-500/[0.13] shadow-[inset_0_1px_0_rgba(45,212,191,0.14)] hover:bg-teal-500/[0.18]',
+    rail: 'border-teal-300/60 bg-teal-400 shadow-[0_0_18px_rgba(45,212,191,0.30)]',
+    pill: 'border-teal-300/45 bg-teal-400/18 text-teal-100 dark:text-teal-100',
+    title: 'text-teal-50 dark:text-teal-50',
+    detail: 'text-teal-100/80 dark:text-teal-100/80',
+    meta: 'text-teal-100/85 dark:text-teal-100/85',
+  },
+  default: {
+    row: 'border-blue-400/30 bg-blue-500/[0.13] shadow-[inset_0_1px_0_rgba(96,165,250,0.14)] hover:bg-blue-500/[0.18]',
+    rail: 'border-blue-300/60 bg-blue-400 shadow-[0_0_18px_rgba(96,165,250,0.30)]',
+    pill: 'border-blue-300/45 bg-blue-400/18 text-blue-100 dark:text-blue-100',
+    title: 'text-blue-50 dark:text-blue-50',
+    detail: 'text-blue-100/80 dark:text-blue-100/80',
+    meta: 'text-blue-100/85 dark:text-blue-100/85',
+  },
+};
+
+const getCourseTaskVisual = (courseName: string): CourseTaskVisual => {
+  const name = (courseName || '').trim().toLocaleLowerCase('tr-TR');
+  if (name.includes('matematik')) return COURSE_TASK_VISUALS.matematik;
+  if (name.includes('turkce') || name.includes('türkçe')) return COURSE_TASK_VISUALS.turkce;
+  if (name.includes('fen')) return COURSE_TASK_VISUALS.fen;
+  if (name.includes('inkilap') || name.includes('inkılap') || name.includes('tarih')) return COURSE_TASK_VISUALS.inkilap;
+  if (name.includes('din') || name.includes('ahlak')) return COURSE_TASK_VISUALS.din;
+  if (name.includes('ingilizce') || name.includes('english')) return COURSE_TASK_VISUALS.ingilizce;
+  if (name.includes('paragraf')) return COURSE_TASK_VISUALS.paragraf;
+  return COURSE_TASK_VISUALS.default;
 };
 
 const createEmptyDay = () => ({
@@ -94,9 +186,10 @@ const dayHasChanges = (left: WeeklySchedule[string] | string | undefined, right:
   return JSON.stringify(leftDay) !== JSON.stringify(rightDay);
 };
 
-const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, courses, curriculum, addTask, onSave, onAddExam }) => {
+const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, courses, curriculum, tasks, addTask, deleteTask, onSave, onAddExam }) => {
   const safeSchedule = useMemo(() => schedule || ({} as WeeklySchedule), [schedule]);
   const safeCourses = useMemo(() => (Array.isArray(courses) ? courses : []), [courses]);
+  const safeTasks = useMemo(() => (Array.isArray(tasks) ? tasks : []), [tasks]);
   const [draft, setDraft] = useState<WeeklySchedule>(safeSchedule);
   const [saved, setSaved] = useState(false);
   const [showEditorPreview, setShowEditorPreview] = useState(false);
@@ -120,6 +213,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
   const [assignmentTaskTypeKey, setAssignmentTaskTypeKey] = useState<TaskTypeKey>('study');
   const [assignmentQuestionCount, setAssignmentQuestionCount] = useState('');
   const [assignmentMessage, setAssignmentMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [assignmentToast, setAssignmentToast] = useState<string | null>(null);
   const [isAssigningTask, setIsAssigningTask] = useState(false);
   const [schoolCurriculumSlot, setSchoolCurriculumSlot] = useState<{ day: string; slotId: string } | null>(null);
   const [schoolUnitName, setSchoolUnitName] = useState('');
@@ -129,6 +223,12 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
   useEffect(() => {
     setDraft(safeSchedule);
   }, [safeSchedule]);
+
+  useEffect(() => {
+    if (!assignmentToast) return;
+    const timeoutId = window.setTimeout(() => setAssignmentToast(null), 3200);
+    return () => window.clearTimeout(timeoutId);
+  }, [assignmentToast]);
 
   useEffect(() => {
     const activeCourses = safeCourses.filter((course) => course.active !== false);
@@ -141,7 +241,20 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
   }, [safeCourses, selectedCourseName]);
 
   const activeCourses = useMemo(() => safeCourses.filter((course) => course.active !== false), [safeCourses]);
+  const courseNameById = useMemo(() => new Map(safeCourses.map((course) => [course.id, course.name])), [safeCourses]);
   const activeCourseNameSet = useMemo(() => new Set(activeCourses.map((course) => normalizeForLookup(course.name))), [activeCourses]);
+  const assignedTasks = useMemo(
+    () => safeTasks
+      .filter((task) => task.status === 'bekliyor' && !task.isSelfAssigned)
+      .sort((left, right) => {
+        const leftCreated = left.createdAt || left.id || '';
+        const rightCreated = right.createdAt || right.id || '';
+        const createdDiff = rightCreated.localeCompare(leftCreated);
+        if (createdDiff !== 0) return createdDiff;
+        return getTaskDateKey(right.dueDate).localeCompare(getTaskDateKey(left.dueDate));
+      }),
+    [safeTasks],
+  );
   const assignmentSubjectOptions = useMemo(() => {
     const curriculumSubjects = Object.keys(curriculum || {})
       .filter((subject) => activeCourseNameSet.has(normalizeForLookup(subject)))
@@ -490,8 +603,39 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       resetAssignmentForm();
       setAssignmentMessage(null);
       setIsTaskAssignmentOpen(false);
+      setAssignmentToast('G\u00f6rev atand\u0131. \u00c7ocuk panelinde bekleyen g\u00f6rev olarak g\u00f6r\u00fcnecek.');
     } catch (error) {
       setAssignmentMessage({ type: 'error', text: error instanceof Error ? error.message : 'Görev eklenirken beklenmeyen bir hata oluştu.' });
+    } finally {
+      setIsAssigningTask(false);
+    }
+  };
+
+
+  const handleRepeatAssignedTask = async (task: Task) => {
+    if (!addTask || isAssigningTask) return;
+
+    setIsAssigningTask(true);
+    try {
+      await addTask({
+        title: task.title,
+        dueDate: getTodayDateInput(),
+        courseId: task.courseId,
+        taskType: task.taskType,
+        plannedDuration: task.plannedDuration,
+        ...(typeof task.questionCount === 'number' && task.questionCount > 0 ? { questionCount: task.questionCount } : {}),
+        ...(task.curriculumUnitName ? { curriculumUnitName: task.curriculumUnitName } : {}),
+        ...(task.curriculumTopicName ? { curriculumTopicName: task.curriculumTopicName } : {}),
+        ...(task.taskGoalType ? { taskGoalType: task.taskGoalType } : {}),
+        ...(task.selectedMetrics?.length ? { selectedMetrics: task.selectedMetrics, metricTargetScore: task.metricTargetScore } : {}),
+        ...(typeof task.targetAccuracy === 'number' ? { targetAccuracy: task.targetAccuracy } : {}),
+        ...(typeof task.targetFocus === 'number' ? { targetFocus: task.targetFocus } : {}),
+        ...(typeof task.minimumDuration === 'number' ? { minimumDuration: task.minimumDuration } : {}),
+        planSource: 'manual' as const,
+      });
+      setAssignmentToast('G\u00f6rev tekrarland\u0131. Yeni kopya listenin en \u00fcst\u00fcnde.');
+    } catch (error) {
+      setAssignmentToast(error instanceof Error ? error.message : 'G\u00f6rev tekrarlanamad\u0131.');
     } finally {
       setIsAssigningTask(false);
     }
@@ -554,19 +698,89 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
         </div>
       </div>
 
-      <div className="hidden">
-        <div className="dr-compact-card border border-white/10 bg-white/5">
-          <div className="text-xs font-bold uppercase text-slate-500">Okul bloğu</div>
-          <div className="mt-1 text-2xl font-black text-slate-900">{totalSchoolBlocks}</div>
+      {assignmentToast && (
+        <div className="mt-4 flex items-start gap-3 rounded-[22px] border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-emerald-700 shadow-[0_18px_42px_rgba(16,185,129,0.16)] dark:text-emerald-200" role="status" aria-live="polite">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/30">
+            <CheckCircle className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <div className="text-base font-black text-[var(--dr-text-primary)]">{'G\u00f6rev atand\u0131'}</div>
+            <div className="mt-0.5 text-sm font-semibold text-[var(--dr-text-secondary)]">{assignmentToast}</div>
+          </div>
         </div>
-        <div className="dr-compact-card border border-white/10 bg-white/5">
-          <div className="text-xs font-bold uppercase text-slate-500">Çalışma zamanı</div>
-          <div className="mt-1 text-2xl font-black text-slate-900">{totalStudyWindows}</div>
+      )}
+
+      <div className="mt-4 rounded-[22px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/35 p-3 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[var(--dr-orange)]">
+              <ClipboardList className="h-4 w-4" />
+              {'Atanan g\u00f6revler'}
+            </div>
+            <h3 className="mt-1 text-base font-black text-[var(--dr-text-primary)]">{'Veli g\u00f6rev takibi'}</h3>
+          </div>
+          <span className="self-start rounded-full border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/70 px-3 py-1.5 text-xs font-black text-[var(--dr-text-primary)]">
+            {assignedTasks.length} bekleyen
+          </span>
         </div>
-        <div className="dr-compact-card border border-white/10 bg-white/5">
-          <div className="text-xs font-bold uppercase text-slate-500">Onaylı gün</div>
-          <div className="mt-1 text-2xl font-black text-slate-900">{confirmedDayCount}</div>
-        </div>
+
+        {assignedTasks.length === 0 ? (
+          <div className="mt-3 rounded-[16px] border border-dashed border-[var(--dr-std-border-strong)]/20 bg-[var(--dr-surface)]/30 px-4 py-4 text-sm font-semibold text-[var(--dr-text-secondary)]">
+            {'Hen\u00fcz veli taraf\u0131ndan atanm\u0131\u015f bekleyen g\u00f6rev yok.'}
+          </div>
+        ) : (
+          <div className="dr-modal-scroll mt-3 max-h-[28rem] space-y-2 overflow-y-auto pr-1">
+            {assignedTasks.map((task) => {
+              const courseName = courseNameById.get(task.courseId) || 'Ders bilgisi yok';
+              const courseVisual = getCourseTaskVisual(courseName);
+              const taskDetail = [
+                task.curriculumUnitName,
+                task.curriculumTopicName,
+                task.taskGoalType ? formatTaskGoal(task.taskGoalType) : '',
+                task.questionCount ? String(task.questionCount) + ' soru' : '',
+              ].filter(Boolean).join(' / ');
+
+              return (
+                <article key={task.id} className={['group flex min-h-[4.75rem] items-center gap-3 rounded-[16px] border px-3 py-2.5 transition-colors', courseVisual.row].join(' ')}>
+                  <div className={['h-11 w-1.5 shrink-0 rounded-full border', courseVisual.rail].join(' ')} aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <div className={['flex flex-wrap items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.11em]', courseVisual.meta].join(' ')}>
+                      <span className={['max-w-[13rem] truncate rounded-full border px-2 py-0.5', courseVisual.pill].join(' ')}>{courseName}</span>
+                      <span>{getTaskDateKey(task.dueDate)}</span>
+                      <span>{task.plannedDuration} dk</span>
+                    </div>
+                    <h4 className={['mt-1 truncate text-sm font-black', courseVisual.title].join(' ')}>{task.title}</h4>
+                    <p className={['mt-0.5 truncate text-xs font-semibold', courseVisual.detail].join(' ')}>{taskDetail || 'Detay eklenmedi'}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleRepeatAssignedTask(task)}
+                      disabled={!addTask || isAssigningTask}
+                      className="ios-button inline-flex h-9 items-center justify-center gap-1.5 rounded-[12px] px-2.5 text-xs font-black text-[var(--dr-text-primary)] transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label={task.title + ' g\u00f6revini tekrarla'}
+                      title={'G\u00f6revi tekrarla'}
+                    >
+                      <PlusCircle className="h-3.5 w-3.5 text-[var(--dr-orange)]" />
+                      {'Tekrarla'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteTask?.(task.id)}
+                      disabled={!deleteTask}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[12px] border border-rose-400/25 bg-rose-500/10 px-2.5 text-xs font-black text-rose-500 transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label={task.title + ' g\u00f6revini sil'}
+                      title={'G\u00f6revi sil'}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {'Sil'}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="hidden">
@@ -1000,7 +1214,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
 
       {isTaskAssignmentOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl" onClick={closeTaskAssignment}>
-          <form className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl" onSubmit={handleAssignTask} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Çocuğa görev ata">
+          <form className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-full max-w-[34rem] min-w-0 flex-col overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl" onSubmit={handleAssignTask} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Çocuğa görev ata">
             <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-[var(--dr-std-border-strong)]/15 p-4 bg-[var(--dr-surface)]/20">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">
@@ -1015,15 +1229,15 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
               </button>
             </div>
 
-            <div className="dr-modal-scroll dr-compact-modal-body flex-1 overflow-y-auto p-4 bg-[var(--dr-surface)]/20">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Ders<select value={assignmentCourseName} onChange={(event) => { setAssignmentCourseName(event.target.value); setAssignmentUnitName(''); setAssignmentTopicName(''); setAssignmentMessage(null); }} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"><option value="">Ders seç</option>{assignmentSubjectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Görev tipi<select value={assignmentTaskTypeKey} onChange={(event) => setAssignmentTaskTypeKey(event.target.value as TaskTypeKey)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"><option value="study">Ders çalışma</option><option value="revision">Konu tekrarı</option><option value="question">Soru çözme</option><option value="branch-exam">Branş deneme (ders bazlı)</option><option value="general-exam">Genel deneme sınavı</option></select></label>
-                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Ünite<select value={assignmentUnitName} onChange={(event) => { setAssignmentUnitName(event.target.value); setAssignmentTopicName(''); setAssignmentMessage(null); }} disabled={!assignmentUnits.length} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Ünite seç</option>{assignmentUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select></label>
-                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Konu<select value={assignmentTopicName} onChange={(event) => { setAssignmentTopicName(event.target.value); setAssignmentMessage(null); }} disabled={!assignmentTopics.length} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Konu seç</option>{assignmentTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}</select></label>
-                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Teslim tarihi<input type="date" value={assignmentDueDate} onChange={(event) => setAssignmentDueDate(event.target.value)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
-                <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Süre (dk)<input type="number" min="5" step="5" value={assignmentDuration} onChange={(event) => setAssignmentDuration(event.target.value)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
-                {(assignmentTaskTypeKey === 'question' || assignmentTaskTypeKey === 'branch-exam') && <label className="text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300 sm:col-span-2">Soru sayısı<input type="number" min="1" value={assignmentQuestionCount} onChange={(event) => setAssignmentQuestionCount(event.target.value)} className="dr-form-field mt-1.5 w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>}
+            <div className="dr-modal-scroll dr-compact-modal-body min-w-0 flex-1 overflow-y-auto p-4 bg-[var(--dr-surface)]/20">
+              <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Ders<select value={assignmentCourseName} onChange={(event) => { setAssignmentCourseName(event.target.value); setAssignmentUnitName(''); setAssignmentTopicName(''); setAssignmentMessage(null); }} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"><option value="">Ders seç</option>{assignmentSubjectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Görev tipi<select value={assignmentTaskTypeKey} onChange={(event) => setAssignmentTaskTypeKey(event.target.value as TaskTypeKey)} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none"><option value="study">Ders çalışma</option><option value="revision">Konu tekrarı</option><option value="question">Soru çözme</option><option value="branch-exam">Branş deneme (ders bazlı)</option><option value="general-exam">Genel deneme sınavı</option></select></label>
+                <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Ünite<select value={assignmentUnitName} onChange={(event) => { setAssignmentUnitName(event.target.value); setAssignmentTopicName(''); setAssignmentMessage(null); }} disabled={!assignmentUnits.length} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Ünite seç</option>{assignmentUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select></label>
+                <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Konu<select value={assignmentTopicName} onChange={(event) => { setAssignmentTopicName(event.target.value); setAssignmentMessage(null); }} disabled={!assignmentTopics.length} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Konu seç</option>{assignmentTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}</select></label>
+                <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Teslim tarihi<input type="date" value={assignmentDueDate} onChange={(event) => setAssignmentDueDate(event.target.value)} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
+                <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Süre (dk)<input type="number" min="5" step="5" value={assignmentDuration} onChange={(event) => setAssignmentDuration(event.target.value)} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
+                {(assignmentTaskTypeKey === 'question' || assignmentTaskTypeKey === 'branch-exam') && <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300 sm:col-span-2">Soru sayısı<input type="number" min="1" value={assignmentQuestionCount} onChange={(event) => setAssignmentQuestionCount(event.target.value)} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>}
               </div>
 
               {assignmentUnits.length === 0 && assignmentCourseName && <div className="mt-3 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-300">Bu ders için müfredat ünitesi bulunamadı. Görev atamak için önce Müfredatı Düzenle ekranında ünite ve konu ekleyin.</div>}

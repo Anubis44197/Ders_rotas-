@@ -29,6 +29,7 @@ interface ParentPlanningWorkspaceProps {
   courses: Course[];
   tasks: Task[];
   addTask: (task: Omit<Task, 'id' | 'status'>) => Promise<Task>;
+  deleteTask: (taskId: string) => void;
   onChangeSchedule: (schedule: WeeklySchedule) => void;
   onChangeExamSchedules: React.Dispatch<React.SetStateAction<ExamScheduleEntry[]>>;
   onOpenCurriculumEditor: () => void;
@@ -53,6 +54,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
   courses,
   tasks,
   addTask,
+  deleteTask,
   onChangeSchedule,
   onChangeExamSchedules,
   onOpenCurriculumEditor,
@@ -220,7 +222,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         )}
       </section>
 
-      <WeeklySchedulePanel schedule={weeklySchedule} courses={safeCourses} curriculum={curriculum} addTask={addTask} onSave={onChangeSchedule} onAddExam={() => setIsExamModalOpen(true)} />
+      <WeeklySchedulePanel schedule={weeklySchedule} courses={safeCourses} curriculum={curriculum} tasks={tasks} addTask={addTask} deleteTask={deleteTask} onSave={onChangeSchedule} onAddExam={() => setIsExamModalOpen(true)} />
 
       {isExamModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl transition-all">

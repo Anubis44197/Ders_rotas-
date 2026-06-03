@@ -385,6 +385,7 @@ function useStickyState<T>(defaultValue: T, key: string, normalize?: (value: unk
 
   useEffect(() => {
     if (persistInIndexedDb && !idbHydrated) return;
+    if (persistInIndexedDb && isIdbHydrationPending(key, value)) return;
     if (isE2ESeedLockActive()) return;
     try {
       if (persistInIndexedDb) {
@@ -1146,10 +1147,13 @@ const seedInitialRealCurriculum = () => {
   const curriculumPayload = parseStorageJson('curriculum');
   const hasCourses = Array.isArray(coursesPayload) && coursesPayload.length > 0;
   const hasCurriculum = Boolean(
-    curriculumPayload
-    && typeof curriculumPayload === 'object'
-    && !Array.isArray(curriculumPayload)
-    && Object.keys(curriculumPayload).length > 0,
+    isIdbStorageMarker(curriculumPayload)
+    || (
+      curriculumPayload
+      && typeof curriculumPayload === 'object'
+      && !Array.isArray(curriculumPayload)
+      && Object.keys(curriculumPayload).length > 0
+    ),
   );
 
   const hasAllRealCourses = Array.isArray(coursesPayload) &&
@@ -1157,11 +1161,14 @@ const seedInitialRealCurriculum = () => {
       coursesPayload.some(c => normalizeLegacyDemoText(c?.name) === normalizeLegacyDemoText(realCourse.name))
     );
   const hasAllRealCurriculum = Boolean(
-    curriculumPayload
-    && typeof curriculumPayload === 'object'
-    && !Array.isArray(curriculumPayload)
-    && INITIAL_REAL_COURSES.every(realCourse =>
-      Object.keys(curriculumPayload).some(subj => normalizeLegacyDemoText(subj) === normalizeLegacyDemoText(realCourse.name))
+    isIdbStorageMarker(curriculumPayload)
+    || (
+      curriculumPayload
+      && typeof curriculumPayload === 'object'
+      && !Array.isArray(curriculumPayload)
+      && INITIAL_REAL_COURSES.every(realCourse =>
+        Object.keys(curriculumPayload).some(subj => normalizeLegacyDemoText(subj) === normalizeLegacyDemoText(realCourse.name))
+      )
     )
   );
 
@@ -2396,6 +2403,8 @@ const App: React.FC = () => {
   const remoteApplyingRef = useRef(false);
   const remoteLastSerializedRef = useRef<string | null>(null);
   const remotePublishTimerRef = useRef<number | null>(null);
+  const remoteLocalDirtySerializedRef = useRef<string | null>(null);
+  const remotePublishInFlightRef = useRef(false);
   const topbarNotificationsRef = useRef<HTMLDivElement | null>(null);
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
   const topbarNotificationsPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -2583,13 +2592,21 @@ const App: React.FC = () => {
     }
 
     const validCourseIds = new Set(nextCourses.map((course) => course.id));
+    const courseIdByName = new Map(nextCourses.map((course) => [normalizeForLookup(course.name), course.id]));
     setTasks((prevTasks) => {
-      const nextTasks = prevTasks.filter((task) => validCourseIds.has(task.courseId));
-      return nextTasks.length === prevTasks.length ? prevTasks : nextTasks;
+      const nextTasks = prevTasks.map((task) => {
+        if (validCourseIds.has(task.courseId)) return task;
+        const titleCourseName = typeof task.title === 'string' ? task.title.split('/')[0]?.trim() : '';
+        const remappedCourseId = courseIdByName.get(normalizeForLookup(titleCourseName || ''));
+        return remappedCourseId ? { ...task, courseId: remappedCourseId } : task;
+      });
+      return JSON.stringify(nextTasks) === JSON.stringify(prevTasks) ? prevTasks : nextTasks;
     });
     setPerformanceData((prevPerformance) => {
-      const nextPerformance = prevPerformance.filter((item) => validCourseIds.has(item.courseId));
-      return nextPerformance.length === prevPerformance.length ? prevPerformance : nextPerformance;
+      const nextPerformance = prevPerformance.map((item) => (
+        validCourseIds.has(item.courseId) ? item : item
+      ));
+      return JSON.stringify(nextPerformance) === JSON.stringify(prevPerformance) ? prevPerformance : nextPerformance;
     });
 
     const validSubjectKeys = new Set(subjectNames.map((name) => normalizeForLookup(name)));
@@ -2683,6 +2700,16 @@ const App: React.FC = () => {
       onRemoteData: ({ appData }) => {
         if (cancelled) return;
         const serialized = JSON.stringify(appData);
+        const localDirtySerialized = remoteLocalDirtySerializedRef.current;
+        if (localDirtySerialized) {
+          remoteHydratedRef.current = true;
+          if (serialized === localDirtySerialized) {
+            remoteLastSerializedRef.current = serialized;
+            remoteLocalDirtySerializedRef.current = null;
+            remotePublishInFlightRef.current = false;
+          }
+          return;
+        }
         if (serialized === remoteLastSerializedRef.current) {
           remoteHydratedRef.current = true;
           return;
@@ -2718,15 +2745,23 @@ const App: React.FC = () => {
     const serialized = JSON.stringify(remoteAppData);
     if (serialized === remoteLastSerializedRef.current) return;
 
+    remoteLocalDirtySerializedRef.current = serialized;
     if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
     remotePublishTimerRef.current = window.setTimeout(() => {
+      remotePublishInFlightRef.current = true;
       void publishRemoteAppData(remoteAppData)
         .then(() => {
           remoteLastSerializedRef.current = serialized;
+          if (remoteLocalDirtySerializedRef.current === serialized) {
+            remoteLocalDirtySerializedRef.current = null;
+          }
         })
         .catch((error) => {
           console.error('Firebase live publish error:', error);
           addToast('Canli veri Firebasee yazilamadi.', 'error');
+        })
+        .finally(() => {
+          remotePublishInFlightRef.current = false;
         });
     }, 1000);
   }, [addToast, isE2EMode, remoteAppData]);
@@ -3057,7 +3092,9 @@ const App: React.FC = () => {
       ...task,
       id: createId('task'),
       status: 'bekliyor',
+      createdAt: new Date().toISOString(),
     };
+    const nextTasks = [newTask, ...tasksRef.current];
     setTasks((prev) => {
       if (task.planTaskId) {
         const duplicate = prev.find((item) => item.planTaskId === task.planTaskId);
@@ -3065,7 +3102,10 @@ const App: React.FC = () => {
       }
       return [newTask, ...prev];
     });
-    tasksRef.current = [newTask, ...tasksRef.current];
+    tasksRef.current = nextTasks;
+    void writeIndexedDbValue('tasks', nextTasks).catch((error) => {
+      console.error('Error immediately persisting assigned task:', error);
+    });
     return newTask;
   };
 
@@ -3129,7 +3169,12 @@ const App: React.FC = () => {
     if (!taskToDelete) return;
     const previousIndex = tasks.findIndex((task) => task.id === taskId);
     const previousPlans = studyPlans;
+    const nextTasks = tasksRef.current.filter((task) => task.id !== taskId);
     setTasks((prev) => prev.filter((task) => task.id !== taskId));
+    tasksRef.current = nextTasks;
+    void writeIndexedDbValue('tasks', nextTasks).catch((error) => {
+      console.error('Error immediately persisting deleted task:', error);
+    });
 
     if (taskToDelete?.planTaskId) {
       setStudyPlans((prevPlans) => {
@@ -4788,6 +4833,7 @@ const App: React.FC = () => {
             courses={courses}
             tasks={tasks}
             addTask={addTask}
+            deleteTask={deleteTask}
             onChangeSchedule={setWeeklySchedule}
             onChangeExamSchedules={setExamScheduleEntries}
             onOpenCurriculumEditor={() => setCurriculumEditorOpen(true)}
