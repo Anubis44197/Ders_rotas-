@@ -131,6 +131,7 @@ interface ParentOverviewWorkspaceProps {
     courseName: string;
     color: string;
     points: number[];
+    labels?: string[];
   }>;
   overviewStudyPeriod: 'week1' | 'week3' | 'month' | 'quarter' | 'total';
   onOverviewStudyPeriodChange: (period: 'week1' | 'week3' | 'month' | 'quarter' | 'total') => void;
@@ -504,13 +505,16 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       .filter((series) => series && typeof series.courseName === 'string')
       .map((series, index) => {
         const safePointsRaw = Array.isArray(series.points) ? series.points : [];
-        const safePoints = [0, 1, 2, 3].map((pointIndex) => {
-          const value = safePointsRaw[pointIndex];
-          return Number.isFinite(value) ? Math.max(0, Math.min(100, Number(value))) : 0;
-        });
+        const safePoints = safePointsRaw.length > 0
+          ? safePointsRaw.map((value) => (Number.isFinite(value) ? Math.max(0, Math.min(100, Number(value))) : 0))
+          : [0];
+        const labels = Array.isArray(series.labels) && series.labels.length === safePoints.length
+          ? series.labels
+          : safePoints.map((_, pointIndex) => `${pointIndex + 1}`);
         return {
           courseName: series.courseName || `Ders ${index + 1}`,
           color: series.color || '#64748B',
+          labels,
           points: safePoints,
         };
       }),
@@ -541,12 +545,13 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     }
     if (reportCardTab === 'time') {
       if (normalizedReportSeries.length === 0) return [];
-      const points = [0, 1, 2, 3].map((idx) => {
+      const pointCount = Math.max(...normalizedReportSeries.map((series) => series.points.length), 1);
+      const points = Array.from({ length: pointCount }, (_, idx) => {
         const valid = normalizedReportSeries.map((series) => series.points[idx]).filter((value) => typeof value === 'number');
         if (!valid.length) return 0;
         return Math.round(valid.reduce((sum, value) => sum + value, 0) / valid.length);
       });
-      return [{ courseName: 'Toplam', color: '#0EA5E9', points }];
+      return [{ courseName: 'Toplam', color: '#0EA5E9', labels: normalizedReportSeries[0]?.labels || [], points }];
     }
     return normalizedReportSeries;
   }, [normalizedReportSeries, reportCardTab]);
@@ -555,18 +560,44 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       .filter((series) => series && typeof series.courseName === 'string')
       .map((series, index) => {
         const rawPoints = Array.isArray(series.points) ? series.points : [];
-        const points = [0, 1, 2, 3].map((pointIndex) => {
-          const value = rawPoints[pointIndex];
-          return Number.isFinite(value) ? Math.max(0, Math.min(100, Number(value))) : 0;
-        });
+        const points = rawPoints.length > 0
+          ? rawPoints.map((value) => (Number.isFinite(value) ? Math.max(0, Math.min(100, Number(value))) : 0))
+          : [0];
+        const labels = Array.isArray(series.labels) && series.labels.length === points.length
+          ? series.labels
+          : points.map((_, pointIndex) => `${pointIndex + 1}`);
         return {
           courseName: series.courseName || `Seri ${index + 1}`,
           color: series.color || '#64748B',
+          labels,
           points,
         };
       }),
     [reportSeriesForChart],
   );
+  const reportPointLabels = useMemo(
+    () => safeReportSeriesForChart[0]?.labels?.length
+      ? safeReportSeriesForChart[0].labels
+      : safeReportSeriesForChart[0]?.points.map((_, index) => `${index + 1}`) || [],
+    [safeReportSeriesForChart],
+  );
+  const reportPeriodWindowLabel = overviewStudyPeriod === 'week1'
+    ? 'Son 7 gun'
+    : overviewStudyPeriod === 'week3'
+      ? 'Son 3 hafta'
+      : overviewStudyPeriod === 'month'
+        ? 'Son 1 ay'
+        : overviewStudyPeriod === 'quarter'
+          ? 'Son 3 ay'
+          : 'Tum veri';
+  const getReportXs = (count: number) => {
+    const safeCount = Math.max(1, count);
+    if (safeCount === 1) return [310];
+    return Array.from({ length: safeCount }, (_, index) => 60 + (index * (520 / (safeCount - 1))));
+  };
+  const buildReportPath = (xs: number[], ys: number[]) => xs
+    .map((x, index) => `${index === 0 ? 'M' : 'L'} ${x} ${ys[index]}`)
+    .join(' ');
   const courseReportSeriesForChart = useMemo(
     () => normalizedReportSeries.filter((series) => courseCards.some((course) => course.courseName === series.courseName)),
     [courseCards, normalizedReportSeries],
@@ -798,7 +829,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       return [
         {
           label: 'Rapor penceresi',
-          value: 'Son 4 hafta',
+          value: reportPeriodWindowLabel,
           hint: `${safeReportSeriesForChart[0]?.points?.length || 0} veri noktasi`,
         },
         {
@@ -1214,7 +1245,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Son 4 Haftalık Trend</div>
                 {selectedCourseTrend.length === 4 ? (
                   <div className="rounded-[18px] bg-[var(--dr-surface)]/80 border border-[var(--dr-std-border-strong)]/10 p-3 shadow-inner">
-                    <svg viewBox="0 0 520 180" className="h-44 w-full" role="img" aria-label="Son 4 haftalik ders trendi">
+                    <svg viewBox="0 0 520 180" className="h-44 w-full" role="img" aria-label="Secili periyot ders trendi">
                       <line x1="24" y1="146" x2="500" y2="146" stroke="var(--dr-border, #CBD5E1)" strokeWidth="1" />
                       <line x1="24" y1="116" x2="500" y2="116" stroke="var(--dr-border-subtle, #E2E8F0)" strokeWidth="1" />
                       <line x1="24" y1="86" x2="500" y2="86" stroke="var(--dr-border-subtle, #E2E8F0)" strokeWidth="1" />
@@ -1491,9 +1522,9 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                           </g>
                         ))}
                         {courseReportSeriesForChart.map((series, sIdx) => {
-                          const xs = [90, 250, 410, 570];
+                          const xs = getReportXs(series.points.length);
                           const ys = series.points.map((p) => 182 - Math.max(0, Math.min(100, p)) * 1.52);
-                          const path = `M ${xs[0]} ${ys[0]} C ${xs[0] + 45} ${ys[0]} ${xs[1] - 45} ${ys[1]} ${xs[1]} ${ys[1]} C ${xs[1] + 45} ${ys[1]} ${xs[2] - 45} ${ys[2]} ${xs[2]} ${ys[2]} C ${xs[2] + 45} ${ys[2]} ${xs[3] - 45} ${ys[3]} ${xs[3]} ${ys[3]}`;
+                          const path = buildReportPath(xs, ys);
                           return (
                             <g key={`cseries-${series.courseName}-${sIdx}`}>
                               <path d={path} fill="none" stroke={series.color} strokeWidth="2.5" strokeLinecap="round" />
@@ -1501,9 +1532,10 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                             </g>
                           );
                         })}
-                        {['1. Hafta', '2. Hafta', '3. Hafta', '4. Hafta'].map((label, idx) => (
-                          <text key={`cxlabel-${label}`} x={[70, 230, 390, 550][idx]} y="206" className="fill-[var(--dr-text-secondary)] text-[11px]">{label}</text>
-                        ))}
+                        {reportPointLabels.map((label, idx) => {
+                          const xs = getReportXs(reportPointLabels.length);
+                          return <text key={`cxlabel-${label}-${idx}`} x={Math.max(30, xs[idx] - 22)} y="206" className="fill-[var(--dr-text-secondary)] text-[11px]">{label}</text>;
+                        })}
                       </svg>
                       <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
                         {courseReportSeriesForChart.map((series) => (
@@ -1514,7 +1546,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                         ))}
                       </div>
                       <div className="mt-2 text-xs font-semibold text-slate-500">
-                        Bu grafik, derslerin son 4 haftadaki gidiş yönünü gösterir.
+                        Bu grafik, derslerin secili periyottaki gidiş yönünü gösterir.
                       </div>
                     </>
                   ) : (
@@ -1583,9 +1615,9 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       </g>
                     ))}
                     {safeReportSeriesForChart.map((series, sIdx) => {
-                      const xs = [90, 250, 410, 570];
+                      const xs = getReportXs(series.points.length);
                       const ys = series.points.map((p) => 182 - Math.max(0, Math.min(100, p)) * 1.52);
-                      const path = `M ${xs[0]} ${ys[0]} C ${xs[0] + 45} ${ys[0]} ${xs[1] - 45} ${ys[1]} ${xs[1]} ${ys[1]} C ${xs[1] + 45} ${ys[1]} ${xs[2] - 45} ${ys[2]} ${xs[2]} ${ys[2]} C ${xs[2] + 45} ${ys[2]} ${xs[3] - 45} ${ys[3]} ${xs[3]} ${ys[3]}`;
+                      const path = buildReportPath(xs, ys);
                       return (
                         <g key={`gseries-${series.courseName}-${sIdx}`}>
                           <path d={path} fill="none" stroke={series.color} strokeWidth="2.5" strokeLinecap="round" />
@@ -1593,9 +1625,10 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                         </g>
                       );
                     })}
-                    {['1. Hafta', '2. Hafta', '3. Hafta', '4. Hafta'].map((label, idx) => (
-                      <text key={`xlabel-${label}`} x={[70, 230, 390, 550][idx]} y="206" className="fill-[var(--dr-text-secondary)] text-[11px]">{label}</text>
-                    ))}
+                    {reportPointLabels.map((label, idx) => {
+                      const xs = getReportXs(reportPointLabels.length);
+                      return <text key={`xlabel-${label}-${idx}`} x={Math.max(30, xs[idx] - 22)} y="206" className="fill-[var(--dr-text-secondary)] text-[11px]">{label}</text>;
+                    })}
                   </svg>
                   <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
                     {safeReportSeriesForChart.map((series) => (

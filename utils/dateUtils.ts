@@ -63,6 +63,21 @@ export const getDaysAgo = (days: number): Date => {
 export const getTodayString = (): string => {
   return getLocalDateString();
 };
+export const getLocalClockString = (timestamp?: number): string => {
+  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp <= 0) return '';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+};
+
+export const getTaskClockRangeLabel = (startTimestamp?: number, completionTimestamp?: number): string => {
+  const start = getLocalClockString(startTimestamp);
+  const end = getLocalClockString(completionTimestamp);
+  if (start && end) return `Ba\u015flad\u0131 ${start} \u00b7 Bitti ${end}`;
+  if (start) return `Ba\u015flad\u0131 ${start}`;
+  if (end) return `Bitti ${end}`;
+  return '';
+};
 export const addDays = (date: Date, days: number): Date => {
   const copy = new Date(date);
   copy.setDate(copy.getDate() + days);

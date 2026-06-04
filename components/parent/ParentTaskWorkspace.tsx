@@ -10,7 +10,7 @@ import {
   Task,
 } from '../../types';
 import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
-import { getTodayString } from '../../utils/dateUtils';
+import { getTaskClockRangeLabel, getTodayString } from '../../utils/dateUtils';
 import { ClipboardList, Download, MoreHorizontal, PlusCircle, Settings, Trash2, Upload, X } from '../icons';
 import ContextHelp from '../shared/ContextHelp';
 import VirtualScroll from '../shared/VirtualScroll';
@@ -499,6 +499,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
       .filter(({ field }) => typeof task[field] === 'number' && Number(task[field]) > 0)
       .map(({ key }) => key);
     const taskMetrics = Array.from(new Set([...normalizedSelectedMetrics, ...legacySelectedMetrics]));
+    const clockLabel = getTaskClockRangeLabel(task.startTimestamp, task.completionTimestamp);
 
     return (
       <div key={task.id} className={`ios-widget rounded-[20px] p-4 border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none transition-all active:scale-[0.98] ${isOverdue ? 'ios-coral' : ''}`}>
@@ -509,6 +510,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               <span>/</span>
               <span>{task.plannedDuration} dk</span>
               {typeof task.questionCount === 'number' && task.questionCount > 0 && <><span>/</span><span>{task.questionCount} soru</span></>}
+              {clockLabel && <span className="rounded-full border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/75 px-2.5 py-0.5 text-[var(--dr-text-primary)]">{clockLabel}</span>}
               <span>/</span>
               <span>{task.dueDate}</span>
               <span className="rounded-full bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/10 px-2.5 py-0.5 text-[var(--dr-text-secondary)]">{formatPlanSource(task.planSource, task.planLabel)}</span>

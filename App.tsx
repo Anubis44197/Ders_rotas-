@@ -3330,14 +3330,19 @@ const App: React.FC = () => {
     const attentionErrorCount = isQuestionTask(task)
       ? Math.max(0, data.attentionErrorCount ?? (hasExplicitErrorBreakdown ? 0 : emptyAnswers))
       : 0;
+    const completionTimestamp = Date.now();
+    const inferredStartTimestamp = data.actualDuration > 0
+      ? Math.max(0, completionTimestamp - data.actualDuration * 1000)
+      : completionTimestamp;
 
     const completedTask: Task = {
       ...task,
       status: 'tamamland\u0131',
       ...data,
       pagesRead: data.pagesRead,
+      startTimestamp: task.startTimestamp || inferredStartTimestamp,
       completionDate: today,
-      completionTimestamp: Date.now(),
+      completionTimestamp,
       correctCount: correctAnswers,
       incorrectCount: incorrectAnswers,
       emptyCount: emptyAnswers,
@@ -4348,6 +4353,8 @@ const App: React.FC = () => {
   }, [courses, curriculum, tasks]);
   const overviewReportSeries = useMemo(() => {
     const todayDate = new Date(`${today}T00:00:00`);
+    const dayMs = 86400000;
+    const toTaskDate = (value?: string) => (value ? new Date(`${value}T00:00:00`) : null);
     const startOfWeek = (date: Date) => {
       const copy = new Date(date);
       const day = copy.getDay();
@@ -4356,30 +4363,84 @@ const App: React.FC = () => {
       copy.setHours(0, 0, 0, 0);
       return copy;
     };
+    const formatBucketLabel = (start: Date, end: Date, index: number) => {
+      if (overviewStudyPeriod === 'week1') {
+        const diff = Math.round((todayDate.getTime() - start.getTime()) / dayMs);
+        return diff === 0 ? 'Bugun' : `G-${diff}`;
+      }
+      if (overviewStudyPeriod === 'total') return `${index + 1}. Aralik`;
+      if (overviewStudyPeriod === 'quarter') return `${index + 1}. Hf`;
+      return `${index + 1}. Hafta`;
+    };
+    const completedQuestionTasks = tasks
+      .filter((task) => isCompletedTask(task) && task.completionDate && isQuestionTask(task))
+      .map((task) => ({ task, date: toTaskDate(task.completionDate) }))
+      .filter((item): item is { task: Task; date: Date } => Boolean(item.date && item.date <= todayDate));
+
+    const makeBuckets = () => {
+      if (overviewStudyPeriod === 'week1') {
+        return Array.from({ length: 7 }, (_, index) => {
+          const start = new Date(todayDate);
+          start.setDate(start.getDate() - (6 - index));
+          const end = new Date(start);
+          return { start, end, label: formatBucketLabel(start, end, index) };
+        });
+      }
+
+      const weekCount = overviewStudyPeriod === 'week3'
+        ? 3
+        : overviewStudyPeriod === 'month'
+          ? 4
+          : overviewStudyPeriod === 'quarter'
+            ? 12
+            : 0;
+
+      if (weekCount > 0) {
+        return Array.from({ length: weekCount }, (_, index) => {
+          const start = startOfWeek(new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() - (weekCount - 1 - index) * 7));
+          const end = new Date(start);
+          end.setDate(end.getDate() + 6);
+          if (end > todayDate) end.setTime(todayDate.getTime());
+          return { start, end, label: formatBucketLabel(start, end, index) };
+        });
+      }
+
+      const firstDate = completedQuestionTasks.length > 0
+        ? new Date(Math.min(...completedQuestionTasks.map((item) => item.date.getTime())))
+        : new Date(todayDate);
+      const totalDays = Math.max(1, Math.floor((todayDate.getTime() - firstDate.getTime()) / dayMs) + 1);
+      const pointCount = Math.max(1, Math.min(12, Math.ceil(totalDays / 30)));
+      const bucketSize = Math.max(1, Math.ceil(totalDays / pointCount));
+      return Array.from({ length: pointCount }, (_, index) => {
+        const start = new Date(firstDate);
+        start.setDate(start.getDate() + index * bucketSize);
+        const end = new Date(start);
+        end.setDate(end.getDate() + bucketSize - 1);
+        if (end > todayDate) end.setTime(todayDate.getTime());
+        return { start, end, label: formatBucketLabel(start, end, index) };
+      });
+    };
+
+    const buckets = makeBuckets();
     const coursePalette = ['#2563EB', '#16A34A', '#7C3AED', '#F59E0B', '#06B6D4', '#EC4899', '#64748B'];
     const activeCourses = courses.filter((course) => course.active !== false);
     return activeCourses.slice(0, 6).map((course, idx) => {
-      const points = Array.from({ length: 4 }, (_, index) => {
-        const weekStart = startOfWeek(new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() - (3 - index) * 7));
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        const weekTasks = tasks.filter((task) => {
-          if (!isCompletedTask(task) || task.courseId !== course.id || !task.completionDate || !isQuestionTask(task)) return false;
-          const date = new Date(`${task.completionDate}T00:00:00`);
-          return date >= weekStart && date <= weekEnd;
-        });
-        const answered = weekTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
-        const correct = weekTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
-        const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
-        return accuracy;
+      const points = buckets.map((bucket) => {
+        const bucketTasks = completedQuestionTasks
+          .filter(({ task, date }) => task.courseId === course.id && date >= bucket.start && date <= bucket.end)
+          .map(({ task }) => task);
+        const answered = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
+        const correct = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
+        return answered > 0 ? Math.round((correct / answered) * 100) : 0;
       });
       return {
         courseName: repairedText(course.name),
         color: coursePalette[idx % coursePalette.length],
+        labels: buckets.map((bucket) => bucket.label),
         points,
       };
     });
-  }, [courses, tasks, today]);
+  }, [courses, overviewStudyPeriod, tasks, today]);
   const overviewUpcomingExam = useMemo(() => {
     return [...examScheduleEntries]
       .filter((exam) => exam.date >= today)

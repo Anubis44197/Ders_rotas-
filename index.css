@@ -4423,3 +4423,273 @@ button svg,
 .dr-theme-dark .dr-assigned-course-pill * {
   color: #0f172a !important;
 }
+
+/* Global velvet interaction system: shared Mac/iPhone-like depth without flattening existing colors. */
+.ios-card,
+.ios-panel,
+.ios-widget {
+  isolation: isolate;
+  border-color: rgba(160, 140, 108, 0.22) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.72),
+    0 18px 44px rgba(86,104,145,0.075) !important;
+}
+
+.dr-theme-dark .ios-card,
+.dr-theme-dark .ios-panel,
+.dr-theme-dark .ios-widget {
+  border-color: rgba(138, 180, 255, 0.16) !important;
+  background:
+    linear-gradient(145deg, rgba(16,22,39,0.78), rgba(8,13,25,0.68)),
+    rgba(12,17,31,0.66) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.045),
+    0 22px 54px rgba(0,0,0,0.26) !important;
+  backdrop-filter: blur(28px) saturate(1.22) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.22) !important;
+}
+
+.ios-button,
+.ios-button-active,
+button.ios-mint,
+button.ios-yellow,
+button.ios-blue,
+button.ios-lilac,
+button.ios-peach,
+button.ios-coral {
+  position: relative;
+  overflow: hidden;
+  border-width: 1px !important;
+  backdrop-filter: blur(20px) saturate(1.18) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.18) !important;
+  transition:
+    transform 160ms cubic-bezier(.2,.8,.2,1),
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    filter 160ms ease,
+    opacity 160ms ease !important;
+}
+
+.ios-button::before,
+.ios-button-active::before,
+button.ios-mint::before,
+button.ios-yellow::before,
+button.ios-blue::before,
+button.ios-lilac::before,
+button.ios-peach::before,
+button.ios-coral::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), transparent 42%);
+  opacity: 0.72;
+}
+
+.ios-button > *,
+.ios-button-active > *,
+button.ios-mint > *,
+button.ios-yellow > *,
+button.ios-blue > *,
+button.ios-lilac > *,
+button.ios-peach > *,
+button.ios-coral > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ios-button:hover,
+.ios-button-active:hover,
+button.ios-mint:hover,
+button.ios-yellow:hover,
+button.ios-blue:hover,
+button.ios-lilac:hover,
+button.ios-peach:hover,
+button.ios-coral:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.04) brightness(1.02);
+}
+
+.ios-button:active,
+.ios-button-active:active,
+button.ios-mint:active,
+button.ios-yellow:active,
+button.ios-blue:active,
+button.ios-lilac:active,
+button.ios-peach:active,
+button.ios-coral:active {
+  transform: scale(0.965) translateY(0);
+  filter: saturate(0.98) brightness(0.98);
+}
+
+.dr-theme-dark .ios-button {
+  background: linear-gradient(145deg, rgba(43,62,94,0.58), rgba(22,33,54,0.46)) !important;
+  border-color: rgba(138,180,255,0.18) !important;
+  color: #dbe6ff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 14px 28px rgba(0,0,0,0.18) !important;
+}
+
+.dr-theme-dark .ios-button:hover {
+  background: linear-gradient(145deg, rgba(55,78,116,0.64), rgba(28,42,68,0.52)) !important;
+  border-color: rgba(138,180,255,0.30) !important;
+}
+
+.ios-button-active {
+  background: linear-gradient(135deg, #ff6841, #e5523f) !important;
+  border-color: rgba(255,125,90,0.48) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    0 16px 32px rgba(255,79,24,0.20) !important;
+}
+
+.dr-theme-dark .ios-button-active {
+  background: linear-gradient(135deg, #ff6a46, #d65b47) !important;
+  border-color: rgba(255,142,108,0.42) !important;
+  color: #08111f !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.24),
+    0 18px 38px rgba(255,79,24,0.20) !important;
+}
+
+button.ios-yellow {
+  border-color: rgba(251,191,36,0.48) !important;
+  background: linear-gradient(135deg, rgba(254,240,138,0.94), rgba(245,158,11,0.72)) !important;
+  color: #422006 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.36), 0 14px 30px rgba(245,158,11,0.16) !important;
+}
+
+button.ios-mint {
+  border-color: rgba(94,234,212,0.44) !important;
+  background: linear-gradient(135deg, rgba(153,246,228,0.92), rgba(45,212,191,0.62)) !important;
+  color: #063b35 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 14px 30px rgba(45,212,191,0.15) !important;
+}
+
+button.ios-blue {
+  border-color: rgba(147,197,253,0.44) !important;
+  background: linear-gradient(135deg, rgba(191,219,254,0.92), rgba(96,165,250,0.64)) !important;
+  color: #082f5f !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 14px 30px rgba(96,165,250,0.15) !important;
+}
+
+button.ios-lilac {
+  border-color: rgba(196,181,253,0.48) !important;
+  background: linear-gradient(135deg, rgba(221,214,254,0.92), rgba(167,139,250,0.64)) !important;
+  color: #2e1065 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 14px 30px rgba(167,139,250,0.14) !important;
+}
+
+button.ios-peach,
+button.ios-coral {
+  border-color: rgba(255,142,108,0.46) !important;
+  background: linear-gradient(135deg, rgba(255,183,153,0.92), rgba(255,104,65,0.72)) !important;
+  color: #431407 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 14px 30px rgba(255,104,65,0.15) !important;
+}
+
+.dr-theme-dark button.ios-yellow,
+.dr-theme-dark button.ios-mint,
+.dr-theme-dark button.ios-blue,
+.dr-theme-dark button.ios-lilac,
+.dr-theme-dark button.ios-peach,
+.dr-theme-dark button.ios-coral {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.25),
+    0 18px 34px rgba(0,0,0,0.20) !important;
+}
+/* Velvet spread for bespoke cards that do not use ios-card/widget directly. */
+.dr-hig-primary-box,
+.dr-hig-secondary-card,
+.dr-planning-card,
+.dr-planning-metric,
+.dr-plan-action-bar,
+.dr-planning-empty,
+.dr-planning-exam-row,
+.dr-velvet-stat,
+.dr-curriculum-showcase-panel,
+.dr-curriculum-showcase-card,
+.dr-curriculum-topic-card,
+.dr-curriculum-status-box,
+.dr-curriculum-question-card,
+.dr-curriculum-progress-compare,
+.dr-curriculum-progress-row,
+.dr-analysis-score-card,
+.dr-briefing-score-card,
+.dr-school-slot-row,
+.dr-school-topic-option,
+.dr-context-menu,
+.dr-path-control,
+.dr-token-field {
+  isolation: isolate;
+  backdrop-filter: blur(24px) saturate(1.18) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.58),
+    0 16px 38px rgba(86,104,145,0.065) !important;
+  transition:
+    transform 160ms cubic-bezier(.2,.8,.2,1),
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    filter 160ms ease !important;
+}
+
+.dr-theme-dark .dr-hig-primary-box,
+.dr-theme-dark .dr-hig-secondary-card,
+.dr-theme-dark .dr-planning-card,
+.dr-theme-dark .dr-planning-metric,
+.dr-theme-dark .dr-plan-action-bar,
+.dr-theme-dark .dr-planning-empty,
+.dr-theme-dark .dr-planning-exam-row,
+.dr-theme-dark .dr-velvet-stat,
+.dr-theme-dark .dr-curriculum-showcase-panel,
+.dr-theme-dark .dr-curriculum-showcase-card,
+.dr-theme-dark .dr-curriculum-topic-card,
+.dr-theme-dark .dr-curriculum-status-box,
+.dr-theme-dark .dr-curriculum-question-card,
+.dr-theme-dark .dr-curriculum-progress-compare,
+.dr-theme-dark .dr-curriculum-progress-row,
+.dr-theme-dark .dr-analysis-score-card,
+.dr-theme-dark .dr-briefing-score-card,
+.dr-theme-dark .dr-school-slot-row,
+.dr-theme-dark .dr-school-topic-option,
+.dr-theme-dark .dr-context-menu,
+.dr-theme-dark .dr-path-control,
+.dr-theme-dark .dr-token-field {
+  border-color: rgba(138,180,255,0.16) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.045),
+    0 20px 48px rgba(0,0,0,0.22) !important;
+}
+
+.dr-hig-secondary-card:hover,
+.dr-planning-card:hover,
+.dr-planning-metric:hover,
+.dr-velvet-stat:hover,
+.dr-curriculum-showcase-card:hover,
+.dr-curriculum-topic-card:hover,
+.dr-curriculum-progress-row:hover,
+.dr-school-slot-row:hover,
+.dr-school-topic-option:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.03) brightness(1.01);
+}
+
+.dr-theme-dark .dr-hig-secondary-card:hover,
+.dr-theme-dark .dr-planning-card:hover,
+.dr-theme-dark .dr-planning-metric:hover,
+.dr-theme-dark .dr-velvet-stat:hover,
+.dr-theme-dark .dr-curriculum-showcase-card:hover,
+.dr-theme-dark .dr-curriculum-topic-card:hover,
+.dr-theme-dark .dr-curriculum-progress-row:hover,
+.dr-theme-dark .dr-school-slot-row:hover,
+.dr-theme-dark .dr-school-topic-option:hover {
+  border-color: rgba(138,180,255,0.26) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 24px 56px rgba(0,0,0,0.28) !important;
+}

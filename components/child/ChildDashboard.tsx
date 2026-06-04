@@ -4,7 +4,7 @@ import { ChildDashboardProps, Task, TaskFilter, ChildView, CurriculumUnit } from
 import ActiveTaskTimer from './ActiveTaskTimer';
 import ActiveReadingSession from './ActiveReadingSession';
 import { X, Trophy, PlusCircle, Play, Gift, BadgeCheck, Target, BarChart, Brain, BookMarked, Calendar, CheckCircle } from '../icons';
-import { getTodayString, getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
+import { getTodayString, getDaysAgo, getLocalDateString, getTaskClockRangeLabel } from '../../utils/dateUtils';
 import { deriveAnalysisSnapshot, type AnalysisSnapshot } from '../../utils/analysisEngine';
 import { isCompletedTask as isTaskCompleted } from '../../utils/taskStatus';
 import { getSolvedQuestionCount, isQuestionTask } from '../../utils/questionMetrics';
@@ -247,6 +247,7 @@ const TaskCard: React.FC<{
   }
 
   const isOverdue = !completed && getTaskDateKey(task.dueDate) < today;
+  const clockLabel = getTaskClockRangeLabel(task.startTimestamp, task.completionTimestamp);
   const isParentDecisionTask = task.planSource === 'manual' && ((task.planLabel || '').toLocaleLowerCase('tr-TR').includes('veli onerisi') || (task.description || '').toLocaleLowerCase('tr-TR').includes('ebeveyn karar ekranindan'));
 
   return (
@@ -272,6 +273,7 @@ const TaskCard: React.FC<{
             <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{task.plannedDuration} dk</span>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{task.dueDate}</span>
             {task.questionCount ? <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-700">{task.questionCount} soru</span> : null}
+            {clockLabel ? <span className="rounded-full bg-slate-950/5 px-3 py-1 text-slate-800 ring-1 ring-slate-950/10 dark:bg-white/12 dark:text-slate-50 dark:ring-white/15">{clockLabel}</span> : null}
             {task.curriculumUnitName ? <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">Ünite: {safeText(task.curriculumUnitName, 'Ünite')}</span> : null}
             {task.curriculumTopicName ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">Konu: {safeText(task.curriculumTopicName, 'Konu')}</span> : null}
             {task.taskGoalType ? <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Hedef: {safeGoalText(task.taskGoalType)}</span> : null}
