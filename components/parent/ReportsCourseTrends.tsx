@@ -1,9 +1,9 @@
-﻿import React from 'react';
-import { format } from 'date-fns';
+import React from 'react';
 import CoursePerformanceTrendChart from './CoursePerformanceTrendChart';
 import { Task, Course } from '../../types';
 import { type TimeFilterValue } from '../shared/TimeRangeFilter';
 import { isCompletedTask } from '../../utils/taskStatus';
+import { getLocalMonthKey, isDateKeyInRange, parseDate } from '../../utils/dateUtils';
 
 interface Props {
   tasks: Task[];
@@ -16,17 +16,16 @@ function aggregateCoursePerformance(tasks: Task[], courses: Course[], timeFilter
 
   const completed = tasks.filter((task) => {
     if (!isCompletedTask(task) || !(task.completionDate || task.dueDate)) return false;
-    const analysisDate = new Date(task.completionDate || task.dueDate!);
-    if (startDate && analysisDate < new Date(startDate)) return false;
-    if (endDate && analysisDate > new Date(endDate)) return false;
+    const analysisDateKey = task.completionDate || task.dueDate!;
+    if (!isDateKeyInRange(analysisDateKey, startDate, endDate)) return false;
     return typeof task.successScore === 'number' || typeof task.focusScore === 'number';
   });
 
   const result: Record<string, Record<string, { success: number; focus: number; count: number }>> = {};
 
   completed.forEach((task) => {
-    const analysisDate = new Date(task.completionDate || task.dueDate!);
-    const period = format(analysisDate, 'yyyy-MM');
+    const analysisDate = parseDate(task.completionDate || task.dueDate!);
+    const period = getLocalMonthKey(analysisDate);
     if (!task.courseId) return;
 
     result[task.courseId] ??= {};

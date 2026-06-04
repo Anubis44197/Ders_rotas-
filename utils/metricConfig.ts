@@ -1,4 +1,5 @@
 import { Task } from '../types';
+import { isQuestionTask } from './questionMetrics';
 
 export type TaskMetricProfile = 'question' | 'study' | 'revision' | 'reading';
 
@@ -77,7 +78,7 @@ export const DEFAULT_METRIC_CONFIG: MetricConfig = {
 };
 
 export const getTaskMetricProfile = (task: Task): TaskMetricProfile => {
-  if (task.taskType === 'soru çözme') return 'question';
+  if (isQuestionTask(task)) return 'question';
   if (task.taskType === 'kitap okuma') return 'reading';
   if (task.taskGoalType === 'konu-tekrari') return 'revision';
   return 'study';

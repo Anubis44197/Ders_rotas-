@@ -2,12 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { Course, ParentDashboardProps, ReportData, Task } from '../../types';
 import { AnalysisSnapshot } from '../../utils/analysisEngine';
 import { getTopicDecisionLevel, type ParentDecisionResult } from '../../utils/parentDecisionEngine';
-import { getTodayString } from '../../utils/dateUtils';
+import { addDays, getLocalDateString, getTodayString } from '../../utils/dateUtils';
 // AnalysisGraphCenter removed for O(1) performance optimization under heavy loads
 import { examTypeLabelMap } from './parentDashboardShared';
 import { AlertTriangle, BarChart, BookOpen, CheckCircle, ClipboardList, Clock, FileText, GraduationCap, PlusCircle, Target, TrendingUp } from '../icons';
 import ContextHelp from '../shared/ContextHelp';
 import { isCompletedTask } from '../../utils/taskStatus';
+import { getQuestionMetrics, getSolvedQuestionCount, isQuestionTask } from '../../utils/questionMetrics';
 
 const surface = 'dr-hig-secondary-card rounded-[30px] p-6';
 const subtleSurface = 'ios-widget rounded-[24px] p-5';
@@ -315,12 +316,8 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   const pendingCount = tasks.filter((task) => task.status === 'bekliyor').length;
   const completedCount = completedTasksForMetrics.length;
   const solvedQuestionCount = useMemo(() => completedTasksForMetrics
-    .filter((task) => task.taskType === 'soru çözme')
-    .reduce((sum, task) => {
-      const hasRecordedCounts = typeof task.correctCount === 'number' || typeof task.incorrectCount === 'number';
-      const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
-      return sum + (hasRecordedCounts ? answered : (task.questionCount || 0));
-    }, 0), [completedTasksForMetrics]);
+    .filter(isQuestionTask)
+    .reduce((sum, task) => sum + getSolvedQuestionCount(task), 0), [completedTasksForMetrics]);
   const studiedMinutes = useMemo(() => Math.round(completedTasksForMetrics
     .filter((task) => task.taskType !== 'kitap okuma')
     .reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0)), [completedTasksForMetrics]);
@@ -345,20 +342,14 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   }, [parentActionTasks]);
 
   const weeklyTasks = useMemo(() => {
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 7);
-    const weekStartYYYYMMDD = weekStart.toISOString().split('T')[0];
+    const weekStartYYYYMMDD = getLocalDateString(addDays(new Date(), -7));
     return completedTasksForMetrics.filter((task) => task.completionDate && task.completionDate >= weekStartYYYYMMDD);
   }, [completedTasksForMetrics]);
 
   const weeklyStats = useMemo(() => {
     const questionCount = weeklyTasks
-      .filter((task) => task.taskType === 'soru çözme')
-      .reduce((sum, task) => {
-        const hasRecordedCounts = typeof task.correctCount === 'number' || typeof task.incorrectCount === 'number';
-        const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
-        return sum + (hasRecordedCounts ? answered : (task.questionCount || 0));
-      }, 0);
+      .filter(isQuestionTask)
+    .reduce((sum, task) => sum + getSolvedQuestionCount(task), 0);
     const minutes = Math.round(
       weeklyTasks
         .filter((task) => task.taskType !== 'kitap okuma')
@@ -371,7 +362,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   const suspiciousTaskCount = useMemo(
     () =>
       completedTasksForMetrics.filter((task) => {
-        const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
+        const answered = getQuestionMetrics(task).answeredCount;
         const durationSec = task.actualDuration || 0;
         const longIdle = durationSec > 3 * 60 * 60 && answered < 10;
         const tooFastHighVolume = answered >= 100 && durationSec > 0 && durationSec < 120;
@@ -549,7 +540,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   const throughputInsight = useMemo(() => {
     const points: Array<{ duration: number; accuracy: number }> = [];
     analysis.sessions.forEach((session) => {
-      if (session.taskType === 'soru çözme' && typeof session.accuracyScore === 'number') {
+      if (isQuestionTask(session) && typeof session.accuracyScore === 'number') {
         const durationSec = taskDurationMap.get(session.taskId) || 0;
         const minutes = Math.max(1, Math.round(durationSec / 60));
         points.push({
@@ -658,7 +649,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
       || (
         task.courseId === courseId
         && task.dueDate === today
-        && task.taskType === 'soru çözme'
+        && isQuestionTask(task)
         && task.title.toLocaleLowerCase('tr-TR').includes('deneme sonrasi 15 soru')
         && task.status === 'bekliyor'
       ));
@@ -1070,7 +1061,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               <div className="text-center">
                 <span className="block text-[10px] font-black uppercase text-slate-400">Hedef Tarih</span>
                 <span className="block text-sm font-bold text-slate-700 mt-1">
-                  {lgsTargetDate ? lgsTargetDate.toISOString().slice(0, 10) : 'Girilmedi'}
+                  {lgsTargetDate ? getLocalDateString(lgsTargetDate) : 'Girilmedi'}
                 </span>
               </div>
             </div>

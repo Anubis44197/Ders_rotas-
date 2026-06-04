@@ -1,3 +1,4 @@
+import { getLocalDateString } from '../../utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Course, CurriculumUnit, ScheduleDayWindow, SubjectCurriculum, Task, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
 import { Calendar, CheckCircle, ClipboardList, Clock, PlusCircle, Trash2, X } from '../icons';
@@ -69,66 +70,66 @@ const COURSE_TASK_VISUALS: Record<string, CourseTaskVisual> = {
   matematik: {
     row: 'border-indigo-400/28 bg-indigo-500/[0.14] shadow-[inset_0_1px_0_rgba(129,140,248,0.14)] hover:bg-indigo-500/[0.19]',
     rail: 'border-indigo-300/60 bg-indigo-400 shadow-[0_0_18px_rgba(129,140,248,0.32)]',
-    pill: 'border-indigo-500/30 bg-indigo-100/80 text-indigo-800 dark:border-indigo-300/45 dark:bg-indigo-400/18 dark:text-indigo-100',
-    title: 'text-slate-950 dark:text-indigo-50',
-    detail: 'text-slate-700 dark:text-indigo-100/80',
-    meta: 'text-slate-600 dark:text-indigo-100/85',
+    pill: 'border-indigo-500/30 bg-indigo-100/80 text-indigo-800 dark:border-indigo-200/80 dark:bg-indigo-200/90 dark:text-slate-950',
+    title: 'text-slate-950 dark:text-white',
+    detail: 'text-slate-700 dark:text-slate-200',
+    meta: 'text-slate-600 dark:text-slate-200',
   },
   turkce: {
     row: 'border-emerald-400/28 bg-emerald-500/[0.13] shadow-[inset_0_1px_0_rgba(52,211,153,0.14)] hover:bg-emerald-500/[0.18]',
     rail: 'border-emerald-300/60 bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.30)]',
-    pill: 'border-emerald-500/30 bg-emerald-100/80 text-emerald-800 dark:border-emerald-300/45 dark:bg-emerald-400/18 dark:text-emerald-100',
-    title: 'text-slate-950 dark:text-emerald-50',
-    detail: 'text-slate-700 dark:text-emerald-100/80',
-    meta: 'text-slate-600 dark:text-emerald-100/85',
+    pill: 'border-emerald-500/30 bg-emerald-100/80 text-emerald-800 dark:border-emerald-200/80 dark:bg-emerald-200/90 dark:text-slate-950',
+    title: 'text-slate-950 dark:text-white',
+    detail: 'text-slate-700 dark:text-slate-200',
+    meta: 'text-slate-600 dark:text-slate-200',
   },
   fen: {
     row: 'border-purple-400/28 bg-purple-500/[0.13] shadow-[inset_0_1px_0_rgba(192,132,252,0.14)] hover:bg-purple-500/[0.18]',
     rail: 'border-purple-300/60 bg-purple-400 shadow-[0_0_18px_rgba(192,132,252,0.30)]',
-    pill: 'border-purple-500/30 bg-purple-100/80 text-purple-800 dark:border-purple-300/45 dark:bg-purple-400/18 dark:text-purple-100',
-    title: 'text-slate-950 dark:text-purple-50',
-    detail: 'text-slate-700 dark:text-purple-100/80',
-    meta: 'text-slate-600 dark:text-purple-100/85',
+    pill: 'border-purple-500/30 bg-purple-100/80 text-purple-800 dark:border-purple-200/80 dark:bg-purple-200/90 dark:text-slate-950',
+    title: 'text-slate-950 dark:text-white',
+    detail: 'text-slate-700 dark:text-slate-200',
+    meta: 'text-slate-600 dark:text-slate-200',
   },
   inkilap: {
     row: 'border-rose-400/28 bg-rose-500/[0.13] shadow-[inset_0_1px_0_rgba(251,113,133,0.14)] hover:bg-rose-500/[0.18]',
     rail: 'border-rose-300/60 bg-rose-400 shadow-[0_0_18px_rgba(251,113,133,0.30)]',
-    pill: 'border-rose-500/30 bg-rose-100/80 text-rose-800 dark:border-rose-300/45 dark:bg-rose-400/18 dark:text-rose-100',
-    title: 'text-slate-950 dark:text-rose-50',
-    detail: 'text-slate-700 dark:text-rose-100/80',
-    meta: 'text-slate-600 dark:text-rose-100/85',
+    pill: 'border-rose-500/30 bg-rose-100/80 text-rose-800 dark:border-rose-200/80 dark:bg-rose-200/90 dark:text-slate-950',
+    title: 'text-slate-950 dark:text-white',
+    detail: 'text-slate-700 dark:text-slate-200',
+    meta: 'text-slate-600 dark:text-slate-200',
   },
   din: {
     row: 'border-amber-400/30 bg-amber-500/[0.13] shadow-[inset_0_1px_0_rgba(251,191,36,0.14)] hover:bg-amber-500/[0.18]',
     rail: 'border-amber-300/60 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.30)]',
-    pill: 'border-amber-500/35 bg-amber-100/85 text-amber-900 dark:border-amber-300/45 dark:bg-amber-400/18 dark:text-amber-100',
-    title: 'text-slate-950 dark:text-amber-50',
-    detail: 'text-slate-700 dark:text-amber-100/80',
-    meta: 'text-slate-600 dark:text-amber-100/85',
+    pill: 'border-amber-500/35 bg-amber-100/85 text-amber-900 dark:border-amber-200/80 dark:bg-amber-200/90 dark:text-slate-950',
+    title: 'text-slate-950 dark:text-white',
+    detail: 'text-slate-700 dark:text-slate-200',
+    meta: 'text-slate-600 dark:text-slate-200',
   },
   ingilizce: {
     row: 'border-sky-400/30 bg-sky-500/[0.13] shadow-[inset_0_1px_0_rgba(56,189,248,0.14)] hover:bg-sky-500/[0.18]',
     rail: 'border-sky-300/60 bg-sky-400 shadow-[0_0_18px_rgba(56,189,248,0.30)]',
-    pill: 'border-sky-500/30 bg-sky-100/85 text-sky-800 dark:border-sky-300/45 dark:bg-sky-400/18 dark:text-sky-100',
-    title: 'text-slate-950 dark:text-sky-50',
-    detail: 'text-slate-700 dark:text-sky-100/80',
-    meta: 'text-slate-600 dark:text-sky-100/85',
+    pill: 'border-sky-500/30 bg-sky-100/85 text-sky-800 dark:border-sky-200/80 dark:bg-sky-200/90 dark:text-slate-950',
+    title: 'text-slate-950 dark:text-white',
+    detail: 'text-slate-700 dark:text-slate-200',
+    meta: 'text-slate-600 dark:text-slate-200',
   },
   paragraf: {
     row: 'border-teal-400/30 bg-teal-500/[0.13] shadow-[inset_0_1px_0_rgba(45,212,191,0.14)] hover:bg-teal-500/[0.18]',
     rail: 'border-teal-300/60 bg-teal-400 shadow-[0_0_18px_rgba(45,212,191,0.30)]',
-    pill: 'border-teal-500/30 bg-teal-100/85 text-teal-800 dark:border-teal-300/45 dark:bg-teal-400/18 dark:text-teal-100',
-    title: 'text-slate-950 dark:text-teal-50',
-    detail: 'text-slate-700 dark:text-teal-100/80',
-    meta: 'text-slate-600 dark:text-teal-100/85',
+    pill: 'border-teal-500/30 bg-teal-100/85 text-teal-800 dark:border-teal-200/80 dark:bg-teal-200/90 dark:text-slate-950',
+    title: 'text-slate-950 dark:text-white',
+    detail: 'text-slate-700 dark:text-slate-200',
+    meta: 'text-slate-600 dark:text-slate-200',
   },
   default: {
     row: 'border-blue-400/30 bg-blue-500/[0.13] shadow-[inset_0_1px_0_rgba(96,165,250,0.14)] hover:bg-blue-500/[0.18]',
     rail: 'border-blue-300/60 bg-blue-400 shadow-[0_0_18px_rgba(96,165,250,0.30)]',
-    pill: 'border-blue-500/30 bg-blue-100/85 text-blue-800 dark:border-blue-300/45 dark:bg-blue-400/18 dark:text-blue-100',
-    title: 'text-slate-950 dark:text-blue-50',
-    detail: 'text-slate-700 dark:text-blue-100/80',
-    meta: 'text-slate-600 dark:text-blue-100/85',
+    pill: 'border-blue-500/30 bg-blue-100/85 text-blue-800 dark:border-blue-200/80 dark:bg-blue-200/90 dark:text-slate-950',
+    title: 'text-slate-950 dark:text-white',
+    detail: 'text-slate-700 dark:text-slate-200',
+    meta: 'text-slate-600 dark:text-slate-200',
   },
 };
 
@@ -163,7 +164,7 @@ const resolveScheduleDay = (value: WeeklySchedule[string] | string | undefined) 
 const createSlotId = () => `slot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const createStudyWindowId = () => `window_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 const createWindowKey = (window: ScheduleDayWindow, index: number) => window.id || `${window.startTime}_${window.endTime}_${window.quality}_${index}`;
-const getTodayDateInput = () => new Date().toISOString().slice(0, 10);
+const getTodayDateInput = () => getLocalDateString();
 
 const sortSlots = (slots: WeeklyScheduleSlot[]) => [...slots].sort((left, right) => left.startTime.localeCompare(right.startTime));
 const sortWindows = (windows: ScheduleDayWindow[]) => [...windows].sort((left, right) => left.startTime.localeCompare(right.startTime));
@@ -575,6 +576,13 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       return;
     }
 
+    const questionCountValue = Number(assignmentQuestionCount);
+    const requiresQuestionCount = assignmentTaskTypeKey === 'question' || assignmentTaskTypeKey === 'branch-exam';
+    if (requiresQuestionCount && (!Number.isFinite(questionCountValue) || questionCountValue <= 0)) {
+      setAssignmentMessage({ type: 'error', text: 'Soru/branş deneme görevinde soru sayısı 0’dan büyük olmalı.' });
+      return;
+    }
+
     const generatedTitle = [assignmentCourseName, assignmentUnitName, assignmentTopicName].join(' / ');
     const derivedTaskGoalType =
       assignmentTaskTypeKey === 'question' || assignmentTaskTypeKey === 'branch-exam'
@@ -590,7 +598,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       courseId: resolvedCourseId,
       taskType: taskTypeKeyToTaskType(assignmentTaskTypeKey),
       plannedDuration,
-      ...((assignmentTaskTypeKey === 'question' || assignmentTaskTypeKey === 'branch-exam') && Number(assignmentQuestionCount) > 0 ? { questionCount: Number(assignmentQuestionCount) } : {}),
+      ...(requiresQuestionCount ? { questionCount: Math.round(questionCountValue) } : {}),
       curriculumUnitName: assignmentUnitName,
       curriculumTopicName: assignmentTopicName,
       taskGoalType: derivedTaskGoalType,
@@ -599,11 +607,11 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
 
     setIsAssigningTask(true);
     try {
-      await addTask(basePayload);
+      const createdTask = await addTask(basePayload);
       resetAssignmentForm();
       setAssignmentMessage(null);
       setIsTaskAssignmentOpen(false);
-      setAssignmentToast('G\u00f6rev atand\u0131. \u00c7ocuk panelinde bekleyen g\u00f6rev olarak g\u00f6r\u00fcnecek.');
+      setAssignmentToast(createdTask.title === basePayload.title ? 'Görev atandı. Çocuk panelinde bekleyen görev olarak görünecek.' : 'Aynı bekleyen görev zaten vardı; yeni kopya oluşturulmadı.');
     } catch (error) {
       setAssignmentMessage({ type: 'error', text: error instanceof Error ? error.message : 'Görev eklenirken beklenmeyen bir hata oluştu.' });
     } finally {
@@ -761,13 +769,13 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 <article key={task.id} className={['group flex min-h-[4.75rem] items-center gap-3 rounded-[16px] border px-3 py-2.5 transition-colors', courseVisual.row].join(' ')}>
                   <div className={['h-11 w-1.5 shrink-0 rounded-full border', courseVisual.rail].join(' ')} aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <div className={['flex flex-wrap items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.11em]', courseVisual.meta].join(' ')}>
-                      <span className={['max-w-[13rem] truncate rounded-full border px-2 py-0.5', courseVisual.pill].join(' ')}>{courseName}</span>
+                    <div className={['flex flex-wrap items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.11em] drop-shadow-sm', courseVisual.meta].join(' ')}>
+                      <span className={['dr-assigned-course-pill max-w-[13rem] truncate rounded-full border px-2 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]', courseVisual.pill].join(' ')}>{courseName}</span>
                       <span>{getTaskDateKey(task.dueDate)}</span>
                       <span>{task.plannedDuration} dk</span>
                     </div>
-                    <h4 className={['mt-1 truncate text-sm font-black', courseVisual.title].join(' ')}>{task.title}</h4>
-                    <p className={['mt-0.5 truncate text-xs font-semibold', courseVisual.detail].join(' ')}>{taskDetail || 'Detay eklenmedi'}</p>
+                    <h4 className={['mt-1 line-clamp-2 text-sm font-black leading-snug drop-shadow-sm', courseVisual.title].join(' ')}>{task.title}</h4>
+                    <p className={['mt-0.5 line-clamp-1 text-xs font-semibold', courseVisual.detail].join(' ')}>{taskDetail || 'Detay eklenmedi'}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <button

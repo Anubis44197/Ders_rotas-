@@ -4,6 +4,7 @@ import { BookOpen, Info } from '../icons';
 import { isCompletedTask } from '../../utils/taskStatus';
 import { Task } from '../../types';
 import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, chartSeries, SafeResponsiveContainer } from '../shared/chartDesign';
+import { getLocalMonthKey, parseDate } from '../../utils/dateUtils';
 
 interface ReadingAnalyticsProps {
   tasks: Task[];
@@ -30,7 +31,7 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
     const names = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
     const buckets = names.map((day) => ({ day, score: 0, count: 0 }));
     readingTasks.forEach((task) => {
-      const date = new Date(task.completionDate || task.dueDate);
+      const date = parseDate(task.completionDate || task.dueDate);
       const dayIndex = date.getDay();
       buckets[dayIndex].score += task.successScore || 0;
       buckets[dayIndex].count += 1;
@@ -41,8 +42,8 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
   const monthlyData = useMemo(() => {
     const buckets = new Map<string, { books: number; totalPages: number }>();
     readingTasks.forEach((task) => {
-      const date = new Date(task.completionDate || task.dueDate);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const date = parseDate(task.completionDate || task.dueDate);
+      const key = getLocalMonthKey(date);
       const current = buckets.get(key) || { books: 0, totalPages: 0 };
       current.books += 1;
       current.totalPages += task.pagesRead || 0;

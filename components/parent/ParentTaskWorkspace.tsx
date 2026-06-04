@@ -272,6 +272,16 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
       return;
     }
 
+    const invalidPlannedDuration = !Number.isFinite(Number(plannedDuration)) || Number(plannedDuration) <= 0;
+    if (invalidPlannedDuration) {
+      onActionMessage('error', 'Süre 0 dakikadan büyük olmalı.');
+      return;
+    }
+    const invalidQuestionCount = taskTypeKey === 'question' && (!Number.isFinite(Number(questionCount)) || Number(questionCount) <= 0);
+    if (invalidQuestionCount) {
+      onActionMessage('error', 'Soru çözme görevinde soru sayısı 0’dan büyük olmalı.');
+      return;
+    }
     const generatedTitle = `${selectedCourseName} / ${selectedUnitName} / ${selectedTopicName}`;
     const derivedTaskGoalType = taskTypeKey === 'question' ? 'test-cozme' : taskTypeKey === 'revision' ? 'konu-tekrari' : 'ders calisma';
 
@@ -280,8 +290,8 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
       dueDate,
       courseId: resolvedCourseId,
       taskType: taskTypeKeyToTaskType(taskTypeKey),
-      plannedDuration: Number(plannedDuration),
-      ...(taskTypeKey === 'question' && Number(questionCount) > 0 ? { questionCount: Number(questionCount) } : {}),
+      plannedDuration: Math.round(Number(plannedDuration)),
+      ...(taskTypeKey === 'question' && Number(questionCount) > 0 ? { questionCount: Math.round(Number(questionCount)) } : {}),
       ...(selectedMetrics.length > 0 ? { selectedMetrics, metricTargetScore: 100 as const } : {}),
       ...((selectedUnitName || selectedTopicName)
         ? {
@@ -295,9 +305,11 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
 
     setIsAddingTask(true);
     try {
-      await addTask(payload);
+      const createdTask = await addTask(payload);
       resetTaskForm();
-      onActionMessage('success', 'Görev başarıyla eklendi.');
+      onActionMessage('success', createdTask.title === payload.title ? 'Görev başarıyla eklendi.' : 'Aynı bekleyen görev zaten vardı; yeni kopya oluşturulmadı.');
+    } catch (error) {
+      onActionMessage('error', error instanceof Error ? error.message : 'Görev eklenirken beklenmeyen bir hata oluştu.');
     } finally {
       setIsAddingTask(false);
     }

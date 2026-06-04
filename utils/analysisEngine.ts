@@ -2,6 +2,7 @@ import { CompositeExamResult, Course, ExamRecord, PeriodCoursePerformance, Store
 import { isCompletedTask } from './taskStatus';
 import { getTodayString } from './dateUtils';
 import { DEFAULT_METRIC_CONFIG, getTaskMetricProfile } from './metricConfig';
+import { getQuestionMetrics, getSuccessPercent, isQuestionTask } from './questionMetrics';
 
 export interface SessionMetrics {
   taskId: string;
@@ -226,9 +227,8 @@ const average = (values: number[], fallback = 0): number => {
 };
 
 const getAccuracyNorm = (task: Task): number | undefined => {
-  if (task.taskType !== 'soru çözme') return undefined;
-  if (!task.questionCount || task.questionCount <= 0) return undefined;
-  return clamp01((task.correctCount || 0) / task.questionCount);
+  if (!isQuestionTask(task)) return undefined;
+  return getQuestionMetrics(task).accuracyNorm;
 };
 
 const getFocusNorm = (task: Task): number => {
@@ -420,7 +420,7 @@ export const deriveAnalysisSnapshot = (
     const sorted = [...bucket].sort((a, b) => a.completionDate.localeCompare(b.completionDate));
     const masteryValues = sorted.map((item) => item.masteryContribution);
     const masteryNormValues = sorted.map((item) => item.masteryContributionNorm);
-    const questionSessions = sorted.filter((item) => item.taskType === 'soru çözme');
+    const questionSessions = sorted.filter(isQuestionTask);
     const accuracyValues = questionSessions.map((item) => item.accuracyScore).filter((value): value is number => typeof value === 'number');
     const averageAccuracy = accuracyValues.length > 0 ? Math.round(accuracyValues.reduce((sum, value) => sum + value, 0) / accuracyValues.length) : undefined;
     const averageFocus = Math.round(sorted.reduce((sum, item) => sum + item.focusScore, 0) / sorted.length);
@@ -562,7 +562,7 @@ export const deriveAnalysisSnapshot = (
 
   const taskTypeBuckets = new Map<string, SessionMetrics[]>();
   sessions.forEach((session) => {
-    const taskTypeKey = session.taskType === 'soru çözme'
+    const taskTypeKey = isQuestionTask(session)
       ? 'question'
       : session.taskType === 'kitap okuma'
         ? 'reading'
@@ -663,8 +663,8 @@ export const deriveAnalysisSnapshot = (
       const readinessBucket = examReadinessBuckets.get(task.courseId) || [];
       const readinessScore = typeof task.successScore === 'number'
         ? task.successScore
-        : typeof task.correctCount === 'number' && (task.questionCount || 0) > 0
-          ? Math.round((task.correctCount / Math.max(1, task.questionCount || 1)) * 100)
+        : isQuestionTask(task) && getQuestionMetrics(task).totalQuestionCount > 0
+          ? getSuccessPercent(task)
           : null;
       if (typeof readinessScore === 'number') {
         readinessBucket.push(readinessScore);
@@ -672,10 +672,10 @@ export const deriveAnalysisSnapshot = (
       }
     }
 
-    if (isCompletedTask(task) && task.taskType === 'soru çözme') {
+    if (isCompletedTask(task) && isQuestionTask(task)) {
       const accuracyBucket = recentAccuracyBuckets.get(task.courseId) || [];
-      const accuracyScore = typeof task.correctCount === 'number' && (task.questionCount || 0) > 0
-        ? Math.round((task.correctCount / Math.max(1, task.questionCount || 1)) * 100)
+      const accuracyScore = isQuestionTask(task) && getQuestionMetrics(task).totalQuestionCount > 0
+        ? getSuccessPercent(task)
         : typeof task.successScore === 'number'
           ? task.successScore
           : null;

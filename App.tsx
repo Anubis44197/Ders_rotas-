@@ -37,10 +37,11 @@ import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, 
 import { ALL_ICONS } from './constants';
 import { INITIAL_REAL_COURSES, INITIAL_REAL_CURRICULUM, INITIAL_REAL_PERFORMANCE } from './initialRealCurriculum';
 import { calculateTaskPoints } from './utils/scoringAlgorithm';
-import { getLocalDateString } from './utils/dateUtils';
+import { getLocalDateString, getLocalWeekKey, parseDate } from './utils/dateUtils';
 import { deriveAnalysisSnapshot } from './utils/analysisEngine';
 import { getNotificationCooldownMs } from './utils/parentDecisionEngine';
 import { isCompletedTask } from './utils/taskStatus';
+import { getAccuracyPercent, getQuestionMetrics, getSolvedQuestionCount, getSuccessPercent, isQuestionTask } from './utils/questionMetrics';
 import { playHaptic } from './utils/haptics';
 import { publishRemoteAppData, startRemoteAppDataSync, type RemoteAppData } from './utils/firebaseLiveSync';
 import { GoogleGenAI } from '@google/genai';
@@ -914,10 +915,10 @@ const calculateFocusAverageForTasks = (tasks: Task[]) => {
 
 const calculateAccuracyTrendForTasks = (tasks: Task[]) => {
   const questionSessions = tasks
-    .filter((task) => task.taskType === 'soru çözme' && (task.questionCount || 0) > 0 && typeof task.correctCount === 'number' && task.completionDate)
+    .filter((task) => isQuestionTask(task) && getQuestionMetrics(task).answeredCount > 0 && task.completionDate)
     .map((task) => ({
       completionDate: task.completionDate!,
-      accuracy: Math.max(0, Math.min(100, Math.round(((task.correctCount || 0) / Math.max(1, task.questionCount || 1)) * 100))),
+      accuracy: getAccuracyPercent(task),
     }))
     .sort((a, b) => a.completionDate.localeCompare(b.completionDate));
 
@@ -971,13 +972,13 @@ const calculateAccuracyTrend14Days = (tasks: Task[], today: string) => {
 
   const questionSessions = tasks
     .filter((task) => {
-      if (!isCompletedTask(task) || task.taskType !== 'soru çözme' || !task.completionDate) return false;
-      if (!task.questionCount || task.questionCount <= 0 || typeof task.correctCount !== 'number') return false;
+      if (!isCompletedTask(task) || !isQuestionTask(task) || !task.completionDate) return false;
+      if (getQuestionMetrics(task).answeredCount <= 0) return false;
       const completion = toDate(task.completionDate);
       return Boolean(completion && completion >= startDate && completion <= endDate);
     })
     .map((task) => {
-      const accuracy = Math.max(0, Math.min(100, Math.round(((task.correctCount || 0) / Math.max(1, task.questionCount || 1)) * 100)));
+      const accuracy = getAccuracyPercent(task);
       return { completionDate: task.completionDate!, accuracy };
     })
     .sort((a, b) => a.completionDate.localeCompare(b.completionDate));
@@ -1293,7 +1294,7 @@ const seedManualQaRecords = () => {
   };
 
   const today = new Date('2026-05-15T12:00:00');
-  const iso = (date: Date) => date.toISOString().slice(0, 10);
+  const iso = (date: Date) => getLocalDateString(date);
   const daysAgo = (count: number) => {
     const copy = new Date(today);
     copy.setDate(copy.getDate() - count);
@@ -2038,8 +2039,8 @@ const deriveAssessmentResults = (tasks: Task[], curriculumTopics: CurriculumTopi
       || typeof task.successScore === 'number'
     ))
     .map((task) => {
-      const score = typeof task.correctCount === 'number' && (task.questionCount || 0) > 0
-        ? Math.round((task.correctCount / Math.max(1, task.questionCount || 1)) * 100)
+      const score = isQuestionTask(task)
+        ? getSuccessPercent(task, Math.round(task.successScore || 0))
         : Math.round(task.successScore || 0);
 
       const source: AssessmentResultRecord['source'] = task.taskGoalType === 'sinav-hazirlik'
@@ -2274,8 +2275,8 @@ const deriveReplanTriggers = (
           || task.taskGoalType === 'sinav-hazirlik'
         ))
         .map((task) => {
-          if (typeof task.correctCount === 'number' && (task.questionCount || 0) > 0) {
-            return Math.round((task.correctCount / Math.max(1, task.questionCount || 1)) * 100);
+          if (isQuestionTask(task) && getQuestionMetrics(task).totalQuestionCount > 0) {
+            return getSuccessPercent(task);
           }
           return typeof task.successScore === 'number' ? Math.round(task.successScore) : null;
         })
@@ -3088,16 +3089,53 @@ const App: React.FC = () => {
     addToast("'" + course.name + "' dersi tekrar aktif edildi.", 'success');
   };
 
+  const getPendingTaskDuplicateKey = (task: Pick<Task, 'dueDate' | 'courseId' | 'title' | 'taskType' | 'curriculumUnitName' | 'curriculumTopicName' | 'isSelfAssigned'>) => [
+    getLocalDateString(parseDate(task.dueDate || getLocalDateString())),
+    normalizeForLookup(task.courseId),
+    normalizeForLookup(task.title),
+    normalizeForLookup(task.taskType),
+    normalizeForLookup(task.curriculumUnitName || ''),
+    normalizeForLookup(task.curriculumTopicName || ''),
+    task.isSelfAssigned ? 'self' : 'assigned',
+  ].join('::');
+
+  const normalizeTaskDraft = (task: Omit<Task, 'id' | 'status'>): Omit<Task, 'id' | 'status'> => {
+    const plannedDuration = Number(task.plannedDuration);
+    if (!Number.isFinite(plannedDuration) || plannedDuration <= 0) {
+      throw new Error('Görev süresi 0 dakikadan büyük olmalı.');
+    }
+
+    const rawQuestionCount = typeof task.questionCount === 'number' ? task.questionCount : Number(task.questionCount);
+    const questionCount = Number.isFinite(rawQuestionCount) && rawQuestionCount > 0
+      ? Math.round(rawQuestionCount)
+      : undefined;
+
+    return {
+      ...task,
+      dueDate: getLocalDateString(parseDate(task.dueDate || getLocalDateString())),
+      title: task.title.trim(),
+      plannedDuration: Math.round(plannedDuration),
+      ...(questionCount ? { questionCount } : { questionCount: undefined }),
+    };
+  };
   const addTask = async (task: Omit<Task, 'id' | 'status'>): Promise<Task> => {
-    if (task.planTaskId) {
-      const existingTask = tasksRef.current.find((item) => item.planTaskId === task.planTaskId);
+    const normalizedTask = normalizeTaskDraft(task);
+
+    if (normalizedTask.planTaskId) {
+      const existingTask = tasksRef.current.find((item) => item.planTaskId === normalizedTask.planTaskId);
       if (existingTask) {
         return existingTask;
       }
     }
 
+    const duplicateKey = getPendingTaskDuplicateKey(normalizedTask);
+    const duplicatePendingTask = tasksRef.current.find((item) => item.status === 'bekliyor' && getPendingTaskDuplicateKey(item) === duplicateKey);
+    if (duplicatePendingTask) {
+      return duplicatePendingTask;
+    }
+
     const newTask: Task = {
-      ...task,
+      ...normalizedTask,
       id: createId('task'),
       status: 'bekliyor',
       createdAt: new Date().toISOString(),
@@ -3108,10 +3146,12 @@ const App: React.FC = () => {
       tasks: nextTasks,
     });
     setTasks((prev) => {
-      if (task.planTaskId) {
-        const duplicate = prev.find((item) => item.planTaskId === task.planTaskId);
+      if (normalizedTask.planTaskId) {
+        const duplicate = prev.find((item) => item.planTaskId === normalizedTask.planTaskId);
         if (duplicate) return prev;
       }
+      const hasDuplicate = prev.some((item) => item.status === 'bekliyor' && getPendingTaskDuplicateKey(item) === duplicateKey);
+      if (hasDuplicate) return prev;
       return [newTask, ...prev];
     });
     tasksRef.current = nextTasks;
@@ -3146,7 +3186,7 @@ const App: React.FC = () => {
     if (!task.curriculumUnitName || !task.curriculumTopicName) return;
 
     const qualifiesForCompletion =
-      (task.taskType === 'soru \u00e7\u00f6zme' && (task.successScore || 0) >= 70) ||
+      (isQuestionTask(task) && (task.successScore || 0) >= 70) ||
       (task.taskType === 'ders \u00e7al\u0131\u015fma' && (task.focusScore || 0) >= 80 && (task.actualDuration || 0) >= task.plannedDuration * 60 * 0.8) ||
       (task.taskType === 'kitap okuma' && (task.pagesRead || 0) >= 10);
 
@@ -3245,9 +3285,9 @@ const App: React.FC = () => {
     }
 
     const today = getLocalDateString();
-    const correctAnswers = task.taskType === 'soru \u00e7\u00f6zme' ? data.correctCount || 0 : 0;
-    const incorrectAnswers = task.taskType === 'soru \u00e7\u00f6zme' ? data.incorrectCount || 0 : 0;
-    const emptyAnswers = task.taskType === 'soru \u00e7\u00f6zme' ? data.emptyCount || 0 : 0;
+    const correctAnswers = isQuestionTask(task) ? data.correctCount || 0 : 0;
+    const incorrectAnswers = isQuestionTask(task) ? data.incorrectCount || 0 : 0;
+    const emptyAnswers = isQuestionTask(task) ? data.emptyCount || 0 : 0;
     const plannedSeconds = task.plannedDuration * 60;
     const totalSessionTime = data.actualDuration + data.breakTime + data.pauseTime;
 
@@ -3264,8 +3304,8 @@ const App: React.FC = () => {
     }
 
     let successScore = focusScore;
-    if (task.taskType === 'soru \u00e7\u00f6zme' && task.questionCount && task.questionCount > 0) {
-      const accuracy = (correctAnswers / task.questionCount) * 100;
+    if (isQuestionTask(task) && task.questionCount && task.questionCount > 0) {
+      const accuracy = getSuccessPercent({ ...task, correctCount: correctAnswers, incorrectCount: incorrectAnswers, emptyCount: emptyAnswers });
       const timeRatio = data.actualDuration / plannedSeconds;
       const timeModifier = timeRatio < 1 ? 1 + (1 - timeRatio) * 0.1 : 1 - (timeRatio - 1) * 0.2;
       successScore = Math.max(0, Math.min(100, accuracy * timeModifier));
@@ -3283,11 +3323,11 @@ const App: React.FC = () => {
       typeof data.conceptErrorCount === 'number' ||
       typeof data.processErrorCount === 'number' ||
       typeof data.attentionErrorCount === 'number';
-    const conceptErrorCount = task.taskType === 'soru \u00e7\u00f6zme' ? Math.max(0, data.conceptErrorCount || 0) : 0;
-    const processErrorCount = task.taskType === 'soru \u00e7\u00f6zme'
+    const conceptErrorCount = isQuestionTask(task) ? Math.max(0, data.conceptErrorCount || 0) : 0;
+    const processErrorCount = isQuestionTask(task)
       ? Math.max(0, data.processErrorCount ?? (hasExplicitErrorBreakdown ? 0 : incorrectAnswers))
       : 0;
-    const attentionErrorCount = task.taskType === 'soru \u00e7\u00f6zme'
+    const attentionErrorCount = isQuestionTask(task)
       ? Math.max(0, data.attentionErrorCount ?? (hasExplicitErrorBreakdown ? 0 : emptyAnswers))
       : 0;
 
@@ -3481,7 +3521,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `parent-observability-audit-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `parent-observability-audit-${getLocalDateString()}.json`;
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
@@ -3553,8 +3593,8 @@ const App: React.FC = () => {
       }));
 
       const now = new Date();
-      const todayKey = now.toISOString().slice(0, 10);
-      const weekKey = `${now.getUTCFullYear()}-W${Math.ceil((Math.floor((now.getTime() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 86400000) + 1) / 7)}`;
+      const todayKey = getLocalDateString(now);
+      const weekKey = getLocalWeekKey(now);
       if (prevDayKeyRef.current !== todayKey) {
         prevDayKeyRef.current = todayKey;
         const dailySource = `evt-src-daily-${todayKey}`;
@@ -3735,13 +3775,8 @@ const App: React.FC = () => {
     completedCount: overviewCompletedTasks.length,
     studiedMinutes: Math.round(overviewCompletedTasks.reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0)),
     solvedQuestionCount: overviewCompletedTasks
-      .filter((task) => task.taskType === 'soru çözme')
-      .reduce((sum, task) => {
-        const hasRecordedCounts = typeof task.correctCount === 'number' || typeof task.incorrectCount === 'number';
-        const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
-        if (hasRecordedCounts) return sum + answered;
-        return sum + (task.questionCount || 0);
-      }, 0),
+      .filter(isQuestionTask)
+      .reduce((sum, task) => sum + getSolvedQuestionCount(task), 0),
     averageMastery: overviewAnalysis.overall.averageMastery,
     generalScore: overviewAnalysis.overall.generalScore,
     weakTopics: overviewAnalysis.topics.filter((topic) => topic.needsRevision).slice(0, 4),
@@ -3929,12 +3964,10 @@ const App: React.FC = () => {
       : 0;
     const hasExamTrendData = latestCompositeAverage !== null && previousCompositeAverage !== null;
     const solvedCurrent = completedCurrentWeek.reduce((sum, task) => {
-      const fallbackAnswered = (task.correctCount || 0) + (task.incorrectCount || 0) + (task.emptyCount || 0);
-      return sum + Math.max(task.questionCount || 0, fallbackAnswered);
+      return sum + getSolvedQuestionCount(task);
     }, 0);
     const solvedPrevious = completedPreviousWeek.reduce((sum, task) => {
-      const fallbackAnswered = (task.correctCount || 0) + (task.incorrectCount || 0) + (task.emptyCount || 0);
-      return sum + Math.max(task.questionCount || 0, fallbackAnswered);
+      return sum + getSolvedQuestionCount(task);
     }, 0);
     const solvedQuestionChange = solvedPrevious > 0
       ? Math.round(((solvedCurrent - solvedPrevious) / solvedPrevious) * 100)
@@ -3957,8 +3990,8 @@ const App: React.FC = () => {
         const hasQuestionPayload = (task.questionCount || 0) > 0 || answered > 0;
         return hasQuestionPayload && isBetween(completionDate, bucketStart, bucketEnd);
       });
-      const answered = bucketTasks.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
-      const correct = bucketTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+      const answered = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
+      const correct = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
       return answered > 0 ? Math.round((correct / answered) * 100) : 0;
     });
 
@@ -4019,16 +4052,16 @@ const App: React.FC = () => {
         const courseAnalysis = overviewAnalysis.courses.find((item) => item.courseId === course.id);
         const weakCount = overviewSummary.weakTopics.filter((topic) => topic.courseName === courseAnalysis?.courseName || topic.courseName === course.name).length;
         const currentQuestionTasks = tasks.filter((task) => {
-          if (!isCompletedTask(task) || task.courseId !== course.id || task.taskType !== 'soru çözme') return false;
+          if (!isCompletedTask(task) || task.courseId !== course.id || !isQuestionTask(task)) return false;
           return isBetween(toDate(task.completionDate), currentStart, todayDate);
         });
         const previousQuestionTasks = tasks.filter((task) => {
-          if (!isCompletedTask(task) || task.courseId !== course.id || task.taskType !== 'soru çözme') return false;
+          if (!isCompletedTask(task) || task.courseId !== course.id || !isQuestionTask(task)) return false;
           return isBetween(toDate(task.completionDate), previousStart, previousEnd);
         });
         const calcAccuracy = (items: Task[]) => {
-          const answered = items.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
-          const correct = items.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+          const answered = items.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
+          const correct = items.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
           return answered > 0 ? Math.round((correct / answered) * 100) : 0;
         };
         const currentAccuracy = calcAccuracy(currentQuestionTasks);
@@ -4094,15 +4127,16 @@ const App: React.FC = () => {
     });
 
     tasks.forEach((task) => {
-      if (!isCompletedTask(task) || task.taskType !== 'soru çözme') return;
+      if (!isCompletedTask(task) || !isQuestionTask(task)) return;
       const topicName = repairedText(task.curriculumTopicName || '').trim();
       if (!topicName) return;
       const courseName = repairedText(courseNameById.get(task.courseId) || task.courseId).trim();
       if (!courseName) return;
       const key = `${normalizeForLookup(courseName)}::${normalizeForLookup(topicName)}`;
-      const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
+      const metrics = getQuestionMetrics(task);
+      const answered = metrics.answeredCount;
       if (answered <= 0) return;
-      const correct = task.correctCount || 0;
+      const correct = metrics.correctCount;
       const completedAt = toDate(task.completionDate);
       const item = topicMap.get(key) || {
         key,
@@ -4163,8 +4197,8 @@ const App: React.FC = () => {
         const courseName = repairedText(courseNameById.get(task.courseId) || task.courseId);
         return normalizeForLookup(`${courseName}::${topicName}`) === normalizedKey;
       });
-      const solved = topicTasks.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
-      const correct = topicTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+      const solved = topicTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
+      const correct = topicTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
       const minutes = Math.round(topicTasks.reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0));
       const analysisTopic = analysisTopicByKey.get(normalizedKey);
       const accuracyFallback = topic.currentAccuracy ?? analysisTopic?.masteryScore ?? 0;
@@ -4209,7 +4243,7 @@ const App: React.FC = () => {
     );
     const questionTasks = tasks.filter((task) => (
       isCompletedTask(task)
-      && task.taskType === 'soru çözme'
+      && isQuestionTask(task)
       && (typeof task.correctCount === 'number'
         || typeof task.incorrectCount === 'number'
         || typeof task.emptyCount === 'number'
@@ -4281,12 +4315,12 @@ const App: React.FC = () => {
       const incorrect = Math.max(0, Number(task.incorrectCount || 0));
       const empty = Math.max(0, Number(task.emptyCount || 0));
       const answeredTotal = correct + incorrect + empty;
-      const questionTotal = Math.max(answeredTotal, Number(task.questionCount || 0));
+      const metrics = getQuestionMetrics(task);
 
-      record.correctCount += correct;
-      record.incorrectCount += incorrect;
-      record.emptyCount += empty;
-      record.totalQuestions += Math.max(0, questionTotal);
+      record.correctCount += metrics.correctCount;
+      record.incorrectCount += metrics.incorrectCount;
+      record.emptyCount += metrics.emptyCount;
+      record.totalQuestions += metrics.totalQuestionCount;
       record.minutes += Math.round((task.actualDuration || 0) / 60);
       record.taskCount += 1;
       if (task.completionDate && task.completionDate > record.lastCompletedAt) {
@@ -4298,8 +4332,8 @@ const App: React.FC = () => {
     return Array.from(aggregate.values())
       .map((item) => ({
         ...item,
-        accuracyPercent: item.totalQuestions > 0
-          ? Math.round((item.correctCount / item.totalQuestions) * 100)
+        accuracyPercent: item.correctCount + item.incorrectCount > 0
+          ? Math.round((item.correctCount / Math.max(1, item.correctCount + item.incorrectCount)) * 100)
           : 0,
       }))
       .sort((a, b) => {
@@ -4330,12 +4364,12 @@ const App: React.FC = () => {
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
         const weekTasks = tasks.filter((task) => {
-          if (!isCompletedTask(task) || task.courseId !== course.id || !task.completionDate || task.taskType !== 'soru çözme') return false;
+          if (!isCompletedTask(task) || task.courseId !== course.id || !task.completionDate || !isQuestionTask(task)) return false;
           const date = new Date(`${task.completionDate}T00:00:00`);
           return date >= weekStart && date <= weekEnd;
         });
-        const answered = weekTasks.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
-        const correct = weekTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+        const answered = weekTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
+        const correct = weekTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
         const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
         return accuracy;
       });

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Balanced Scoring Algorithm for Task Completion
  * 
  * Design Goals:
@@ -9,6 +9,7 @@
  */
 
 import { Task, TaskCompletionData } from '../types';
+import { isQuestionTask } from './questionMetrics';
 
 export interface ScoringResult {
     pointsAwarded: number;
@@ -107,7 +108,7 @@ function getDifficultyMultiplier(task: Task): number {
     let multiplier = 1.0;
     
     // Question count difficulty
-    if (task.taskType === 'soru \u00e7\u00f6zme' && task.questionCount) {
+    if (isQuestionTask(task) && task.questionCount) {
         if (task.questionCount >= 50) multiplier += 0.3;      // +30% for 50+ questions
         else if (task.questionCount >= 30) multiplier += 0.2; // +20% for 30+ questions
         else if (task.questionCount >= 20) multiplier += 0.1; // +10% for 20+ questions

@@ -42,6 +42,22 @@ const toDate = (value?: string) => (value ? new Date(`${value}T00:00:00`) : null
 const isBetween = (value: Date | null, start: Date, end: Date) => Boolean(value && value >= start && value <= end);
 const isCompletedTask = (task: TaskLite) => task.status === 'tamamlandı';
 
+
+const clampCount = (value: unknown): number => {
+  const parsed = Number(value || 0);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.round(parsed));
+};
+
+const getQuestionMetrics = (task: TaskLite) => {
+  const correctCount = clampCount(task.correctCount);
+  const incorrectCount = clampCount(task.incorrectCount);
+  const emptyCount = clampCount(task.emptyCount);
+  const answeredCount = correctCount + incorrectCount;
+  const attemptedCount = answeredCount + emptyCount;
+  const totalQuestionCount = Math.max(clampCount(task.questionCount), attemptedCount);
+  return { correctCount, incorrectCount, emptyCount, answeredCount, attemptedCount, totalQuestionCount };
+};
 const lookbackDays = (period: OverviewStudyPeriod) => {
   if (period === 'week1') return 7;
   if (period === 'week3') return 21;
@@ -109,14 +125,8 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
   const completionPercent = Math.max(0, Math.min(100, Math.round((currentTasks.length / completionTarget) * 100)));
   const minuteChange = previousMinutes > 0 ? Math.round(((totalMinutes - previousMinutes) / previousMinutes) * 100) : (totalMinutes > 0 ? 100 : 0);
 
-  const solvedCurrent = currentTasks.reduce((sum, task) => {
-    const answered = (task.correctCount || 0) + (task.incorrectCount || 0) + (task.emptyCount || 0);
-    return sum + Math.max(task.questionCount || 0, answered);
-  }, 0);
-  const solvedPrevious = previousTasks.reduce((sum, task) => {
-    const answered = (task.correctCount || 0) + (task.incorrectCount || 0) + (task.emptyCount || 0);
-    return sum + Math.max(task.questionCount || 0, answered);
-  }, 0);
+  const solvedCurrent = currentTasks.reduce((sum, task) => sum + getQuestionMetrics(task).totalQuestionCount, 0);
+  const solvedPrevious = previousTasks.reduce((sum, task) => sum + getQuestionMetrics(task).totalQuestionCount, 0);
   const solvedQuestionChange = solvedPrevious > 0 ? Math.round(((solvedCurrent - solvedPrevious) / solvedPrevious) * 100) : (solvedCurrent > 0 ? 100 : 0);
 
   const compositeWithDate = compositeExamResults
@@ -146,12 +156,13 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     if (bucketEnd > currentEnd) bucketEnd.setTime(currentEnd.getTime());
     const bucketTasks = currentTasks.filter((task) => {
       const completedAt = toDate(task.completionDate);
-      const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
-      const hasQuestionPayload = (task.questionCount || 0) > 0 || answered > 0;
+      const metrics = getQuestionMetrics(task);
+      const answered = metrics.answeredCount;
+      const hasQuestionPayload = metrics.totalQuestionCount > 0 || answered > 0;
       return hasQuestionPayload && isBetween(completedAt, bucketStart, bucketEnd);
     });
-    const answered = bucketTasks.reduce((sum, task) => sum + ((task.correctCount || 0) + (task.incorrectCount || 0)), 0);
-    const correct = bucketTasks.reduce((sum, task) => sum + (task.correctCount || 0), 0);
+    const answered = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
+    const correct = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
     return answered > 0 ? Math.round((correct / answered) * 100) : 0;
   });
 

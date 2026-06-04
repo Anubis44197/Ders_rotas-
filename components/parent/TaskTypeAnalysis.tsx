@@ -5,6 +5,7 @@ import { Info, Loader } from '../icons';
 import { isCompletedTask } from '../../utils/taskStatus';
 import EmptyState from '../shared/EmptyState';
 import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
+import { getLocalDateString, getLocalMonthKey, getLocalWeekKey, parseDate } from '../../utils/dateUtils';
 
 interface Props {
   tasks: Task[];
@@ -40,14 +41,11 @@ const taskTypeLabels: Record<Task['taskType'], string> = {
 };
 
 function getPeriodKey(date: string, period: Period) {
-  const current = new Date(date);
-  if (period === 'Günlük') return current.toISOString().slice(0, 10);
-  if (period === 'Haftalık') {
-    const firstDay = new Date(current.getFullYear(), 0, 1);
-    const days = Math.floor((current.getTime() - firstDay.getTime()) / 86400000);
-    return `${current.getFullYear()}-H${Math.ceil((days + firstDay.getDay() + 1) / 7)}`;
-  }
-  return `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+  const current = parseDate(date);
+  const periodInitial = String(period).charAt(0);
+  if (periodInitial === 'G') return getLocalDateString(current);
+  if (periodInitial === 'H') return getLocalWeekKey(current);
+  return getLocalMonthKey(current);
 }
 
 const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = null }) => {

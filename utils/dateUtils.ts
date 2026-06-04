@@ -63,3 +63,29 @@ export const getDaysAgo = (days: number): Date => {
 export const getTodayString = (): string => {
   return getLocalDateString();
 };
+export const addDays = (date: Date, days: number): Date => {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+};
+
+export const getLocalMonthKey = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+};
+
+export const getLocalYearKey = (date: Date): string => String(date.getFullYear());
+
+export const getLocalWeekKey = (date: Date): string => {
+  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const firstDay = new Date(localDate.getFullYear(), 0, 1);
+  const days = Math.floor((localDate.getTime() - firstDay.getTime()) / 86400000);
+  const week = Math.ceil((days + firstDay.getDay() + 1) / 7);
+  return `${localDate.getFullYear()}-H${week}`;
+};
+
+export const isDateKeyInRange = (value: string | undefined, start?: string | null, end?: string | null): boolean => {
+  if (!value) return false;
+  if (start && value < start) return false;
+  if (end && value > end) return false;
+  return true;
+};

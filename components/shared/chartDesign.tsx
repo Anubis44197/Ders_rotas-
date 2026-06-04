@@ -2,14 +2,14 @@ import React from 'react';
 import { ResponsiveContainer } from 'recharts';
 
 export const chartPalette = {
-  blue: '#8AB4FF',
-  mint: '#7EE7C7',
-  lilac: '#C4B5FD',
-  peach: '#FFC68B',
-  coral: '#FF9AA2',
-  yellow: '#FFE08A',
-  ink: '#F1F5FF',
-  grid: 'rgba(46, 54, 80, 0.78)',
+  blue: '#6FA8FF',
+  mint: '#5FE1C0',
+  lilac: '#B8A7FF',
+  peach: '#F8C77E',
+  coral: '#FF8B92',
+  yellow: '#F7DD75',
+  ink: '#F7FAFF',
+  grid: 'rgba(123, 132, 158, 0.22)',
   axis: '#7B849E',
   tooltipBorder: 'rgba(138, 180, 255, 0.24)',
   tooltipBg: 'rgba(255, 255, 255, 0.94)',
@@ -35,7 +35,7 @@ export const chartAxisProps = {
 
 export const chartGridProps = {
   stroke: chartPalette.grid,
-  strokeDasharray: '2 10',
+  strokeDasharray: '1 12',
   vertical: false,
 };
 
@@ -57,14 +57,14 @@ export const chartBrushProps = {
 
 export const chartLineProps = {
   type: 'monotone' as const,
-  strokeWidth: 4,
-  activeDot: { r: 7, strokeWidth: 3, stroke: '#ffffff' },
+  strokeWidth: 3.5,
+  activeDot: { r: 7, strokeWidth: 3, stroke: 'rgba(255,255,255,0.86)' },
 };
 
 export const chartPointProps = {
   r: 4,
   strokeWidth: 2,
-  stroke: '#ffffff',
+  stroke: 'rgba(255,255,255,0.86)',
 };
 
 export const chartBarRadius: [number, number, number, number] = [12, 12, 0, 0];

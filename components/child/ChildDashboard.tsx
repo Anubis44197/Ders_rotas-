@@ -7,6 +7,7 @@ import { X, Trophy, PlusCircle, Play, Gift, BadgeCheck, Target, BarChart, Brain,
 import { getTodayString, getDaysAgo, getLocalDateString } from '../../utils/dateUtils';
 import { deriveAnalysisSnapshot, type AnalysisSnapshot } from '../../utils/analysisEngine';
 import { isCompletedTask as isTaskCompleted } from '../../utils/taskStatus';
+import { getSolvedQuestionCount, isQuestionTask } from '../../utils/questionMetrics';
 import { ChartTooltip, chartAxisProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 import ContextHelp from '../shared/ContextHelp';
 
@@ -443,13 +444,8 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
   const completedTaskCount = useMemo(() => safeTasks.filter((task) => isTaskCompleted(task)).length, [safeTasks]);
   const completedTasksForSummary = useMemo(() => safeTasks.filter(isTaskCompleted), [safeTasks]);
   const solvedQuestionCount = useMemo(() => completedTasksForSummary
-    .filter((task) => task.taskType === 'soru \u00e7\u00f6zme')
-    .reduce((sum, task) => {
-      const hasRecordedCounts = typeof task.correctCount === 'number' || typeof task.incorrectCount === 'number';
-      const answered = (task.correctCount || 0) + (task.incorrectCount || 0);
-      if (hasRecordedCounts) return sum + answered;
-      return sum + (task.questionCount || 0);
-    }, 0), [completedTasksForSummary]);
+    .filter(isQuestionTask)
+    .reduce((sum, task) => sum + getSolvedQuestionCount(task), 0), [completedTasksForSummary]);
   const studiedMinutes = useMemo(() => Math.round(completedTasksForSummary
     .filter((task) => task.taskType !== 'kitap okuma')
     .reduce((sum, task) => sum + ((task.actualDuration || 0) / 60), 0)), [completedTasksForSummary]);

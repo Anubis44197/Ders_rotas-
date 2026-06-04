@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { CurriculumUnit, ExamScheduleEntry, SubjectCurriculum, Task, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
+import { getQuestionMetrics } from '../../utils/questionMetrics';
 import {
   AlertTriangle,
   BarChart,
@@ -734,8 +735,9 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       taskCount: 0,
       lastCompletedAt: '',
     });
-    const accuracyPercent = totals.totalQuestions > 0
-      ? Math.round((totals.correctCount / totals.totalQuestions) * 100)
+    const answeredCount = totals.correctCount + totals.incorrectCount;
+    const accuracyPercent = answeredCount > 0
+      ? Math.round((totals.correctCount / answeredCount) * 100)
       : 0;
     return { ...totals, accuracyPercent };
   }, [rowsForPerformanceMetrics]);
@@ -1473,7 +1475,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               <div className="mt-4">
                 <div className="ios-widget rounded-[14px] p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ders Raporu Trendi</span>
+                    <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Ders Raporu Trendi</span>
                     <ContextHelp title="Ders Raporu Trendi" tone="blue">
                       Bu grafik, çocuğunuzun tüm ana derslerdeki konu hakimiyetinin son 4 hafta içindeki gelişim yönünü (yükseliş/düşüş eğilimini) yan yana gösterir.
                     </ContextHelp>
@@ -1485,7 +1487,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                         {[0, 25, 50, 75, 100].map((tick, i) => (
                           <g key={`ctick-${tick}`}>
                             <line x1="30" y1={182 - i * 38} x2="600" y2={182 - i * 38} stroke="#E2E8F0" strokeWidth="1" />
-                            <text x="4" y={186 - i * 38} className="fill-slate-400 text-[10px]">%{tick}</text>
+                            <text x="4" y={186 - i * 38} className="fill-[var(--dr-text-secondary)] text-[10px]">%{tick}</text>
                           </g>
                         ))}
                         {courseReportSeriesForChart.map((series, sIdx) => {
@@ -1500,12 +1502,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                           );
                         })}
                         {['1. Hafta', '2. Hafta', '3. Hafta', '4. Hafta'].map((label, idx) => (
-                          <text key={`cxlabel-${label}`} x={[70, 230, 390, 550][idx]} y="206" className="fill-slate-500 text-[11px]">{label}</text>
+                          <text key={`cxlabel-${label}`} x={[70, 230, 390, 550][idx]} y="206" className="fill-[var(--dr-text-secondary)] text-[11px]">{label}</text>
                         ))}
                       </svg>
                       <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
                         {courseReportSeriesForChart.map((series) => (
-                          <span key={`clegend-${series.courseName}`} className="inline-flex items-center gap-1 text-slate-600">
+                          <span key={`clegend-${series.courseName}`} className="inline-flex items-center gap-1 text-[var(--dr-text-secondary)]">
                             <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: series.color }} />
                             {series.courseName}
                           </span>
@@ -1523,7 +1525,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 </div>
                 <div className="ios-widget rounded-[14px] p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ders Durumu</span>
+                    <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Ders Durumu</span>
                     <ContextHelp title="Ders Durumu" tone="blue">
                       Bu grafik, çocuğunuzun şu anki aktif derslerdeki genel konu hakimiyeti ve ilerleme yüzdelerini karşılaştırmalı olarak gösterir.
                     </ContextHelp>
@@ -1533,7 +1535,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     {[0, 25, 50, 75, 100].map((tick, i) => (
                       <g key={`status-tick-${tick}`}>
                         <line x1="30" y1={182 - i * 38} x2="600" y2={182 - i * 38} stroke="#E2E8F0" strokeWidth="1" />
-                        <text x="4" y={186 - i * 38} className="fill-slate-400 text-[10px]">%{tick}</text>
+                        <text x="4" y={186 - i * 38} className="fill-[var(--dr-text-secondary)] text-[10px]">%{tick}</text>
                       </g>
                     ))}
                     {(() => {
@@ -1551,8 +1553,8 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                           {points.map((p, idx) => (
                             <g key={`status-point-${p.course.courseName}`}>
                               <circle cx={p.x} cy={p.y} r="3.5" fill="#0EA5E9" />
-                              <text x={p.x - 13} y={p.y - 10} className="fill-slate-200 text-[11px] font-bold">%{p.course.progress}</text>
-                              <text x={Math.max(34, p.x - 36)} y="206" className="fill-slate-500 text-[10px]">
+                              <text x={p.x - 13} y={p.y - 10} className="fill-[var(--dr-text-primary)] text-[11px] font-bold">%{p.course.progress}</text>
+                              <text x={Math.max(34, p.x - 36)} y="206" className="fill-[var(--dr-text-secondary)] text-[10px]">
                                 {(p.course.courseName.length > 12 ? `${p.course.courseName.slice(0, 12)}…` : p.course.courseName)}
                               </text>
                               <title>{`${p.course.courseName}: ${p.course.progress}% (${p.course.status})`}</title>
@@ -1577,7 +1579,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     {[0, 25, 50, 75, 100].map((tick, i) => (
                       <g key={`gtick-${tick}`}>
                         <line x1="30" y1={182 - i * 38} x2="600" y2={182 - i * 38} stroke="#E2E8F0" strokeWidth="1" />
-                        <text x="4" y={186 - i * 38} className="fill-slate-400 text-[10px]">%{tick}</text>
+                        <text x="4" y={186 - i * 38} className="fill-[var(--dr-text-secondary)] text-[10px]">%{tick}</text>
                       </g>
                     ))}
                     {safeReportSeriesForChart.map((series, sIdx) => {
@@ -1592,12 +1594,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       );
                     })}
                     {['1. Hafta', '2. Hafta', '3. Hafta', '4. Hafta'].map((label, idx) => (
-                      <text key={`xlabel-${label}`} x={[70, 230, 390, 550][idx]} y="206" className="fill-slate-500 text-[11px]">{label}</text>
+                      <text key={`xlabel-${label}`} x={[70, 230, 390, 550][idx]} y="206" className="fill-[var(--dr-text-secondary)] text-[11px]">{label}</text>
                     ))}
                   </svg>
                   <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
                     {safeReportSeriesForChart.map((series) => (
-                      <span key={`glegend-${series.courseName}`} className="inline-flex items-center gap-1 text-slate-600">
+                      <span key={`glegend-${series.courseName}`} className="inline-flex items-center gap-1 text-[var(--dr-text-secondary)]">
                         <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: series.color }} />
                         {series.courseName}
                       </span>
@@ -1608,7 +1610,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   <div className="ios-widget rounded-[14px] p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Konu ozeti</div>
+                        <div className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Konu ozeti</div>
                         <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">Genel Bakis yalnizca ilk 3 sinyali gosterir; detayli siralama Karar sayfasinda.</p>
                       </div>
                       <button type="button" onClick={onOpenAnalysis} className="ios-button shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black text-[var(--dr-text-primary)] transition active:scale-[0.96]">
@@ -1618,35 +1620,35 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   </div>
                   <div className="ios-widget rounded-[14px] p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ilk 3 gelisen konu</span>
+                      <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Ilk 3 gelisen konu</span>
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-600">{topicImproving.length}</span>
                     </div>
                     <div className="space-y-1.5">
                       {topicImproving.map((item, idx) => (
                         <div key={`grow-topic-${item.key}`} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="min-w-0 truncate text-slate-700">{idx + 1}. {item.topicName}</span>
+                          <span className="min-w-0 truncate text-[var(--dr-text-primary)]">{idx + 1}. {item.topicName}</span>
                           <span className="shrink-0 font-black text-emerald-600">+%{item.delta}</span>
                         </div>
                       ))}
                       {topicImproving.length === 0 && (
-                        <div className="text-xs text-slate-500">Yeterli haftalik konu verisi yok.</div>
+                        <div className="text-xs text-[var(--dr-text-secondary)]">Yeterli haftalik konu verisi yok.</div>
                       )}
                     </div>
                   </div>
                   <div className="ios-widget rounded-[14px] p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ilk 3 destek konusu</span>
+                      <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Ilk 3 destek konusu</span>
                       <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-black text-rose-600">{topicHard.length}</span>
                     </div>
                     <div className="space-y-1.5">
                       {topicHard.map((item, idx) => (
                         <div key={`hard-${item.key}`} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="min-w-0 truncate text-slate-700">{idx + 1}. {item.topicName}</span>
+                          <span className="min-w-0 truncate text-[var(--dr-text-primary)]">{idx + 1}. {item.topicName}</span>
                           <span className="shrink-0 font-black text-rose-600">{item.riskScore !== null ? `risk ${item.riskScore}` : 'risk'}</span>
                         </div>
                       ))}
                       {topicHard.length === 0 && (
-                        <div className="text-xs text-slate-500">Risk analizi icin konu verisi yok.</div>
+                        <div className="text-xs text-[var(--dr-text-secondary)]">Risk analizi icin konu verisi yok.</div>
                       )}
                     </div>
                   </div>

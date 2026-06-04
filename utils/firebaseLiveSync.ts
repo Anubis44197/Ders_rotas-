@@ -1,4 +1,4 @@
-﻿import { initializeApp } from 'firebase/app';
+import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth';
 import { collection, deleteDoc, doc, getFirestore, onSnapshot, serverTimestamp, setDoc, type Unsubscribe } from 'firebase/firestore';
 
@@ -47,6 +47,8 @@ const taskChunksRef = collection(db, 'families', familyId, 'taskChunks');
 const taskChunkDocRef = (chunkId: string) => doc(db, 'families', familyId, 'taskChunks', chunkId);
 
 const TASK_CHUNK_SIZE = 100;
+const TASK_BUCKET_COUNT = 64;
+const TASK_ORDER_CHUNK_ID = 'task_order';
 
 const sectionIds = [
   'courses',
@@ -95,19 +97,91 @@ const toPlainJson = <T,>(value: T): T => JSON.parse(JSON.stringify(value, (_key,
 
 const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
-const getTaskChunkId = (index: number) => `chunk_${String(index).padStart(5, '0')}`;
+const getTaskChunkId = (index: number) => `bucket_${String(index).padStart(2, '0')}`;
+
+const getRecordValue = (value: unknown, key: string): unknown => {
+  if (!value || typeof value !== 'object') return undefined;
+  return (value as Record<string, unknown>)[key];
+};
+
+const getTaskStableKey = (task: unknown, fallbackIndex: number): string => {
+  const id = getRecordValue(task, 'id');
+  if (typeof id === 'string' && id.trim()) return id.trim();
+
+  const createdAt = getRecordValue(task, 'createdAt');
+  const title = getRecordValue(task, 'title');
+  const dueDate = getRecordValue(task, 'dueDate');
+  return [
+    typeof createdAt === 'string' ? createdAt : '',
+    typeof dueDate === 'string' ? dueDate : '',
+    typeof title === 'string' ? title : '',
+    fallbackIndex,
+  ].join('|');
+};
+
+const getStableHash = (value: string): number => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
+const getTaskBucketIndex = (task: unknown, fallbackIndex: number) => getStableHash(getTaskStableKey(task, fallbackIndex)) % TASK_BUCKET_COUNT;
+
+const restoreTaskOrder = (tasks: unknown[], taskOrder: string[]) => {
+  if (taskOrder.length === 0 || tasks.length === 0) return tasks;
+
+  const buckets = new Map<string, unknown[]>();
+  tasks.forEach((task, index) => {
+    const key = getTaskStableKey(task, index);
+    const bucket = buckets.get(key) || [];
+    bucket.push(task);
+    buckets.set(key, bucket);
+  });
+
+  const ordered: unknown[] = [];
+  const used = new Set<unknown>();
+  taskOrder.forEach((key) => {
+    const bucket = buckets.get(key);
+    const task = bucket?.shift();
+    if (!task) return;
+    ordered.push(task);
+    used.add(task);
+  });
+
+  tasks.forEach((task) => {
+    if (!used.has(task)) ordered.push(task);
+  });
+
+  return ordered;
+};
 
 const splitTaskChunks = (tasks: unknown[]) => {
   const chunks: Array<{ id: string; index: number; tasks: unknown[]; serialized: string }> = [];
-  for (let index = 0; index * TASK_CHUNK_SIZE < tasks.length; index += 1) {
-    const chunkTasks = tasks.slice(index * TASK_CHUNK_SIZE, (index + 1) * TASK_CHUNK_SIZE);
+  const bucketedTasks = Array.from({ length: TASK_BUCKET_COUNT }, () => [] as unknown[]);
+  const taskOrder = tasks.map((task, index) => {
+    bucketedTasks[getTaskBucketIndex(task, index)].push(task);
+    return getTaskStableKey(task, index);
+  });
+
+  chunks.push({
+    id: TASK_ORDER_CHUNK_ID,
+    index: -1,
+    tasks: taskOrder,
+    serialized: JSON.stringify(taskOrder),
+  });
+
+  bucketedTasks.forEach((chunkTasks, index) => {
+    if (chunkTasks.length === 0) return;
     chunks.push({
       id: getTaskChunkId(index),
       index,
       tasks: chunkTasks,
       serialized: JSON.stringify(chunkTasks),
     });
-  }
+  });
   return chunks;
 };
 
@@ -250,6 +324,7 @@ export const startRemoteAppDataSync = async ({
     loadedTaskChunks = true;
     hasTaskChunks = !snapshot.empty;
     if (hasTaskChunks) {
+      let taskOrder: string[] = [];
       const docs = snapshot.docs
         .map((chunkDoc) => {
           const data = chunkDoc.data() as { value?: unknown[]; chunkIndex?: number; updatedAt?: { toDate?: () => Date } | string | null; updatedBy?: string | null };
@@ -262,7 +337,12 @@ export const startRemoteAppDataSync = async ({
           };
         })
         .sort((left, right) => left.index - right.index || left.id.localeCompare(right.id));
-      chunkTasks = docs.flatMap((entry) => entry.value);
+      const taskDocs = docs.filter((entry) => {
+        if (entry.id !== TASK_ORDER_CHUNK_ID) return true;
+        taskOrder = entry.value.filter((item): item is string => typeof item === 'string');
+        return false;
+      });
+      chunkTasks = restoreTaskOrder(taskDocs.flatMap((entry) => entry.value), taskOrder);
       lastPublishedTaskChunks.clear();
       docs.forEach((entry) => lastPublishedTaskChunks.set(entry.id, JSON.stringify(entry.value)));
       knownTaskChunkIds = new Set(docs.map((entry) => entry.id));

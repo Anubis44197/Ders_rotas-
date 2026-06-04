@@ -6,6 +6,7 @@ import { isCompletedTask } from '../../utils/taskStatus';
 import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
 import { Info } from '../icons';
 import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
+import { getLocalMonthKey, getLocalWeekKey, getLocalYearKey, parseDate } from '../../utils/dateUtils';
 
 interface PerformanceAnalyticsProps {
   tasks: Task[];
@@ -15,12 +16,8 @@ function getWeeklyPerformance(tasks: Task[]) {
   const bucket = new Map<string, { completed: number; duration: number; score: number }>();
   tasks.forEach((task) => {
     if (!isCompletedTask(task) || !task.completionDate) return;
-    const date = new Date(task.completionDate);
-    const year = date.getFullYear();
-    const firstDay = new Date(year, 0, 1);
-    const days = Math.floor((date.getTime() - firstDay.getTime()) / 86400000);
-    const week = Math.ceil((days + firstDay.getDay() + 1) / 7);
-    const key = `${year}-H${week}`;
+    const date = parseDate(task.completionDate);
+    const key = getLocalWeekKey(date);
     const current = bucket.get(key) || { completed: 0, duration: 0, score: 0 };
     current.completed += 1;
     current.duration += Math.round((task.actualDuration || 0) / 60);
@@ -35,13 +32,12 @@ function getWeeklyPerformance(tasks: Task[]) {
     score: value.completed ? Math.round(value.score / value.completed) : 0,
   }));
 }
-
 function getMonthlyPerformance(tasks: Task[]) {
   const bucket = new Map<string, { completed: number; duration: number; score: number }>();
   tasks.forEach((task) => {
     if (!isCompletedTask(task) || !task.completionDate) return;
-    const date = new Date(task.completionDate);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const date = parseDate(task.completionDate);
+    const key = getLocalMonthKey(date);
     const current = bucket.get(key) || { completed: 0, duration: 0, score: 0 };
     current.completed += 1;
     current.duration += Math.round((task.actualDuration || 0) / 60);
@@ -56,13 +52,12 @@ function getMonthlyPerformance(tasks: Task[]) {
     score: value.completed ? Math.round(value.score / value.completed) : 0,
   }));
 }
-
 function getYearlyPerformance(tasks: Task[]) {
   const bucket = new Map<string, { completed: number; duration: number }>();
   tasks.forEach((task) => {
     if (!isCompletedTask(task) || !task.completionDate) return;
-    const date = new Date(task.completionDate);
-    const key = String(date.getFullYear());
+    const date = parseDate(task.completionDate);
+    const key = getLocalYearKey(date);
     const current = bucket.get(key) || { completed: 0, duration: 0 };
     current.completed += 1;
     current.duration += Math.round((task.actualDuration || 0) / 60);
@@ -72,7 +67,7 @@ function getYearlyPerformance(tasks: Task[]) {
   return [...bucket.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([year, value]) => ({ year, ...value }));
 }
 
-const card = 'ios-card rounded-[28px] p-5';
+const card = 'ios-card rounded-[28px] p-5 text-[var(--dr-text-primary)]';
 
 const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) => {
   const completedTasks = useMemo(() => tasks.filter((task) => isCompletedTask(task)), [tasks]);
@@ -96,17 +91,17 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Tamamlanan</div><div className="mt-2 text-2xl font-black text-slate-900">{completedTasks.length}</div><div className="mt-1 text-sm text-slate-500">Kayıtlı oturum</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Toplam süre</div><div className="mt-2 text-2xl font-black text-slate-900">{totalDuration}</div><div className="mt-1 text-sm text-slate-500">Dakika</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Ortalama skor</div><div className="mt-2 text-2xl font-black text-amber-600">{averageScore}</div><div className="mt-1 text-sm text-slate-500">Başarı ortalaması</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Ortalama odak</div><div className="mt-2 text-2xl font-black text-slate-900">{averageFocus}</div><div className="mt-1 text-sm text-slate-500">Odak ortalaması</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Tamamlanan</div><div className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">{completedTasks.length}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Kayıtlı oturum</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Toplam süre</div><div className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">{totalDuration}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Dakika</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama skor</div><div className="mt-2 text-2xl font-black text-amber-600">{averageScore}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Başarı ortalaması</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama odak</div><div className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">{averageFocus}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Odak ortalaması</div></div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_340px]">
         <div className={card}>
           <div className="mb-4">
-            <h3 className="text-lg font-black text-slate-900">Aylık ilerleme</h3>
-            <p className="mt-1 text-sm text-slate-500">Tamamlanan görev ve ortalama skor aynı tabloda izlenir.</p>
+            <h3 className="text-lg font-black text-[var(--dr-text-primary)]">Aylık ilerleme</h3>
+            <p className="mt-1 text-sm text-[var(--dr-text-secondary)]">Tamamlanan görev ve ortalama skor aynı tabloda izlenir.</p>
           </div>
           <SafeResponsiveContainer width="100%" height={260}>
             <LineChart data={monthlyData}>
@@ -122,39 +117,39 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
 
         <div className="space-y-5">
           <div className={card}>
-            <h3 className="text-base font-black text-slate-900">Karar karti</h3>
-            <div className="mt-4 space-y-3 text-sm text-slate-600">
-              <div className="rounded-2xl bg-emerald-50 px-4 py-3">
+            <h3 className="text-base font-black text-[var(--dr-text-primary)]">Karar karti</h3>
+            <div className="mt-4 space-y-3 text-sm text-[var(--dr-text-secondary)]">
+              <div className="rounded-2xl bg-emerald-500/10 px-4 py-3">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Güçlü ders</div>
-                <div className="mt-1 font-semibold text-slate-900">{strongestCourse ? strongestCourse.courseName : 'Veri yok'}</div>
-                <div className="mt-1 text-xs text-slate-500">{strongestCourse ? `Hakimiyet ${strongestCourse.averageMastery} / Odak konusu ${strongestCourse.weakTopicCount}` : 'Tamamlanan görev geldikçe hesaplanır.'}</div>
+                <div className="mt-1 font-semibold text-[var(--dr-text-primary)]">{strongestCourse ? strongestCourse.courseName : 'Veri yok'}</div>
+                <div className="mt-1 text-xs text-[var(--dr-text-secondary)]">{strongestCourse ? `Hakimiyet ${strongestCourse.averageMastery} / Odak konusu ${strongestCourse.weakTopicCount}` : 'Tamamlanan görev geldikçe hesaplanır.'}</div>
               </div>
-              <div className="rounded-2xl bg-sky-50 px-4 py-3">
+              <div className="rounded-2xl bg-sky-500/10 px-4 py-3">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">En verimli görev tipi</div>
-                <div className="mt-1 font-semibold text-slate-900">{strongestTaskType ? strongestTaskType.label : 'Veri yok'}</div>
-                <div className="mt-1 text-xs text-slate-500">{strongestTaskType ? `Hakimiyet ${strongestTaskType.averageMastery} / Verim ${strongestTaskType.averageEfficiency}` : 'Görev tipi verisi yetersiz.'}</div>
+                <div className="mt-1 font-semibold text-[var(--dr-text-primary)]">{strongestTaskType ? strongestTaskType.label : 'Veri yok'}</div>
+                <div className="mt-1 text-xs text-[var(--dr-text-secondary)]">{strongestTaskType ? `Hakimiyet ${strongestTaskType.averageMastery} / Verim ${strongestTaskType.averageEfficiency}` : 'Görev tipi verisi yetersiz.'}</div>
               </div>
-              <div className="rounded-2xl bg-amber-50 px-4 py-3">
+              <div className="rounded-2xl bg-amber-500/10 px-4 py-3">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">En verimli pencere</div>
-                <div className="mt-1 font-semibold text-slate-900">{strongestStudyWindow ? strongestStudyWindow.label : 'Veri yok'}</div>
-                <div className="mt-1 text-xs text-slate-500">{strongestStudyWindow ? `Hakimiyet ${strongestStudyWindow.averageMastery} / Odak ${strongestStudyWindow.averageFocus}` : 'Saat verisi yetersiz.'}</div>
+                <div className="mt-1 font-semibold text-[var(--dr-text-primary)]">{strongestStudyWindow ? strongestStudyWindow.label : 'Veri yok'}</div>
+                <div className="mt-1 text-xs text-[var(--dr-text-secondary)]">{strongestStudyWindow ? `Hakimiyet ${strongestStudyWindow.averageMastery} / Odak ${strongestStudyWindow.averageFocus}` : 'Saat verisi yetersiz.'}</div>
               </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Plan uyumu</div>
-                <div className="mt-1 text-2xl font-black text-slate-900">{analysis.plan.adherenceScore}</div>
-                <div className="mt-1 text-xs text-slate-500">Atanan görev tamamlama seviyesi</div>
+              <div className="rounded-2xl bg-[var(--dr-surface)]/70 px-4 py-3">
+                <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--dr-text-secondary)]">Plan uyumu</div>
+                <div className="mt-1 text-2xl font-black text-[var(--dr-text-primary)]">{analysis.plan.adherenceScore}</div>
+                <div className="mt-1 text-xs text-[var(--dr-text-secondary)]">Atanan görev tamamlama seviyesi</div>
               </div>
             </div>
           </div>
 
           <div className={card}>
-            <h3 className="text-base font-black text-slate-900">Müdahale gereken konular</h3>
+            <h3 className="text-base font-black text-[var(--dr-text-primary)]">Müdahale gereken konular</h3>
             <div className="mt-4 space-y-3">
-              {weakestTopics.length === 0 && <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-500">Tekrar bayrağı olan konu yok.</div>}
+              {weakestTopics.length === 0 && <div className="rounded-2xl bg-[var(--dr-surface)]/70 px-4 py-4 text-sm text-[var(--dr-text-secondary)]">Tekrar bayrağı olan konu yok.</div>}
               {weakestTopics.map((topic) => (
-                <div key={topic.key} className="rounded-2xl bg-rose-50 px-4 py-3">
-                  <div className="font-semibold text-slate-900">{topic.courseName}</div>
-                  <div className="mt-1 text-sm text-slate-600">{topic.unitName} / {topic.topicName}</div>
+                <div key={topic.key} className="rounded-2xl bg-rose-500/10 px-4 py-3">
+                  <div className="font-semibold text-[var(--dr-text-primary)]">{topic.courseName}</div>
+                  <div className="mt-1 text-sm text-[var(--dr-text-secondary)]">{topic.unitName} / {topic.topicName}</div>
                   <div className="mt-2 text-xs font-semibold text-rose-700">Hakimiyet {topic.masteryScore} / Trend {topic.trend}</div>
                 </div>
               ))}
@@ -165,7 +160,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <div className={card}>
-          <h3 className="mb-4 text-lg font-black text-slate-900">Haftalık performans</h3>
+          <h3 className="mb-4 text-lg font-black text-[var(--dr-text-primary)]">Haftalık performans</h3>
           <SafeResponsiveContainer width="100%" height={240}>
             <BarChart data={weeklyData}>
               <CartesianGrid {...chartGridProps} />
@@ -179,7 +174,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
         </div>
 
         <div className={card}>
-          <h3 className="mb-4 text-lg font-black text-slate-900">Yıllık genel görünüm</h3>
+          <h3 className="mb-4 text-lg font-black text-[var(--dr-text-primary)]">Yıllık genel görünüm</h3>
           <SafeResponsiveContainer width="100%" height={240}>
             <LineChart data={yearlyData}>
               <CartesianGrid {...chartGridProps} />
