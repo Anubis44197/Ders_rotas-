@@ -227,15 +227,21 @@ export const publishRemoteAppData = async (appData: RemoteAppData) => {
   const writes = sectionIds.flatMap((sectionId) => {
     const serialized = JSON.stringify(sections[sectionId]);
     if (serialized === lastPublishedSections.get(sectionId)) return [];
-    lastPublishedSections.set(sectionId, serialized);
-    return setDoc(sectionRefs[sectionId], {
-      schemaVersion: 2,
-      syncVersion: 3,
-      value: sections[sectionId],
-      updatedAt: serverTimestamp(),
-      updatedBy: user.uid,
-    }, { merge: true });
+    return {
+      sectionId,
+      serialized,
+      write: setDoc(sectionRefs[sectionId], {
+        schemaVersion: 2,
+        syncVersion: 3,
+        value: sections[sectionId],
+        updatedAt: serverTimestamp(),
+        updatedBy: user.uid,
+      }, { merge: true }),
+    };
   });
 
-  await Promise.all(writes);
+  await Promise.all(writes.map(async ({ sectionId, serialized, write }) => {
+    await write;
+    lastPublishedSections.set(sectionId, serialized);
+  }));
 };

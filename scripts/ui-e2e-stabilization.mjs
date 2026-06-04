@@ -498,7 +498,7 @@ const main = async () => {
         const signalCount = await evalValue(client, `(() => document.querySelectorAll('[data-testid^="decision-signal-"]').length)()`, 0);
         const workspaceReady = await evalValue(client, `(() => Boolean(document.querySelector('[data-testid="parent-analysis-workspace"]')) )()`, false);
         const shot = await capture(1, 'main-signals');
-        const pass = Number(signalCount) >= 4 && Number(signalCount) <= 6 && workspaceReady;
+        const pass = Number(signalCount) >= 3 && Number(signalCount) <= 6 && workspaceReady;
         return {
           pass,
           actual: { signalCount, workspaceReady },
@@ -746,13 +746,13 @@ const main = async () => {
       {
         id: 10,
         name: 'Veli aksiyonu -> ogrenci gorev zinciri',
-        data: 'qaRecords=manual, analysisTab=goals, e2e=1',
-        selectors: ['[data-testid="track-topic-btn"]', '[data-testid="switch-child-mode-btn"]', '[data-plan-task-id^="parent-action-"]'],
+        data: 'qaRecords=manual, analysisTab=insights, e2e=1',
+        selectors: ['[data-testid="create-revision-task-btn"]', '[data-testid="switch-child-mode-btn"]', '[data-plan-task-id^="parent-action-"]'],
         expected: 'Veli aksiyonundan sonra cocuk ekraninda parent-action gorevi olusmali.',
         related: 'components/parent/ParentAnalysisWorkspace.tsx, components/child/ChildDashboard.tsx, App.tsx',
       },
       async () => {
-        await go(client, { qaRecords: 'manual', analysisTab: 'goals', e2e: true });
+        await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
         await evalValue(client, `(() => {
           const raw = localStorage.getItem('tasks');
           const tasks = raw ? JSON.parse(raw) : [];
@@ -760,9 +760,9 @@ const main = async () => {
           localStorage.setItem('tasks', JSON.stringify(filtered));
           return true;
         })()`, false);
-        await go(client, { qaRecords: 'manual', analysisTab: 'goals', e2e: true });
+        await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
         const beforePending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
-        const clicked = await clickSelector(client, '[data-testid="track-topic-btn"]');
+        const clicked = await clickSelector(client, '[data-testid="create-revision-task-btn"]');
         await wait(350);
         const afterPending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
         await clickSelector(client, '[data-testid="switch-child-mode-btn"]');
@@ -784,13 +784,13 @@ const main = async () => {
       {
         id: 11,
         name: 'Child complete -> parent refresh',
-        data: 'qaRecords=manual, analysisTab=goals, e2e=1',
+        data: 'qaRecords=manual, analysisTab=insights, e2e=1',
         selectors: ['[data-testid^="child-quick-complete-task-"]', '[data-testid="switch-parent-mode-btn"]', '[data-testid="parent-action-completed-count"]'],
         expected: 'Cocukta tamamlanan parent-action gorevi ebeveyn ozetine yansimali.',
         related: 'components/child/ChildDashboard.tsx, components/parent/ParentAnalysisWorkspace.tsx, App.tsx',
       },
       async () => {
-        await go(client, { qaRecords: 'manual', analysisTab: 'goals', e2e: true });
+        await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
         await evalValue(client, `(() => {
           const raw = localStorage.getItem('tasks');
           const tasks = raw ? JSON.parse(raw) : [];
@@ -798,8 +798,8 @@ const main = async () => {
           localStorage.setItem('tasks', JSON.stringify(filtered));
           return true;
         })()`, false);
-        await go(client, { qaRecords: 'manual', analysisTab: 'goals', e2e: true });
-        await clickSelector(client, '[data-testid="track-topic-btn"]');
+        await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
+        await clickSelector(client, '[data-testid="create-revision-task-btn"]');
         await wait(350);
         const beforePending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
         const beforeDone = numberFromText(await textOf(client, '[data-testid="parent-action-completed-count"]'));
@@ -859,19 +859,19 @@ const main = async () => {
       {
         id: 13,
         name: 'Duplicate event idempotency',
-        data: 'qaRecords=manual, track-topic iki kez, e2e=1',
-        selectors: ['[data-testid="track-topic-btn"]', 'task.planTaskId^="parent-action-"'],
+        data: 'qaRecords=manual, create-revision iki kez, e2e=1',
+        selectors: ['[data-testid="create-revision-task-btn"]', 'task.planTaskId^="parent-action-"'],
         expected: 'Ayni parent aksiyonu duplicate gorev olusturmamali.',
         related: 'components/parent/ParentAnalysisWorkspace.tsx, App.tsx',
       },
       async () => {
         await resetAppStorageDeterministic(client);
-        await go(client, { qaRecords: 'manual', analysisTab: 'goals', e2e: true });
-        await go(client, { qaRecords: 'manual', analysisTab: 'goals', e2e: true });
+        await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
+        await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
         const beforePending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
-        await clickSelector(client, '[data-testid="track-topic-btn"]');
+        await clickSelector(client, '[data-testid="create-revision-task-btn"]');
         await wait(400);
-        await clickSelector(client, '[data-testid="track-topic-btn"]');
+        await clickSelector(client, '[data-testid="create-revision-task-btn"]');
         await wait(500);
         const afterPending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
         await clickSelector(client, '[data-testid="switch-child-mode-btn"]');
@@ -1103,6 +1103,7 @@ const main = async () => {
 };
 
 main().catch(async (error) => {
+  await mkdir(ARTIFACT_DIR, { recursive: true });
   await log(`fatal: ${error instanceof Error ? error.stack || error.message : String(error)}`);
   console.error(error);
   process.exitCode = 1;

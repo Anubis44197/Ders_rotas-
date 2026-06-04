@@ -681,12 +681,47 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
       )}
 
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div className={`${card} ios-blue`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Atanan bekleyen</div><div className="mt-2 text-2xl font-black text-slate-900">{assignedPendingTodayCount}</div><div className="mt-1 text-sm text-slate-500">Bugün + takipte</div></div>
-        <div className={`${card} ios-mint`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bugün biten</div><div className="mt-2 text-2xl font-black text-emerald-700">{completedToday.length}</div><div className="mt-1 text-sm text-slate-500">Tamamlanan oturum</div></div>
-        <div className={`${card} ios-lilac`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Odak</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageFocus}</div><div className="mt-1 text-sm text-slate-500">Genel ortalama</div></div>
-        <div className={`${card} ios-peach`}><div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hâkimiyet</div><div className="mt-2 text-2xl font-black text-slate-900">{analysis.overall.averageMastery}</div><div className="mt-1 text-sm text-slate-500">Konu tabanlı skor</div></div>
+        <div className="dr-velvet-stat ios-blue p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-800/80 dark:text-blue-200/80">Atanan bekleyen</div>
+              <div className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{assignedPendingTodayCount}</div>
+            </div>
+            <div className="dr-velvet-stat-icon text-blue-700 dark:text-blue-200"><Target className="h-5 w-5" /></div>
+          </div>
+          <div className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Bugün + takipte</div>
+        </div>
+        <div className="dr-velvet-stat ios-mint p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-800/80 dark:text-emerald-200/80">Bugün biten</div>
+              <div className="mt-2 text-3xl font-black text-emerald-800 dark:text-emerald-200">{completedToday.length}</div>
+            </div>
+            <div className="dr-velvet-stat-icon text-emerald-700 dark:text-emerald-200"><CheckCircle className="h-5 w-5" /></div>
+          </div>
+          <div className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Tamamlanan oturum</div>
+        </div>
+        <div className="dr-velvet-stat ios-lilac p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-800/80 dark:text-violet-200/80">Odak</div>
+              <div className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{analysis.overall.averageFocus}</div>
+            </div>
+            <div className="dr-velvet-stat-icon text-violet-700 dark:text-violet-200"><Brain className="h-5 w-5" /></div>
+          </div>
+          <div className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Genel ortalama</div>
+        </div>
+        <div className="dr-velvet-stat ios-peach p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-orange-800/80 dark:text-orange-200/80">Hâkimiyet</div>
+              <div className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{analysis.overall.averageMastery}</div>
+            </div>
+            <div className="dr-velvet-stat-icon text-orange-700 dark:text-orange-200"><BookMarked className="h-5 w-5" /></div>
+          </div>
+          <div className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Konu tabanlı skor</div>
+        </div>
       </section>
-
       <div className="ios-panel flex flex-wrap gap-2 rounded-[26px] p-2">
         <button onClick={() => setActiveView('tasks')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'tasks' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><Target className="mr-2 inline h-4 w-4" />Görevler</button>
         <button onClick={() => setActiveView('treasures')} className={`rounded-full px-4 py-2 text-sm font-semibold ${activeView === 'treasures' ? 'ios-button-active text-slate-900' : 'ios-button text-slate-600'}`}><Gift className="mr-2 inline h-4 w-4" />Ödüller</button>

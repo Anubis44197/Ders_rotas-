@@ -69,66 +69,66 @@ const COURSE_TASK_VISUALS: Record<string, CourseTaskVisual> = {
   matematik: {
     row: 'border-indigo-400/28 bg-indigo-500/[0.14] shadow-[inset_0_1px_0_rgba(129,140,248,0.14)] hover:bg-indigo-500/[0.19]',
     rail: 'border-indigo-300/60 bg-indigo-400 shadow-[0_0_18px_rgba(129,140,248,0.32)]',
-    pill: 'border-indigo-300/45 bg-indigo-400/18 text-indigo-100 dark:text-indigo-100',
-    title: 'text-indigo-50 dark:text-indigo-50',
-    detail: 'text-indigo-100/80 dark:text-indigo-100/80',
-    meta: 'text-indigo-100/85 dark:text-indigo-100/85',
+    pill: 'border-indigo-500/30 bg-indigo-100/80 text-indigo-800 dark:border-indigo-300/45 dark:bg-indigo-400/18 dark:text-indigo-100',
+    title: 'text-slate-950 dark:text-indigo-50',
+    detail: 'text-slate-700 dark:text-indigo-100/80',
+    meta: 'text-slate-600 dark:text-indigo-100/85',
   },
   turkce: {
     row: 'border-emerald-400/28 bg-emerald-500/[0.13] shadow-[inset_0_1px_0_rgba(52,211,153,0.14)] hover:bg-emerald-500/[0.18]',
     rail: 'border-emerald-300/60 bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.30)]',
-    pill: 'border-emerald-300/45 bg-emerald-400/18 text-emerald-100 dark:text-emerald-100',
-    title: 'text-emerald-50 dark:text-emerald-50',
-    detail: 'text-emerald-100/80 dark:text-emerald-100/80',
-    meta: 'text-emerald-100/85 dark:text-emerald-100/85',
+    pill: 'border-emerald-500/30 bg-emerald-100/80 text-emerald-800 dark:border-emerald-300/45 dark:bg-emerald-400/18 dark:text-emerald-100',
+    title: 'text-slate-950 dark:text-emerald-50',
+    detail: 'text-slate-700 dark:text-emerald-100/80',
+    meta: 'text-slate-600 dark:text-emerald-100/85',
   },
   fen: {
     row: 'border-purple-400/28 bg-purple-500/[0.13] shadow-[inset_0_1px_0_rgba(192,132,252,0.14)] hover:bg-purple-500/[0.18]',
     rail: 'border-purple-300/60 bg-purple-400 shadow-[0_0_18px_rgba(192,132,252,0.30)]',
-    pill: 'border-purple-300/45 bg-purple-400/18 text-purple-100 dark:text-purple-100',
-    title: 'text-purple-50 dark:text-purple-50',
-    detail: 'text-purple-100/80 dark:text-purple-100/80',
-    meta: 'text-purple-100/85 dark:text-purple-100/85',
+    pill: 'border-purple-500/30 bg-purple-100/80 text-purple-800 dark:border-purple-300/45 dark:bg-purple-400/18 dark:text-purple-100',
+    title: 'text-slate-950 dark:text-purple-50',
+    detail: 'text-slate-700 dark:text-purple-100/80',
+    meta: 'text-slate-600 dark:text-purple-100/85',
   },
   inkilap: {
     row: 'border-rose-400/28 bg-rose-500/[0.13] shadow-[inset_0_1px_0_rgba(251,113,133,0.14)] hover:bg-rose-500/[0.18]',
     rail: 'border-rose-300/60 bg-rose-400 shadow-[0_0_18px_rgba(251,113,133,0.30)]',
-    pill: 'border-rose-300/45 bg-rose-400/18 text-rose-100 dark:text-rose-100',
-    title: 'text-rose-50 dark:text-rose-50',
-    detail: 'text-rose-100/80 dark:text-rose-100/80',
-    meta: 'text-rose-100/85 dark:text-rose-100/85',
+    pill: 'border-rose-500/30 bg-rose-100/80 text-rose-800 dark:border-rose-300/45 dark:bg-rose-400/18 dark:text-rose-100',
+    title: 'text-slate-950 dark:text-rose-50',
+    detail: 'text-slate-700 dark:text-rose-100/80',
+    meta: 'text-slate-600 dark:text-rose-100/85',
   },
   din: {
     row: 'border-amber-400/30 bg-amber-500/[0.13] shadow-[inset_0_1px_0_rgba(251,191,36,0.14)] hover:bg-amber-500/[0.18]',
     rail: 'border-amber-300/60 bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.30)]',
-    pill: 'border-amber-300/45 bg-amber-400/18 text-amber-100 dark:text-amber-100',
-    title: 'text-amber-50 dark:text-amber-50',
-    detail: 'text-amber-100/80 dark:text-amber-100/80',
-    meta: 'text-amber-100/85 dark:text-amber-100/85',
+    pill: 'border-amber-500/35 bg-amber-100/85 text-amber-900 dark:border-amber-300/45 dark:bg-amber-400/18 dark:text-amber-100',
+    title: 'text-slate-950 dark:text-amber-50',
+    detail: 'text-slate-700 dark:text-amber-100/80',
+    meta: 'text-slate-600 dark:text-amber-100/85',
   },
   ingilizce: {
     row: 'border-sky-400/30 bg-sky-500/[0.13] shadow-[inset_0_1px_0_rgba(56,189,248,0.14)] hover:bg-sky-500/[0.18]',
     rail: 'border-sky-300/60 bg-sky-400 shadow-[0_0_18px_rgba(56,189,248,0.30)]',
-    pill: 'border-sky-300/45 bg-sky-400/18 text-sky-100 dark:text-sky-100',
-    title: 'text-sky-50 dark:text-sky-50',
-    detail: 'text-sky-100/80 dark:text-sky-100/80',
-    meta: 'text-sky-100/85 dark:text-sky-100/85',
+    pill: 'border-sky-500/30 bg-sky-100/85 text-sky-800 dark:border-sky-300/45 dark:bg-sky-400/18 dark:text-sky-100',
+    title: 'text-slate-950 dark:text-sky-50',
+    detail: 'text-slate-700 dark:text-sky-100/80',
+    meta: 'text-slate-600 dark:text-sky-100/85',
   },
   paragraf: {
     row: 'border-teal-400/30 bg-teal-500/[0.13] shadow-[inset_0_1px_0_rgba(45,212,191,0.14)] hover:bg-teal-500/[0.18]',
     rail: 'border-teal-300/60 bg-teal-400 shadow-[0_0_18px_rgba(45,212,191,0.30)]',
-    pill: 'border-teal-300/45 bg-teal-400/18 text-teal-100 dark:text-teal-100',
-    title: 'text-teal-50 dark:text-teal-50',
-    detail: 'text-teal-100/80 dark:text-teal-100/80',
-    meta: 'text-teal-100/85 dark:text-teal-100/85',
+    pill: 'border-teal-500/30 bg-teal-100/85 text-teal-800 dark:border-teal-300/45 dark:bg-teal-400/18 dark:text-teal-100',
+    title: 'text-slate-950 dark:text-teal-50',
+    detail: 'text-slate-700 dark:text-teal-100/80',
+    meta: 'text-slate-600 dark:text-teal-100/85',
   },
   default: {
     row: 'border-blue-400/30 bg-blue-500/[0.13] shadow-[inset_0_1px_0_rgba(96,165,250,0.14)] hover:bg-blue-500/[0.18]',
     rail: 'border-blue-300/60 bg-blue-400 shadow-[0_0_18px_rgba(96,165,250,0.30)]',
-    pill: 'border-blue-300/45 bg-blue-400/18 text-blue-100 dark:text-blue-100',
-    title: 'text-blue-50 dark:text-blue-50',
-    detail: 'text-blue-100/80 dark:text-blue-100/80',
-    meta: 'text-blue-100/85 dark:text-blue-100/85',
+    pill: 'border-blue-500/30 bg-blue-100/85 text-blue-800 dark:border-blue-300/45 dark:bg-blue-400/18 dark:text-blue-100',
+    title: 'text-slate-950 dark:text-blue-50',
+    detail: 'text-slate-700 dark:text-blue-100/80',
+    meta: 'text-slate-600 dark:text-blue-100/85',
   },
 };
 
@@ -615,11 +615,28 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
   const handleRepeatAssignedTask = async (task: Task) => {
     if (!addTask || isAssigningTask) return;
 
+    const today = getTodayDateInput();
+    const duplicateExists = (tasks || []).some((candidate) => (
+      candidate.id !== task.id &&
+      candidate.status === 'bekliyor' &&
+      candidate.dueDate === today &&
+      candidate.title === task.title &&
+      candidate.courseId === task.courseId &&
+      candidate.taskType === task.taskType &&
+      (candidate.curriculumUnitName || '') === (task.curriculumUnitName || '') &&
+      (candidate.curriculumTopicName || '') === (task.curriculumTopicName || '')
+    ));
+
+    if (duplicateExists) {
+      setAssignmentToast('Bu görev bugün için zaten bekleyenlerde var. Tekrar kopya oluşturulmadı.');
+      return;
+    }
+
     setIsAssigningTask(true);
     try {
       await addTask({
         title: task.title,
-        dueDate: getTodayDateInput(),
+        dueDate: today,
         courseId: task.courseId,
         taskType: task.taskType,
         plannedDuration: task.plannedDuration,
@@ -633,9 +650,9 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
         ...(typeof task.minimumDuration === 'number' ? { minimumDuration: task.minimumDuration } : {}),
         planSource: 'manual' as const,
       });
-      setAssignmentToast('G\u00f6rev tekrarland\u0131. Yeni kopya listenin en \u00fcst\u00fcnde.');
+      setAssignmentToast('Görev tekrarlandı. Yeni kopya listenin en üstünde.');
     } catch (error) {
-      setAssignmentToast(error instanceof Error ? error.message : 'G\u00f6rev tekrarlanamad\u0131.');
+      setAssignmentToast(error instanceof Error ? error.message : 'Görev tekrarlanamadı.');
     } finally {
       setIsAssigningTask(false);
     }

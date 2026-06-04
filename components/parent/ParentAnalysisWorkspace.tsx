@@ -205,7 +205,6 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   const [reportViewTab, setReportViewTab] = useState<ReportViewTab>('general');
   const [report, setReport] = useState<ReportData | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [hasRecalculated, setHasRecalculated] = useState(false);
   const [isCreatingAction, setIsCreatingAction] = useState(false);
   const [selectedCourseDetailId, setSelectedCourseDetailId] = useState<string | null>(null);
   const [selectedTopicDetailKey, setSelectedTopicDetailKey] = useState<string | null>(null);
@@ -773,33 +772,26 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
               <p className="text-sm text-[var(--dr-text-secondary)]">Mevcut ders durumu, akademik risk sinyalleri ve planlama.</p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setHasRecalculated(true);
-                onActionMessage?.('success', 'Planlama ve ders rotası başarıyla yeniden hesaplandı.');
-              }}
-              data-testid="recalculate-rota-btn"
-              className="ios-button-active inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white bg-[var(--dr-orange)] hover:opacity-90 active:scale-[0.96] transition-all"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Yeniden Hesapla (Recalculate Rota)
-            </button>
           </div>
-
-          {hasRecalculated && (
-            <div className="ios-card rounded-[24px] p-5 bg-emerald-50 border border-emerald-200" data-testid="recalculated-suggestions-banner">
-              <div className="flex items-start gap-3">
-                <div className="rounded-full bg-emerald-100 p-2 text-emerald-700">
-                  <TrendingUp className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-emerald-800 text-sm">Güncellenmiş çalışma planı önerileri</h4>
-                  <p className="text-xs text-emerald-600 mt-1">Son performans analizi doğrultusunda ders çalışma rotası ve günlük hedefler güncellendi. Yeni program çocuğun paneline yansıtıldı.</p>
-                </div>
+          <div className="dr-hig-secondary-card rounded-[24px] p-4" data-testid="parent-action-summary">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="ios-widget rounded-[18px] px-4 py-3">
+                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Bekleyen veli görevi</div>
+                <div className="mt-1 text-2xl font-black text-[var(--dr-text-primary)]" data-testid="parent-action-pending-count">{parentActionPendingCount}</div>
+              </div>
+              <div className="ios-widget rounded-[18px] px-4 py-3">
+                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Tamamlanan</div>
+                <div className="mt-1 text-2xl font-black text-[var(--dr-text-primary)]" data-testid="parent-action-completed-count">{parentActionCompletedCount}</div>
+              </div>
+              <div className="ios-widget rounded-[18px] px-4 py-3">
+                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Bugün tamamlanan</div>
+                <div className="mt-1 text-2xl font-black text-[var(--dr-text-primary)]" data-testid="parent-action-completed-today-count">{parentActionCompletedTodayCount}</div>
               </div>
             </div>
-          )}
+            <div className="mt-3 rounded-[16px] bg-[var(--dr-surface)]/50 px-3 py-2 text-xs font-semibold text-[var(--dr-text-secondary)]">
+              {parentActionAuditLine}
+            </div>
+          </div>
 
           <div className="ios-panel rounded-[24px] p-2 border border-[var(--dr-std-border-strong)]/20 shadow-md">
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -1062,6 +1054,9 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                   </ContextHelp>
                 </div>
                 <p className="text-sm font-semibold text-slate-500 mt-0.5">Sınav hazırlık hedefleri ve güncel durum analizi</p>
+                <div className="mt-3 inline-flex items-center rounded-full border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/70 px-3 py-1 text-[11px] font-black text-[var(--dr-text-primary)] shadow-sm" data-testid="top-goal-alert-level" data-alert-level={topGoalAlert.level}>
+                  {topGoalAlert.level}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-4 bg-slate-50 border border-slate-100 rounded-[20px] p-4 shrink-0 shadow-sm">
@@ -1374,7 +1369,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
 
 
       {showSection('reports') && (
-        <div className="space-y-6 w-full max-w-4xl mx-auto" data-testid="analysis-reports-section">
+        <div className="space-y-6 w-full max-w-4xl mx-auto" data-testid="analysis-reports-section" data-report-period={reportPeriod}>
           {analysisState !== 'ready' ? (
             renderStateCard('reports')
           ) : (
@@ -1394,6 +1389,30 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 </div>
                 <p className="text-xs font-semibold text-slate-500">Öğrencinin haftalık/aylık performans ve çalışma özeti</p>
               </div>
+            </div>
+
+            <div className="mb-5 flex flex-col gap-3 rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/55 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <label className="flex flex-col gap-1 text-xs font-black text-[var(--dr-text-secondary)] sm:min-w-[220px]">
+                Rapor dönemi
+                <select
+                  value={reportPeriod}
+                  onChange={(event) => setReportPeriod(event.target.value as ReportPeriod)}
+                  data-testid="report-period-select"
+                  className="ios-button rounded-[14px] border border-[var(--dr-std-border-strong)]/20 bg-[var(--dr-surface)] px-3 py-2 text-sm font-bold text-[var(--dr-text-primary)] outline-none transition focus:border-[var(--dr-orange)] focus:ring-1 focus:ring-[var(--dr-orange)]"
+                >
+                  {reportPeriods.map((period) => (
+                    <option key={period} value={period}>{period}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerateReport}
+                disabled={isGeneratingReport}
+                className="ios-button rounded-[14px] px-4 py-2 text-sm font-black text-[var(--dr-text-primary)] transition active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
+              >
+                {isGeneratingReport ? 'Rapor hazırlanıyor' : 'Rapor üret'}
+              </button>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

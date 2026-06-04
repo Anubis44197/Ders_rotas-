@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Course, ExamScheduleEntry, SubjectCurriculum, Task, WeeklySchedule } from '../../types';
-import { BookOpen, Calendar, ClipboardList, PlusCircle, Trash2 } from '../icons';
+import { BookOpen, Calendar, CheckCircle, ClipboardList, Clock, PlusCircle, Target, Trash2 } from '../icons';
 import WeeklySchedulePanel from './WeeklySchedulePanel';
 import { getTodayString } from '../../utils/dateUtils';
 import ContextHelp from '../shared/ContextHelp';
@@ -66,13 +66,14 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
   const [examNameInput, setExamNameInput] = React.useState('');
   const [examDateInput, setExamDateInput] = React.useState('');
   const [examNoteInput, setExamNoteInput] = React.useState('');
+  const [examFormMessage, setExamFormMessage] = React.useState<string | null>(null);
 
   const safeCourses = Array.isArray(courses) ? courses : [];
 
   const handleAddExamSchedule = () => {
     const course = safeCourses.find((item) => item.id === selectedExamCourseId);
     if (!course || !examNameInput.trim() || !examDateInput) {
-      alert("Lütfen ders, sınav adı ve tarih alanlarını doldurun.");
+      setExamFormMessage('Lütfen ders, sınav adı ve tarih alanlarını doldurun.');
       return;
     }
     const nextEntry: ExamScheduleEntry = {
@@ -88,6 +89,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
     setExamNameInput('');
     setExamDateInput('');
     setExamNoteInput('');
+    setExamFormMessage(null);
     setIsExamModalOpen(false);
   };
   const safeCurriculumSummary = {
@@ -107,6 +109,27 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
     .sort((a, b) => a.date.localeCompare(b.date));
   const upcomingExams = sortedExamEntries.filter((e) => e.date >= today);
   const pastExams = sortedExamEntries.filter((e) => e.date < today);
+  const openTaskCount = (Array.isArray(tasks) ? tasks : []).filter((task) => task.status !== 'tamamlandı').length;
+  const curriculumCompletionRate = safeCurriculumSummary.topicCount > 0
+    ? Math.round((safeCurriculumSummary.completedTopicCount / safeCurriculumSummary.topicCount) * 100)
+    : 0;
+  const nextExam = upcomingExams[0];
+  const nextExamDaysLeft = nextExam
+    ? Math.round((new Date(`${nextExam.date}T00:00:00`).getTime() - new Date(`${today}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const nextExamLabel = nextExam
+    ? nextExamDaysLeft === 0
+      ? 'Bugün'
+      : nextExamDaysLeft === 1
+        ? 'Yarın'
+        : `${nextExamDaysLeft} gün`
+    : 'Yok';
+  const planningPulseItems = [
+    { label: 'Aktif ders', value: activeCourses.length, detail: 'planlanabilir ders', icon: BookOpen },
+    { label: 'Açık görev', value: openTaskCount, detail: openTaskCount === 0 ? 'bekleyen iş yok' : 'takip bekliyor', icon: ClipboardList },
+    { label: 'Sıradaki sınav', value: nextExamLabel, detail: nextExam ? nextExam.courseName : 'takvim temiz', icon: Calendar },
+    { label: 'Müfredat', value: `%${curriculumCompletionRate}`, detail: `${safeCurriculumSummary.completedTopicCount}/${safeCurriculumSummary.topicCount} konu`, icon: Target },
+  ];
   return (
     <div className="dr-planning-workspace space-y-5">
       <section className="dr-planning-hero flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -120,6 +143,25 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         </div>
       </section>
 
+      <section className="dr-plan-action-bar p-3 sm:p-4" aria-label="Planlama özeti">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {planningPulseItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="dr-planning-metric flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="dr-hig-caption font-bold uppercase text-[var(--dr-text-secondary)]">{item.label}</div>
+                  <div className="mt-2 dr-hig-title text-[var(--dr-text-primary)]">{item.value}</div>
+                  <div className="mt-1 truncate text-xs font-semibold text-[var(--dr-text-secondary)]">{item.detail}</div>
+                </div>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--dr-orange)]/10 text-[var(--dr-orange)]">
+                  <Icon className="h-5 w-5" />
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
       {brokenReferenceTotal > 0 && (
         <section className="ios-coral rounded-[24px] p-5 text-rose-950">
           <div className="text-xs font-black uppercase tracking-[0.16em] opacity-75">Veri bağlantı kontrolü</div>
@@ -136,10 +178,10 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         </section>
       )}
 
-      <section className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg">
+      <section className="dr-planning-card">
         <div className="dr-planning-card-head flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 dr-hig-caption font-bold uppercase tracking-[0.18em] text-[var(--dr-orange)]">
+            <div className="dr-planning-kicker flex items-center gap-2 dr-hig-caption font-bold uppercase">
               <BookOpen className="h-4 w-4" />
               Müfredat
             </div>
@@ -160,38 +202,38 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
           </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/60 px-4 py-4 shadow-inner">
+        <div className="dr-planning-metrics mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="dr-planning-metric">
             <div className="dr-hig-caption font-bold uppercase text-[var(--dr-text-secondary)]">Aktif ders</div>
             <div className="mt-2 dr-hig-title text-[var(--dr-text-primary)]">{activeCourses.length}</div>
           </div>
-          <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/60 px-4 py-4 shadow-inner">
+          <div className="dr-planning-metric">
             <div className="dr-hig-caption font-bold uppercase text-[var(--dr-text-secondary)]">Ünite</div>
             <div className="mt-2 dr-hig-title text-[var(--dr-text-primary)]">{safeCurriculumSummary.unitCount}</div>
           </div>
-          <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/60 px-4 py-4 shadow-inner">
+          <div className="dr-planning-metric">
             <div className="dr-hig-caption font-bold uppercase text-[var(--dr-text-secondary)]">Konu</div>
             <div className="mt-2 dr-hig-title text-[var(--dr-text-primary)]">{safeCurriculumSummary.topicCount}</div>
           </div>
-          <div className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/60 px-4 py-4 shadow-inner">
+          <div className="dr-planning-metric">
             <div className="dr-hig-caption font-bold uppercase text-[var(--dr-text-secondary)]">Tamamlanan</div>
             <div className="mt-2 dr-hig-title text-[var(--dr-text-primary)]">{safeCurriculumSummary.completedTopicCount}</div>
           </div>
         </div>
 
         {safeCurriculumSummary.subjects.length === 0 ? (
-          <div className="mt-4 rounded-[18px] border border-dashed border-[var(--dr-std-border-strong)]/20 bg-[var(--dr-surface)]/30 px-4 py-4 text-sm font-semibold text-[var(--dr-text-secondary)]">
+          <div className="dr-planning-empty mt-4">
             Henüz ders eklenmedi. Görev atama ve analiz için önce müfredat iskeleti tanımlanmalı.
           </div>
         ) : (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="dr-planning-chip-row mt-4 flex flex-wrap gap-2">
             {safeCurriculumSummary.subjects.slice(0, 8).map((subject) => (
-              <span key={subject} className="ios-widget inline-flex min-height-[2rem] items-center rounded-full border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/50 px-3 py-1.5 text-xs font-bold text-[var(--dr-text-primary)]">
+              <span key={subject} className="dr-planning-chip">
                 {subject}
               </span>
             ))}
             {safeCurriculumSummary.subjects.length > 8 && (
-              <span className="ios-widget inline-flex min-height-[2rem] items-center rounded-full border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/50 px-3 py-1.5 text-xs font-bold text-[var(--dr-text-primary)]">+{safeCurriculumSummary.subjects.length - 8}</span>
+              <span className="dr-planning-chip">+{safeCurriculumSummary.subjects.length - 8}</span>
             )}
           </div>
         )}
@@ -222,40 +264,45 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         )}
       </section>
 
-      <WeeklySchedulePanel schedule={weeklySchedule} courses={safeCourses} curriculum={curriculum} tasks={tasks} addTask={addTask} deleteTask={deleteTask} onSave={onChangeSchedule} onAddExam={() => setIsExamModalOpen(true)} />
+      <WeeklySchedulePanel schedule={weeklySchedule} courses={safeCourses} curriculum={curriculum} tasks={tasks} addTask={addTask} deleteTask={deleteTask} onSave={onChangeSchedule} onAddExam={() => { setExamFormMessage(null); setIsExamModalOpen(true); }} />
 
       {isExamModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl transition-all">
           <div className="ios-card dr-compact-modal flex max-h-[min(30rem,calc(100dvh-1.5rem))] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl" role="dialog" aria-modal="true" aria-label="Sınav takvimi ekle">
             <div className="flex items-center justify-between border-b border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/20 px-4 py-3">
               <h2 className="text-lg font-black text-[var(--dr-text-primary)]">Sınav Ekle</h2>
-              <button type="button" onClick={() => setIsExamModalOpen(false)} className="ios-button flex h-9 w-9 items-center justify-center rounded-full text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Sınav formunu kapat">
+              <button type="button" onClick={() => { setExamFormMessage(null); setIsExamModalOpen(false); }} className="ios-button flex h-9 w-9 items-center justify-center rounded-full text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Sınav formunu kapat">
                 ✕
               </button>
             </div>
             <div className="dr-modal-scroll dr-compact-modal-body flex-1 space-y-3 overflow-y-auto p-4 bg-[var(--dr-surface)]/20">
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase text-[var(--dr-text-secondary)]">Ders Seçin</label>
-                <select value={selectedExamCourseId} onChange={(event) => setSelectedExamCourseId(event.target.value)} className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none">
+                <select value={selectedExamCourseId} onChange={(event) => { setSelectedExamCourseId(event.target.value); setExamFormMessage(null); }} className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none">
                   <option value="">Ders Seçiniz</option>
                   {safeCourses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase text-[var(--dr-text-secondary)]">Sınav Adı</label>
-                <input value={examNameInput} onChange={(event) => setExamNameInput(event.target.value)} placeholder="Örn: 1. Dönem 1. Yazılı" className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" />
+                <input value={examNameInput} onChange={(event) => { setExamNameInput(event.target.value); setExamFormMessage(null); }} placeholder="Örn: 1. Dönem 1. Yazılı" className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase text-[var(--dr-text-secondary)]">Tarih</label>
-                <input value={examDateInput} onChange={(event) => setExamDateInput(event.target.value)} type="date" className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" />
+                <input value={examDateInput} onChange={(event) => { setExamDateInput(event.target.value); setExamFormMessage(null); }} type="date" className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" />
               </div>
+              {examFormMessage && (
+                <div className="dr-planning-empty rounded-[16px] px-3 py-2 text-xs font-black text-[var(--dr-orange)]" role="status">
+                  {examFormMessage}
+                </div>
+              )}
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase text-[var(--dr-text-secondary)]">Not (İsteğe Bağlı)</label>
                 <input value={examNoteInput} onChange={(event) => setExamNoteInput(event.target.value)} placeholder="Hedef konular veya notlar..." className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" />
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/20 px-4 py-3">
-              <button type="button" onClick={() => setIsExamModalOpen(false)} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Sınav eklemeyi iptal et">İptal</button>
+              <button type="button" onClick={() => { setExamFormMessage(null); setIsExamModalOpen(false); }} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Sınav eklemeyi iptal et">İptal</button>
               <button type="button" onClick={handleAddExamSchedule} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all active:scale-[0.96] cursor-pointer">
                 Kaydet
               </button>
@@ -264,19 +311,19 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         </div>
       )}
 
-      <section className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg">
+      <section className="dr-planning-card">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-[var(--dr-orange)]" />
             <h3 className="dr-planning-section-title dr-hig-headline text-[var(--dr-text-primary)]">Sınav Takvimi</h3>
           </div>
-          <span className="ios-button rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--dr-text-secondary)] border border-[var(--dr-std-border-strong)]/15">
+          <span className="dr-planning-count-pill">
             {upcomingExams.length} yaklaşan · {pastExams.length} geçmiş
           </span>
         </div>
 
         {sortedExamEntries.length === 0 ? (
-          <div className="mt-4 rounded-[18px] border border-dashed border-[var(--dr-std-border-strong)]/20 bg-[var(--dr-surface)]/30 p-8 text-center text-sm font-semibold text-[var(--dr-text-secondary)]">
+          <div className="dr-planning-empty mt-4 text-center">
             Henüz sınav eklenmedi. Yukarıdaki "Sınav ekle" butonunu kullanarak okul sınavlarını takvime ekleyebilirsiniz.
           </div>
         ) : (
@@ -288,9 +335,9 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
                   {upcomingExams.map((exam) => {
                     const daysLeft = Math.round((new Date(`${exam.date}T00:00:00`).getTime() - new Date(`${today}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24));
                     return (
-                      <div key={exam.id} className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/15 border-l-[3px] border-l-[var(--dr-orange)] bg-[var(--dr-surface)]/50 p-4 flex items-center justify-between gap-3 shadow-sm">
+                      <div key={exam.id} className="dr-planning-exam-row dr-planning-exam-row-upcoming flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="text-sm font-black text-[var(--dr-text-primary)]">{exam.examName}</div>
+                          <div className="flex items-center gap-2 text-sm font-black text-[var(--dr-text-primary)]"><CheckCircle className="h-4 w-4 shrink-0 text-[var(--dr-plan-mint)]" /><span className="truncate">{exam.examName}</span></div>
                           <div className="mt-0.5 text-xs font-semibold text-[var(--dr-text-secondary)]">{exam.courseName} · {exam.date}</div>
                           {exam.note && <div className="mt-1 text-xs text-[var(--dr-text-secondary)]/80">{exam.note}</div>}
                         </div>
@@ -323,9 +370,9 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
                 <div className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--dr-text-secondary)]">Geçmiş Sınavlar</div>
                 <div className="space-y-2">
                   {pastExams.slice().reverse().map((exam) => (
-                    <div key={exam.id} className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/15 border-l-[3px] border-l-[var(--dr-text-secondary)]/30 bg-[var(--dr-surface)]/30 p-4 flex items-center justify-between gap-3 opacity-75 shadow-sm">
+                    <div key={exam.id} className="dr-planning-exam-row dr-planning-exam-row-past flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-sm font-bold text-[var(--dr-text-primary)]/80">{exam.examName}</div>
+                        <div className="flex items-center gap-2 text-sm font-bold text-[var(--dr-text-primary)]/80"><Clock className="h-4 w-4 shrink-0 text-[var(--dr-text-secondary)]" /><span className="truncate">{exam.examName}</span></div>
                         <div className="mt-0.5 text-xs font-semibold text-[var(--dr-text-secondary)]">{exam.courseName} · {exam.date}</div>
                       </div>
                       <button

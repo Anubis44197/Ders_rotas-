@@ -146,6 +146,7 @@ interface ParentOverviewWorkspaceProps {
   };
   lastCompletedTaskLabel: string | null;
   onOpenPlanning: (message: string) => void;
+  onOpenAnalysis: () => void;
 }
 
 const SUBJECT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -242,6 +243,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   overviewExamDecision,
   lastCompletedTaskLabel,
   onOpenPlanning,
+  onOpenAnalysis,
 }) => {
   const periodOptions: Array<{ value: 'week1' | 'week3' | 'month' | 'quarter' | 'total'; label: string }> = [
     { value: 'week1', label: '1H' },
@@ -867,10 +869,10 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     >
       <section className="grid grid-cols-12 gap-5">
         <div className="col-span-12 space-y-5">
-          <div className="ios-panel rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md">
+          <div className="dr-hig-primary-box rounded-[28px] p-6">
             <div className="dr-hig-caption uppercase tracking-[0.14em] font-semibold text-[var(--dr-text-secondary)]">{periodSummaryTitle}</div>
             <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="ios-card rounded-[20px] p-5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
+              <div className="dr-velvet-stat p-5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Tamamlanan Görev</div>
                   <ContextHelp title="Tamamlanan Görev" tone="blue">
@@ -884,7 +886,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 </div>
                 <div className="mt-1 dr-hig-caption text-[var(--dr-text-secondary)]">%{weeklyCompletionPercent}</div>
               </div>
-              <div className="ios-card rounded-[20px] p-5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
+              <div className="dr-velvet-stat p-5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Çalışma Süresi</div>
                   <ContextHelp title="Çalışma Süresi" tone="blue">
@@ -897,7 +899,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   {minuteDelta.text}
                 </div>
               </div>
-              <div className="ios-card rounded-[20px] p-5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
+              <div className="dr-velvet-stat p-5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Çözülen Soru</div>
                   <ContextHelp title="Çözülen Soru" tone="blue">
@@ -910,7 +912,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   {solvedDelta.text}
                 </div>
               </div>
-              <div className="ios-card rounded-[20px] p-5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
+              <div className="dr-velvet-stat p-5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="dr-hig-caption font-semibold text-[var(--dr-text-secondary)]">Deneme Performansı</div>
                   <ContextHelp title="Deneme Performansı" tone="blue">
@@ -934,114 +936,6 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               </div>
             </div>
           </div>
-
-          <section className="hidden dr-curriculum-showcase-panel" data-testid="curriculum-showcase-panel">
-            <div className="dr-curriculum-showcase-head">
-              <div>
-                <h3>Veli Paneli - Öğrenci</h3>
-                <p><strong>GENEL BAKIŞ:</strong> Çocuğunuzun okul ve ev gündemi ders bazında karşılaştırılır.</p>
-              </div>
-              <div className="dr-curriculum-avatar">
-                <User className="h-7 w-7" />
-              </div>
-            </div>
-
-            <div className="dr-curriculum-showcase-grid">
-              {curriculumShowcaseCards.map((card) => {
-                const Icon = card.Icon;
-                const StatusIcon = card.statusKind === 'behind' ? TrendingDown : card.statusKind === 'ahead' ? TrendingUp : CheckCircle;
-                const circumference = 2 * Math.PI * 38;
-                const dashOffset = circumference - (circumference * card.lgsProgress) / 100;
-                return (
-                  <article key={`curriculum-showcase-${card.courseName}`} className={`dr-curriculum-showcase-card ${card.theme.className}`}>
-                    <div className="dr-curriculum-card-top">
-                      <div className="dr-curriculum-watermark dr-curriculum-watermark-left">
-                        <Icon className="h-12 w-12" />
-                      </div>
-                      <Star className="dr-curriculum-star dr-curriculum-star-a h-5 w-5" />
-                      <Star className="dr-curriculum-star dr-curriculum-star-b h-3.5 w-3.5" />
-                      <div className="relative z-10 min-w-0">
-                        <h4>{card.courseName.toLocaleUpperCase('tr-TR')}</h4>
-                        <p>LGS Tamamlanma:</p>
-                      </div>
-                      <div className="dr-curriculum-progress" aria-label={`LGS yüzde ${card.lgsProgress}`}>
-                        <svg viewBox="0 0 92 92" aria-hidden="true">
-                          <circle cx="46" cy="46" r="38" />
-                          <circle
-                            cx="46"
-                            cy="46"
-                            r="38"
-                            style={{ strokeDasharray: circumference, strokeDashoffset: dashOffset }}
-                          />
-                        </svg>
-                        <span>LGS<br />%{card.lgsProgress}</span>
-                      </div>
-                    </div>
-
-                    <div className="dr-curriculum-card-body">
-                      <div className="dr-curriculum-topic-card">
-                        <div className="dr-curriculum-topic-icon">
-                          <BookOpen className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <span>Okul Gündemi:</span>
-                          <strong>{card.schoolTopic}</strong>
-                        </div>
-                        {card.statusKind === 'sync' && <CheckCircle className="dr-curriculum-topic-check h-7 w-7" />}
-                      </div>
-
-                      <div className="dr-curriculum-topic-card">
-                        <div className="dr-curriculum-topic-icon">
-                          <Home className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <span>Ev Gündemi:</span>
-                          <strong>{card.childTopic}</strong>
-                        </div>
-                      </div>
-
-                      <div className={`dr-curriculum-track dr-curriculum-track-${card.statusKind}`}>
-                        <div className="dr-curriculum-track-line" />
-                        <div className="dr-curriculum-track-node">
-                          <Home className="h-5 w-5" />
-                          <span>OKUL</span>
-                        </div>
-                        <div className={`dr-curriculum-track-node dr-curriculum-track-student ${card.statusKind === 'behind' ? 'is-behind' : card.statusKind === 'ahead' ? 'is-ahead' : ''}`}>
-                          <GraduationCap className="h-5 w-5" />
-                          <span>ÖĞRENCİ</span>
-                        </div>
-                      </div>
-
-                      <div className="dr-curriculum-status-box">
-                        <div className="dr-curriculum-status-copy">
-                          <span>Durum:</span>
-                          <strong>{card.statusLabel}</strong>
-                        </div>
-                        <div className="dr-curriculum-status-badge">
-                          <StatusIcon className="h-7 w-7" />
-                        </div>
-                        <div className="dr-curriculum-gap-pill">
-                          {card.gap === null ? '-' : card.gap > 0 ? `+${card.gap}` : `${card.gap}`}
-                          <span>KONU</span>
-                        </div>
-                      </div>
-
-                      <div className="dr-curriculum-actions">
-                        <button type="button">
-                          <FileText className="h-4 w-4" />
-                          Durum Raporu
-                        </button>
-                        <button type="button">
-                          <BarChart className="h-4 w-4" />
-                          Haftalık Analiz
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
 
           {/* --- Haftalık Çalışma Programı (Weekly Study Schedule) --- */}
           {weeklySchedule && (() => {
@@ -1067,7 +961,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               }, 0);
             }, 0);
             return (
-              <div className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg" data-testid="overview-weekly-schedule-panel">
+              <div className="dr-hig-secondary-card rounded-[28px] p-6" data-testid="overview-weekly-schedule-panel">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h4 className="dr-hig-headline text-[var(--dr-text-primary)]">Haftalık Çalışma Programı</h4>
@@ -1256,7 +1150,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           )}
 
           {selectedCourseDetail && (
-            <div className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg" data-testid="overview-course-deep-dive-panel">
+            <div className="dr-hig-secondary-card rounded-[28px] p-6" data-testid="overview-course-deep-dive-panel">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h4 className="dr-hig-headline text-[var(--dr-text-primary)]">Ders Detay Sayfasi ({selectedCourseDetail.courseName})</h4>
@@ -1358,7 +1252,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           )}
 
           {selectedTopicDetail && (
-            <div className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg" data-testid="overview-topic-deep-dive-panel">
+            <div className="dr-hig-secondary-card rounded-[28px] p-6" data-testid="overview-topic-deep-dive-panel">
               <div className="mb-4 flex items-center justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -1550,7 +1444,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
             </div>
           )}
 
-          <div className="ios-card rounded-[24px] p-6 border border-[var(--dr-std-border-strong)]/20 shadow-md bg-[var(--dr-surface)]/40 backdrop-blur-lg">
+          <div className="dr-hig-secondary-card rounded-[28px] p-6">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h4 className="dr-hig-headline text-[var(--dr-text-primary)]">Rapor Sayfasi</h4>
@@ -1712,27 +1606,43 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 </div>
                 <div className="space-y-3">
                   <div className="ios-widget rounded-[14px] p-3">
-                    <div className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">En Cok Gelisen Konular</div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Konu ozeti</div>
+                        <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">Genel Bakis yalnizca ilk 3 sinyali gosterir; detayli siralama Karar sayfasinda.</p>
+                      </div>
+                      <button type="button" onClick={onOpenAnalysis} className="ios-button shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black text-[var(--dr-text-primary)] transition active:scale-[0.96]">
+                        Karar'a git
+                      </button>
+                    </div>
+                  </div>
+                  <div className="ios-widget rounded-[14px] p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ilk 3 gelisen konu</span>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-600">{topicImproving.length}</span>
+                    </div>
                     <div className="space-y-1.5">
-                      {topicImproving
-                        .map((item, idx) => (
-                          <div key={`grow-topic-${item.key}`} className="flex items-center justify-between text-xs">
-                            <span className="text-slate-700">{idx + 1}. {item.topicName}</span>
-                            <span className="font-black text-emerald-600">+%{item.delta}</span>
-                          </div>
-                        ))}
+                      {topicImproving.map((item, idx) => (
+                        <div key={`grow-topic-${item.key}`} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="min-w-0 truncate text-slate-700">{idx + 1}. {item.topicName}</span>
+                          <span className="shrink-0 font-black text-emerald-600">+%{item.delta}</span>
+                        </div>
+                      ))}
                       {topicImproving.length === 0 && (
                         <div className="text-xs text-slate-500">Yeterli haftalik konu verisi yok.</div>
                       )}
                     </div>
                   </div>
                   <div className="ios-widget rounded-[14px] p-3">
-                    <div className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">Zorlanilan Konular</div>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Ilk 3 destek konusu</span>
+                      <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-black text-rose-600">{topicHard.length}</span>
+                    </div>
                     <div className="space-y-1.5">
                       {topicHard.map((item, idx) => (
-                        <div key={`hard-${item.key}`} className="flex items-center justify-between text-xs">
-                          <span className="text-slate-700">{idx + 1}. {item.topicName}</span>
-                          <span className="font-black text-rose-600">{item.riskScore !== null ? `risk ${item.riskScore}` : 'risk'}</span>
+                        <div key={`hard-${item.key}`} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="min-w-0 truncate text-slate-700">{idx + 1}. {item.topicName}</span>
+                          <span className="shrink-0 font-black text-rose-600">{item.riskScore !== null ? `risk ${item.riskScore}` : 'risk'}</span>
                         </div>
                       ))}
                       {topicHard.length === 0 && (

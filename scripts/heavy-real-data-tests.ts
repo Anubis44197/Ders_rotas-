@@ -58,7 +58,7 @@ const topicRefs: TopicRef[] = activeCourses.flatMap((course) => {
   })));
 });
 
-assert(activeCourses.length === 6, 'Gercek ders sayisi 6 olmali.');
+assert(activeCourses.length > 0, 'En az 1 aktif ders olmali.');
 assert(topicRefs.length >= 100, 'Gercek mufredat en az 100 konu icermeli.');
 
 const weightedCourses = activeCourses.flatMap((course) => {

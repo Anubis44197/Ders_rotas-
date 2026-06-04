@@ -1455,9 +1455,17 @@ const seedManualQaRecords = () => {
   window.localStorage.setItem('isParentLocked', JSON.stringify(false));
   window.localStorage.setItem('parentWorkspaceView', JSON.stringify('analysis'));
   window.localStorage.setItem('parentDefaultView', JSON.stringify('analysis'));
+  window.localStorage.setItem('examRecords', JSON.stringify([]));
+  window.localStorage.setItem('compositeExamResults', JSON.stringify([]));
   window.localStorage.removeItem('drEnableRecharts');
   window.localStorage.removeItem('drDisableRecharts');
   window.localStorage.setItem('__qa_manual_records_seeded_at', new Date().toISOString());
+  syncQaSeedToIndexedDb({
+    tasks,
+    performanceData: performance,
+    examRecords: [],
+    compositeExamResults: [],
+  });
 };
 seedInitialRealCurriculum();
 seedManualQaRecords();
@@ -3095,6 +3103,10 @@ const App: React.FC = () => {
       createdAt: new Date().toISOString(),
     };
     const nextTasks = [newTask, ...tasksRef.current];
+    remoteLocalDirtySerializedRef.current = JSON.stringify({
+      ...remoteAppData,
+      tasks: nextTasks,
+    });
     setTasks((prev) => {
       if (task.planTaskId) {
         const duplicate = prev.find((item) => item.planTaskId === task.planTaskId);
@@ -4854,6 +4866,8 @@ const App: React.FC = () => {
             tasks={tasks}
             overviewCourseInsights={overviewCourseInsights}
             overviewTopicPerformanceRows={overviewTopicPerformanceRows}
+            onOpenOverviewReport={() => setParentWorkspaceView('overview')}
+            onOpenWeeklyAnalysis={() => setParentWorkspaceView('analysis')}
           />
         </Suspense>
       );
@@ -4892,6 +4906,7 @@ const App: React.FC = () => {
                 overviewExamDecision={overviewExamDecision}
                 lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
                 onOpenPlanning={(message: string) => handleQuickAction('planning', message)}
+                onOpenAnalysis={() => setParentWorkspaceView('analysis')}
               />
             </Suspense>
           </div>
@@ -4936,6 +4951,7 @@ const App: React.FC = () => {
           overviewExamDecision={overviewExamDecision}
           lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
           onOpenPlanning={(message: string) => handleQuickAction('planning', message)}
+          onOpenAnalysis={() => setParentWorkspaceView('analysis')}
         />
       </Suspense>
     );
@@ -4959,11 +4975,12 @@ const App: React.FC = () => {
             )}
           </div>
           <div ref={topbarToolbarRef} onKeyDown={handleToolbarKeyDown} className="flex items-center gap-2 sm:gap-4" role="toolbar" aria-label="Uygulama komutlari">
-            <div className="dr-toolbar-group relative inline-flex shrink-0 rounded-full" aria-label="Kullanıcı modu">
-              <button data-testid="switch-parent-mode-btn" onClick={() => handleUserTypeChange(UserType.Parent)} aria-pressed={userType === UserType.Parent} title="Ebeveyn modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 sm:w-24 sm:text-sm ${userType === UserType.Parent ? 'ios-button-active text-slate-900' : 'text-slate-600 hover:bg-white/50'}`}>
+            <div className="dr-toolbar-group dr-velvet-segment relative inline-flex shrink-0 rounded-full p-1" aria-label="Kullanıcı modu">
+              <span aria-hidden="true" className={`dr-velvet-segment-indicator ${userType === UserType.Parent ? 'translate-x-0' : 'translate-x-full'}`} />
+              <button data-testid="switch-parent-mode-btn" onClick={() => handleUserTypeChange(UserType.Parent)} aria-pressed={userType === UserType.Parent} title="Ebeveyn modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-black transition-colors duration-200 sm:w-24 sm:text-sm ${userType === UserType.Parent ? 'text-slate-950 dark:text-slate-950' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}>
                 Ebeveyn
               </button>
-              <button data-testid="switch-child-mode-btn" onClick={() => handleUserTypeChange(UserType.Child)} aria-pressed={userType === UserType.Child} title="Çocuk modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 sm:w-24 sm:text-sm ${userType === UserType.Child ? 'ios-button-active text-slate-900' : 'text-slate-600 hover:bg-white/50'}`}>
+              <button data-testid="switch-child-mode-btn" onClick={() => handleUserTypeChange(UserType.Child)} aria-pressed={userType === UserType.Child} title="Çocuk modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-black transition-colors duration-200 sm:w-24 sm:text-sm ${userType === UserType.Child ? 'text-slate-950 dark:text-slate-950' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}>
                 Çocuk
               </button>
             </div>

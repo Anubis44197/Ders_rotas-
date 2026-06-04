@@ -52,6 +52,8 @@ interface Props {
     taskCount: number;
     totalQuestions: number;
   }>;
+  onOpenOverviewReport: () => void;
+  onOpenWeeklyAnalysis: () => void;
 }
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase('tr-TR');
@@ -128,6 +130,8 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
   tasks,
   overviewCourseInsights,
   overviewTopicPerformanceRows,
+  onOpenOverviewReport,
+  onOpenWeeklyAnalysis,
 }) => {
   const activeCourses = useMemo(() => {
     const seen = new Set<string>();
@@ -408,8 +412,8 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
                   </div>
 
                   <div className="dr-curriculum-actions">
-                    <button type="button"><FileText className="h-4 w-4" />Durum Raporu</button>
-                    <button type="button"><BarChart className="h-4 w-4" />Haftalık Analiz</button>
+                    <button type="button" onClick={onOpenOverviewReport}><FileText className="h-4 w-4" />Durum Raporu</button>
+                    <button type="button" onClick={onOpenWeeklyAnalysis}><BarChart className="h-4 w-4" />Haftalık Analiz</button>
                   </div>
 
                   <div className="dr-curriculum-question-card">
