@@ -119,8 +119,37 @@ const getUnitCount = (curriculum: SubjectCurriculum | undefined, courseName: str
   return Array.isArray(units) ? units.length : 0;
 };
 
+const getTopicIndex = (curriculum: SubjectCurriculum | undefined, courseName: string, unitName?: string, topicName?: string) => {
+  if (!curriculum || !unitName || !topicName) return -1;
+  const matchingCourseKey = Object.keys(curriculum).find((key) => normalize(key) === normalize(courseName));
+  const units = matchingCourseKey ? curriculum[matchingCourseKey] : [];
+  if (!Array.isArray(units)) return -1;
+  let topicIndex = 0;
+  for (const unit of units) {
+    for (const topic of unit.topics || []) {
+      if (normalize(unit.name) === normalize(unitName) && normalize(topic.name) === normalize(topicName)) {
+        return topicIndex;
+      }
+      topicIndex += 1;
+    }
+  }
+  return -1;
+};
+
+const getTopicCount = (curriculum: SubjectCurriculum | undefined, courseName: string) => {
+  if (!curriculum) return 0;
+  const matchingCourseKey = Object.keys(curriculum).find((key) => normalize(key) === normalize(courseName));
+  const units = matchingCourseKey ? curriculum[matchingCourseKey] : [];
+  if (!Array.isArray(units)) return 0;
+  return units.reduce((sum, unit) => sum + (unit.topics || []).length, 0);
+};
+
 const toUnitPercent = (unitIndex: number, unitCount: number) => (
   unitIndex >= 0 && unitCount > 0 ? Math.max(0, Math.min(100, Math.round(((unitIndex + 1) / unitCount) * 100))) : null
+);
+
+const toProgressPercent = (index: number, count: number) => (
+  index >= 0 && count > 0 ? Math.max(0, Math.min(100, Math.round(((index + 1) / count) * 100))) : null
 );
 
 const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
@@ -250,18 +279,35 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
         .reduce((sum, task) => sum + getQuestionTotal(task), 0);
       const weeklyQuestionDelta = currentWeekQuestions - previousWeekQuestions;
       const weeklyQuestionTarget = Math.max(100, currentWeekQuestions, previousWeekQuestions);
-      const schoolIndex = school?.status === 'covered' ? getUnitIndex(curriculum, course.name, school.unitName) : -1;
-      const childIndex = getUnitIndex(curriculum, course.name, child?.unitName);
+      const schoolUnitIndex = school?.status === 'covered' ? getUnitIndex(curriculum, course.name, school.unitName) : -1;
+      const childUnitIndex = getUnitIndex(curriculum, course.name, child?.unitName);
+      const schoolTopicIndex = school?.status === 'covered' ? getTopicIndex(curriculum, course.name, school.unitName, school.topicName) : -1;
+      const childTopicIndex = getTopicIndex(curriculum, course.name, child?.unitName, child?.topicName);
       const unitCount = getUnitCount(curriculum, course.name);
+      const topicCount = getTopicCount(curriculum, course.name);
       const hasSchoolData = Boolean(school && (school.status === 'not-covered' || school.topicName));
       const hasStudentData = Boolean(child?.topicName);
       const insightProgress = Math.round(insight?.progress || 0);
-      const hasComparableUnitData = schoolIndex >= 0 && childIndex >= 0;
-      const hasComparisonData = hasSchoolData && hasStudentData && hasComparableUnitData;
-      const schoolProgressPercent = hasComparisonData ? toUnitPercent(schoolIndex, unitCount) : null;
-      const studentProgressPercent = hasComparisonData ? toUnitPercent(childIndex, unitCount) : null;
-      const hasProgressData = hasComparisonData && insightProgress > 0;
-      const gap = schoolIndex >= 0 && childIndex >= 0 ? childIndex - schoolIndex : null;
+      const hasTopicComparison = schoolTopicIndex >= 0 && childTopicIndex >= 0;
+      const hasUnitComparison = schoolUnitIndex >= 0 && childUnitIndex >= 0;
+      const schoolCompareIndex = hasTopicComparison ? schoolTopicIndex : hasUnitComparison ? schoolUnitIndex : -1;
+      const childCompareIndex = hasTopicComparison ? childTopicIndex : hasUnitComparison ? childUnitIndex : -1;
+      const compareUnitLabel = hasTopicComparison ? 'KONU' : 'ÜNİTE';
+      const compareUnitLabelLower = hasTopicComparison ? 'konu' : 'ünite';
+      const schoolProgressPercent = schoolTopicIndex >= 0
+        ? toProgressPercent(schoolTopicIndex, topicCount)
+        : toUnitPercent(schoolUnitIndex, unitCount);
+      const studentProgressPercent = childTopicIndex >= 0
+        ? toProgressPercent(childTopicIndex, topicCount)
+        : toUnitPercent(childUnitIndex, unitCount);
+      const hasComparableData = schoolCompareIndex >= 0 && childCompareIndex >= 0;
+      const hasComparisonData = hasSchoolData && hasStudentData && hasComparableData;
+      const fallbackStudentProgress = studentProgressPercent ?? 0;
+      const hasProgressData = hasStudentData && (insightProgress > 0 || fallbackStudentProgress > 0);
+      const displayProgress = insightProgress > 0 ? insightProgress : fallbackStudentProgress;
+      const progressLabel = hasSchoolData && hasStudentData ? 'Konu İlerlemesi:' : hasStudentData ? 'Ev İlerlemesi:' : 'Konu İlerlemesi:';
+      const progressBadgeLabel = hasProgressData && !hasSchoolData ? 'EV' : 'KONU';
+      const gap = schoolCompareIndex >= 0 && childCompareIndex >= 0 ? childCompareIndex - schoolCompareIndex : null;
       const statusKind = school?.status === 'not-covered'
         ? 'idle'
         : gap === null
@@ -272,14 +318,18 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
               ? 'behind'
               : 'sync';
       const statusLabel = statusKind === 'ahead'
-        ? `OKULUN ÖNÜNDE (+${Math.abs(gap || 0)} ÜNİTE)`
+        ? `OKULUN ÖNÜNDE (+${Math.abs(gap || 0)} ${compareUnitLabel})`
         : statusKind === 'behind'
-          ? `OKULUN GERİSİNDE (-${Math.abs(gap || 0)} ÜNİTE)`
+          ? `OKULUN GERİSİNDE (-${Math.abs(gap || 0)} ${compareUnitLabel})`
           : statusKind === 'sync'
-            ? 'SENKRONİZE (AYNI ÜNİTE)'
+            ? `SENKRONİZE (AYNI ${compareUnitLabel})`
             : school?.status === 'not-covered'
               ? 'OKULDA KONU İŞLENMEDİ'
-              : 'TAKİP BEKLİYOR';
+              : !hasSchoolData && hasStudentData
+                ? 'OKUL VERİSİ GEREKLİ'
+                : hasSchoolData && !hasStudentData
+                  ? 'EV ÇALIŞMASI BEKLİYOR'
+                  : 'VERİ GİRİŞİ BEKLİYOR';
       return {
         courseName: course.name,
         Icon: SUBJECT_ICONS[normalize(course.name)] || BookOpen,
@@ -292,13 +342,17 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
         statusKind,
         statusLabel,
         hasProgressData,
+        progressLabel,
+        progressBadgeLabel,
+        compareUnitLabel,
+        compareUnitLabelLower,
         hasSchoolData,
         hasStudentData,
         hasComparisonData,
         schoolProgressPercent,
         studentProgressPercent,
         unitCount,
-        lgsProgress: hasProgressData ? Math.max(0, Math.min(100, insightProgress)) : null,
+        lgsProgress: hasProgressData ? Math.max(0, Math.min(100, displayProgress)) : null,
         currentWeekQuestions,
         previousWeekQuestions,
         weeklyQuestionDelta,
@@ -342,14 +396,14 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
                   <Star className="dr-curriculum-star dr-curriculum-star-b h-3.5 w-3.5" />
                   <div className="relative z-10 min-w-0">
                     <h4>{card.courseName.toLocaleUpperCase('tr-TR')}</h4>
-                    <p>LGS Tamamlanma:</p>
+                    <p>{card.progressLabel}</p>
                   </div>
-                  <div className={`dr-curriculum-progress ${card.hasProgressData ? '' : 'is-empty'}`} aria-label={card.hasProgressData ? `LGS yüzde ${card.lgsProgress}` : 'LGS verisi yok'}>
+                  <div className={`dr-curriculum-progress ${card.hasProgressData ? '' : 'is-empty'}`} aria-label={card.hasProgressData ? `${card.progressBadgeLabel} yüzde ${card.lgsProgress}` : 'Konu ilerleme verisi yok'}>
                     <svg viewBox="0 0 92 92" aria-hidden="true">
                       <circle cx="46" cy="46" r="38" />
                       <circle cx="46" cy="46" r="38" style={{ strokeDasharray: circumference, strokeDashoffset: dashOffset }} />
                     </svg>
-                    <span>{card.hasProgressData ? <>LGS<br />%{card.lgsProgress}</> : <>LGS<br />Veri yok</>}</span>
+                    <span>{card.hasProgressData ? <>{card.progressBadgeLabel}<br />%{card.lgsProgress}</> : <>KONU<br />Veri yok</>}</span>
                   </div>
                 </div>
 
@@ -393,7 +447,7 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
                     <div className="dr-curriculum-floating-badge" aria-label={card.statusLabel}>
                       <StatusIcon className="h-6 w-6" />
                       <span>{card.statusKind === 'ahead' ? 'Öğrenci okulun önünde' : 'Okulun gerisinde'}</span>
-                      <strong>{card.gap > 0 ? `+${card.gap}` : card.gap} ünite</strong>
+                      <strong>{card.gap > 0 ? `+${card.gap}` : card.gap} {card.compareUnitLabelLower}</strong>
                     </div>
                   )}
 
@@ -407,7 +461,7 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
                     </div>
                     <div className="dr-curriculum-gap-pill">
                       {card.gap === null ? '-' : card.gap > 0 ? `+${card.gap}` : `${card.gap}`}
-                      <span>ÜNİTE</span>
+                      <span>{card.compareUnitLabel}</span>
                     </div>
                   </div>
 
@@ -433,11 +487,11 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
             );
           })}
 
-          <section className="dr-curriculum-progress-compare" aria-label="Genel ünite ilerleme durumu">
+          <section className="dr-curriculum-progress-compare" aria-label="Genel konu ilerleme durumu">
             <div className="dr-curriculum-progress-compare-head">
               <div>
                 <span>Canlı Karşılaştırma</span>
-                <h4>Genel Ünite İlerlemesi</h4>
+                <h4>Genel Konu İlerlemesi</h4>
               </div>
               <div className="dr-curriculum-progress-compare-score">
                 <strong>{aheadCount}</strong>
@@ -449,7 +503,7 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
               <span><strong>{aheadCount}</strong> Önde</span>
               <span><strong>{syncCount}</strong> Aynı</span>
               <span><strong>{behindCount}</strong> Geride</span>
-              <span><strong>{waitingCount}</strong> Veri yok</span>
+              <span><strong>{waitingCount}</strong> Tamamlanacak</span>
             </div>
 
             <div className="dr-curriculum-progress-legend" aria-hidden="true">
@@ -476,10 +530,10 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
                         {card.gap === null
                           ? 'veri yok'
                           : card.gap === 0
-                            ? 'aynı ünite'
+                            ? `aynı ${card.compareUnitLabelLower}`
                             : card.gap > 0
-                              ? `+${card.gap} ünite`
-                              : `${card.gap} ünite`}
+                              ? `+${card.gap} ${card.compareUnitLabelLower}`
+                              : `${card.gap} ${card.compareUnitLabelLower}`}
                       </span>
                     </div>
                     <div className="dr-curriculum-progress-rail" aria-label={`${card.courseName} okul ${schoolPercent ?? 'veri yok'}, öğrenci ${studentPercent ?? 'veri yok'}`}>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { CurriculumUnit, ExamScheduleEntry, SubjectCurriculum, Task, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
+import type { CurriculumUnit, ExamScheduleEntry, SchoolTopicHistoryEntry, SubjectCurriculum, Task, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
 import { getQuestionMetrics } from '../../utils/questionMetrics';
 import {
   AlertTriangle,
@@ -25,6 +25,8 @@ import {
 } from '../icons';
 import ParentWorkspaceFrame from './ParentWorkspaceFrame';
 import ContextHelp from '../shared/ContextHelp';
+import { normalizeForLookup } from './parentDashboardShared';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 interface ParentOverviewSummary {
   completedCount: number;
@@ -48,6 +50,7 @@ interface ParentOverviewWorkspaceProps {
   weeklySchedule?: WeeklySchedule;
   curriculum?: SubjectCurriculum;
   onWeeklyScheduleChange?: (schedule: WeeklySchedule) => void;
+  onRecordSchoolTopicHistory?: (entry: Omit<SchoolTopicHistoryEntry, 'id' | 'createdAt'>) => void;
   overviewUpcomingExam: ExamScheduleEntry | undefined;
   overviewTodayName: string;
   overviewTodaySlots: WeeklyScheduleSlot[];
@@ -201,17 +204,29 @@ const CURRICULUM_PANEL_THEMES = [
   { key: 'purple', className: 'dr-curriculum-showcase-card-purple' },
 ] as const;
 
+const getCurriculumUnitIndex = (curriculum: SubjectCurriculum | undefined, courseName: string, unitName?: string) => {
+  if (!curriculum || !unitName) return -1;
+  const normalizedCourseName = normalizeForLookup(courseName);
+  const normalizedUnitName = normalizeForLookup(unitName);
+  const matchingCourseKey = Object.keys(curriculum).find((key) => normalizeForLookup(key) === normalizedCourseName);
+  const units = matchingCourseKey ? curriculum[matchingCourseKey] : [];
+  if (!Array.isArray(units)) return -1;
+  return units.findIndex((unit) => normalizeForLookup(unit.name) === normalizedUnitName);
+};
+
 const getCurriculumTopicIndex = (curriculum: SubjectCurriculum | undefined, courseName: string, unitName?: string, topicName?: string) => {
   if (!curriculum || !unitName || !topicName) return -1;
-  const normalizedCourseName = courseName.trim().toLocaleLowerCase('tr-TR');
-  const matchingCourseKey = Object.keys(curriculum).find((key) => key.trim().toLocaleLowerCase('tr-TR') === normalizedCourseName);
+  const normalizedCourseName = normalizeForLookup(courseName);
+  const normalizedUnitName = normalizeForLookup(unitName);
+  const normalizedTopicName = normalizeForLookup(topicName);
+  const matchingCourseKey = Object.keys(curriculum).find((key) => normalizeForLookup(key) === normalizedCourseName);
   const units = matchingCourseKey ? curriculum[matchingCourseKey] : [];
   if (!Array.isArray(units)) return -1;
   let topicIndex = 0;
   for (const unit of units) {
     for (const topic of unit.topics || []) {
-      const isMatch = unit.name.trim().toLocaleLowerCase('tr-TR') === unitName.trim().toLocaleLowerCase('tr-TR')
-        && topic.name.trim().toLocaleLowerCase('tr-TR') === topicName.trim().toLocaleLowerCase('tr-TR');
+      const isMatch = normalizeForLookup(unit.name) === normalizedUnitName
+        && normalizeForLookup(topic.name) === normalizedTopicName;
       if (isMatch) return topicIndex;
       topicIndex += 1;
     }
@@ -226,6 +241,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   weeklySchedule,
   curriculum,
   onWeeklyScheduleChange,
+  onRecordSchoolTopicHistory,
   overviewUpcomingExam,
   overviewTodayName,
   overviewTodaySlots,
@@ -271,7 +287,6 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   const [schoolUnitName, setSchoolUnitName] = useState('');
   const [schoolTopicName, setSchoolTopicName] = useState('');
   const [schoolCurriculumMessage, setSchoolCurriculumMessage] = useState<string | null>(null);
-  const normalizeForLookup = (value: string) => value.trim().toLocaleLowerCase('tr-TR');
   const getCurriculumUnitsForCourse = (courseName: string): CurriculumUnit[] => {
     if (!curriculum || !courseName) return [];
     const directUnits = curriculum[courseName];
@@ -315,6 +330,21 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     setSchoolTopicName(slot.schoolTopicName || '');
     setSchoolCurriculumMessage(null);
   };
+  const recordSchoolTopicHistory = (dayName: string, slot: WeeklyScheduleSlot, status: SchoolTopicHistoryEntry['status'], unitName?: string, topicName?: string) => {
+    onRecordSchoolTopicHistory?.({
+      date: getLocalDateString(),
+      dayName,
+      slotId: slot.id,
+      courseName: slot.courseName,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      status,
+      unitName,
+      topicName,
+      source: 'overview',
+    });
+  };
+
   const toggleSchoolNotCovered = (dayName: string, slot: WeeklyScheduleSlot) => {
     const nextIsNotCovered = slot.schoolCurriculumStatus !== 'not-covered';
     updateSchoolScheduleSlot(dayName, slot.id, (current) => ({
@@ -327,6 +357,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     if (nextIsNotCovered) {
       setSchoolUnitName('');
       setSchoolTopicName('');
+      recordSchoolTopicHistory(dayName, slot, 'not-covered');
     }
     setSchoolCurriculumMessage(nextIsNotCovered ? 'Konu islenmedi olarak kaydedildi.' : 'Islenmedi isareti kaldirildi.');
   };
@@ -344,6 +375,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       schoolCurriculumUpdatedAt: new Date().toISOString(),
     }));
     setSchoolCurriculumMessage('Okulda islenen konu kaydedildi.');
+    recordSchoolTopicHistory(schoolCurriculumSlot.dayName, activeSchoolCurriculumSlot, 'covered', schoolUnitName, schoolTopicName);
     window.setTimeout(closeSchoolCurriculumEditor, 350);
   };
   const clearSchoolCurriculum = () => {
@@ -445,11 +477,21 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     return sourceCards.map((course, index) => {
       const school = schoolByCourse.get(normalizeForLookup(course.courseName));
       const child = childByCourse.get(normalizeForLookup(course.courseName));
-      const schoolIndex = school?.status === 'covered'
+      const schoolTopicIndex = school?.status === 'covered'
         ? getCurriculumTopicIndex(curriculum, course.courseName, school.unitName, school.topicName)
         : -1;
-      const childIndex = getCurriculumTopicIndex(curriculum, course.courseName, child?.unitName, child?.topicName);
-      const gap = schoolIndex >= 0 && childIndex >= 0 ? childIndex - schoolIndex : null;
+      const childTopicIndex = getCurriculumTopicIndex(curriculum, course.courseName, child?.unitName, child?.topicName);
+      const schoolUnitIndex = school?.status === 'covered' ? getCurriculumUnitIndex(curriculum, course.courseName, school.unitName) : -1;
+      const childUnitIndex = getCurriculumUnitIndex(curriculum, course.courseName, child?.unitName);
+      const hasSchoolData = Boolean(school && (school.status === 'not-covered' || school.topicName));
+      const hasStudentData = Boolean(child?.topicName);
+      const hasTopicComparison = schoolTopicIndex >= 0 && childTopicIndex >= 0;
+      const hasUnitComparison = schoolUnitIndex >= 0 && childUnitIndex >= 0;
+      const schoolCompareIndex = hasTopicComparison ? schoolTopicIndex : hasUnitComparison ? schoolUnitIndex : -1;
+      const childCompareIndex = hasTopicComparison ? childTopicIndex : hasUnitComparison ? childUnitIndex : -1;
+      const compareUnitLabel = hasTopicComparison ? 'KONU' : '\u00dcN\u0130TE';
+      const compareUnitLabelLower = hasTopicComparison ? 'konu' : '\u00fcnite';
+      const gap = schoolCompareIndex >= 0 && childCompareIndex >= 0 ? childCompareIndex - schoolCompareIndex : null;
       const statusKind = school?.status === 'not-covered'
         ? 'idle'
         : gap === null
@@ -460,23 +502,32 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               ? 'behind'
               : 'sync';
       const statusLabel = statusKind === 'ahead'
-        ? `OKULUN ÖNÜNDE (+${Math.abs(gap || 0)} KONU)`
+        ? `OKULUN \u00d6N\u00dcNDE (+${Math.abs(gap || 0)} ${compareUnitLabel})`
         : statusKind === 'behind'
-          ? `OKULUN GERİSİNDE (-${Math.abs(gap || 0)} KONU)`
+          ? `OKULUN GER\u0130S\u0130NDE (-${Math.abs(gap || 0)} ${compareUnitLabel})`
           : statusKind === 'sync'
-            ? 'SENKRONİZE (AYNI KONU)'
+            ? `SENKRON\u0130ZE (AYNI ${compareUnitLabel})`
             : school?.status === 'not-covered'
-              ? 'OKULDA KONU İŞLENMEDİ'
-              : 'TAKİP BEKLİYOR';
+              ? 'OKULDA KONU \u0130\u015eLENMED\u0130'
+              : !hasSchoolData && hasStudentData
+                ? 'OKUL VER\u0130S\u0130 GEREKL\u0130'
+                : hasSchoolData && !hasStudentData
+                  ? 'EV \u00c7ALI\u015eMASI BEKL\u0130YOR'
+                  : 'VER\u0130 G\u0130R\u0130\u015e\u0130 BEKL\u0130YOR';
       return {
         ...course,
         theme: CURRICULUM_PANEL_THEMES[index % CURRICULUM_PANEL_THEMES.length],
-        schoolTopic: school?.status === 'not-covered' ? 'Konu işlenmedi' : school?.topicName || 'Okul verisi girilmedi',
-        childTopic: child?.topicName || 'Öğrenci çalışma verisi yok',
+        schoolTopic: school?.status === 'not-covered' ? 'Konu i\u015flenmedi' : school?.topicName || 'Okul verisi girilmedi',
+        childTopic: child?.topicName || '\u00d6\u011frenci \u00e7al\u0131\u015fma verisi yok',
         gap,
         statusKind,
         statusLabel,
-        lgsProgress: Math.max(0, Math.min(100, Math.round(course.progress || 0))),
+        hasSchoolData,
+        hasStudentData,
+        compareUnitLabel,
+        compareUnitLabelLower,
+        progressLabel: hasStudentData && !hasSchoolData ? 'Ev \u0130lerlemesi' : 'Konu \u0130lerlemesi',
+        lgsProgress: hasStudentData ? Math.max(0, Math.min(100, Math.round(course.progress || 0))) : null,
       };
     });
   }, [courseCards, curriculum, overviewTopicPerformanceRows, weeklySchedule]);
@@ -651,9 +702,11 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     const series = selectedCourseDetail
       ? normalizedReportSeries.find((item) => item.courseName === selectedCourseDetail.courseName)
       : null;
-    const points = series?.points?.slice(0, 4) || [];
-    if (points.length === 4) return points.map((value) => Math.max(0, Math.min(100, value)));
-    return [];
+    const points = (series?.points || []).map((value) => Math.max(0, Math.min(100, value)));
+    const labels = Array.isArray(series?.labels) && series.labels.length === points.length
+      ? series.labels
+      : points.map((_, index) => `${index + 1}`);
+    return { points, labels };
   }, [normalizedReportSeries, selectedCourseDetail]);
   const selectedTopicAction = useMemo(
     () => (selectedTopicDetail
@@ -1242,8 +1295,8 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               </div>
 
               <div className="ios-widget mt-4 rounded-[20px] p-4 border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md">
-                <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Son 4 Haftalık Trend</div>
-                {selectedCourseTrend.length === 4 ? (
+                <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Secili Periyot Trendi</div>
+                {selectedCourseTrend.points.length > 0 ? (
                   <div className="rounded-[18px] bg-[var(--dr-surface)]/80 border border-[var(--dr-std-border-strong)]/10 p-3 shadow-inner">
                     <svg viewBox="0 0 520 180" className="h-44 w-full" role="img" aria-label="Secili periyot ders trendi">
                       <line x1="24" y1="146" x2="500" y2="146" stroke="var(--dr-border, #CBD5E1)" strokeWidth="1" />
@@ -1257,17 +1310,20 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       <text x="2" y="60" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">%75</text>
                       <text x="2" y="30" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">%100</text>
                       {(() => {
-                        const xPoints = [70, 200, 330, 460];
-                        const yPoints = selectedCourseTrend.map((score) => 146 - Math.max(0, Math.min(100, score)) * 1.2);
-                        const path = `M ${xPoints[0]} ${yPoints[0]} C ${xPoints[0] + 35} ${yPoints[0]} ${xPoints[1] - 35} ${yPoints[1]} ${xPoints[1]} ${yPoints[1]} C ${xPoints[1] + 35} ${yPoints[1]} ${xPoints[2] - 35} ${yPoints[2]} ${xPoints[2]} ${yPoints[2]} C ${xPoints[2] + 35} ${yPoints[2]} ${xPoints[3] - 35} ${yPoints[3]} ${xPoints[3]} ${yPoints[3]}`;
+                        const pointCount = selectedCourseTrend.points.length;
+                        const xPoints = pointCount === 1
+                          ? [260]
+                          : Array.from({ length: pointCount }, (_, index) => 54 + (index * (420 / (pointCount - 1))));
+                        const yPoints = selectedCourseTrend.points.map((score) => 146 - Math.max(0, Math.min(100, score)) * 1.2);
+                        const path = xPoints.map((x, index) => `${index === 0 ? 'M' : 'L'} ${x} ${yPoints[index]}`).join(' ');
                         return (
                           <>
                             <path d={path} fill="none" stroke="var(--dr-orange)" strokeWidth="3.5" strokeLinecap="round" />
-                            {selectedCourseTrend.map((score, index) => (
+                            {selectedCourseTrend.points.map((score, index) => (
                               <g key={`overview-trend-dot-v2-${index}`}>
                                 <circle cx={xPoints[index]} cy={yPoints[index]} r="4.5" fill="var(--dr-orange)" />
                                 <text x={xPoints[index] - 14} y={yPoints[index] - 10} fill="currentColor" className="text-[var(--dr-text-primary)] text-[11px] font-bold">%{score}</text>
-                                <text x={xPoints[index] - 24} y="168" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">{index + 1}. Hafta</text>
+                                <text x={xPoints[index] - 24} y="168" fill="currentColor" className="text-[var(--dr-text-secondary)] text-[10px]">{selectedCourseTrend.labels[index] || `${index + 1}`}</text>
                               </g>
                             ))}
                           </>
@@ -1508,7 +1564,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Ders Raporu Trendi</span>
                     <ContextHelp title="Ders Raporu Trendi" tone="blue">
-                      Bu grafik, çocuğunuzun tüm ana derslerdeki konu hakimiyetinin son 4 hafta içindeki gelişim yönünü (yükseliş/düşüş eğilimini) yan yana gösterir.
+                      Bu grafik, çocuğunuzun tüm ana derslerdeki konu hakimiyetinin secili periyottaki gelişim yönünü (yükseliş/düşüş eğilimini) yan yana gösterir.
                     </ContextHelp>
                   </div>
                   {courseReportSeriesForChart.length > 0 ? (

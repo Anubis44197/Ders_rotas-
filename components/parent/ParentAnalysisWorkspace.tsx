@@ -1387,7 +1387,10 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 Rapor dönemi
                 <select
                   value={reportPeriod}
-                  onChange={(event) => setReportPeriod(event.target.value as ReportPeriod)}
+                  onChange={(event) => {
+                    setReportPeriod(event.target.value as ReportPeriod);
+                    setReport(null);
+                  }}
                   data-testid="report-period-select"
                   className="ios-button rounded-[14px] border border-[var(--dr-std-border-strong)]/20 bg-[var(--dr-surface)] px-3 py-2 text-sm font-bold text-[var(--dr-text-primary)] outline-none transition focus:border-[var(--dr-orange)] focus:ring-1 focus:ring-[var(--dr-orange)]"
                 >
@@ -1405,6 +1408,27 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 {isGeneratingReport ? 'Rapor hazırlanıyor' : 'Rapor üret'}
               </button>
             </div>
+
+            {report && (
+              <div className="mb-5 grid gap-3 rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 p-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <div className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--dr-text-secondary)]">Uretilen rapor / {report.period}</div>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-[var(--dr-text-primary)]">{report.aiSummary}</p>
+                </div>
+                <div className="rounded-[16px] bg-emerald-500/8 px-3 py-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  <div className="text-[10px] font-black uppercase tracking-[0.12em]">Guclu alan</div>
+                  <div className="mt-1 leading-5">{report.highlights.mostImproved}</div>
+                </div>
+                <div className="rounded-[16px] bg-rose-500/8 px-3 py-3 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                  <div className="text-[10px] font-black uppercase tracking-[0.12em]">Odak alani</div>
+                  <div className="mt-1 leading-5">{report.highlights.needsFocus}</div>
+                </div>
+                <div className="md:col-span-2 rounded-[16px] bg-[var(--dr-orange)]/8 px-3 py-3 text-xs font-semibold text-[var(--dr-text-primary)]">
+                  <div className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--dr-orange)]">Oneri</div>
+                  <div className="mt-1 leading-5">{report.aiSuggestion}</div>
+                </div>
+              </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">

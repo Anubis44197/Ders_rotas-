@@ -142,6 +142,7 @@ interface ResumeTimerState {
   status: 'running' | 'paused' | 'break';
   isPaused?: boolean;
   pausedAt?: number;
+  updatedAt?: number;
   note?: string;
 }
 
@@ -248,6 +249,9 @@ const TaskCard: React.FC<{
 
   const isOverdue = !completed && getTaskDateKey(task.dueDate) < today;
   const clockLabel = getTaskClockRangeLabel(task.startTimestamp, task.completionTimestamp);
+  const liveStatusLabel = task.status === 'bekliyor' && task.liveSession
+    ? (task.liveSession.status === 'break' ? 'Molada' : task.liveSession.status === 'paused' ? 'Durakladı' : 'Çalışıyor') + ' / ' + formatTime(task.liveSession.mainTime)
+    : '';
   const isParentDecisionTask = task.planSource === 'manual' && ((task.planLabel || '').toLocaleLowerCase('tr-TR').includes('veli onerisi') || (task.description || '').toLocaleLowerCase('tr-TR').includes('ebeveyn karar ekranindan'));
 
   return (
@@ -274,6 +278,7 @@ const TaskCard: React.FC<{
             <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{task.dueDate}</span>
             {task.questionCount ? <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-700">{task.questionCount} soru</span> : null}
             {clockLabel ? <span className="rounded-full bg-slate-950/5 px-3 py-1 text-slate-800 ring-1 ring-slate-950/10 dark:bg-white/12 dark:text-slate-50 dark:ring-white/15">{clockLabel}</span> : null}
+            {liveStatusLabel ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-300/15 dark:text-emerald-100 dark:ring-emerald-200/20">{liveStatusLabel}</span> : null}
             {task.curriculumUnitName ? <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">Ünite: {safeText(task.curriculumUnitName, 'Ünite')}</span> : null}
             {task.curriculumTopicName ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">Konu: {safeText(task.curriculumTopicName, 'Konu')}</span> : null}
             {task.taskGoalType ? <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Hedef: {safeGoalText(task.taskGoalType)}</span> : null}
@@ -346,7 +351,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
   const [activeReadingTask, setActiveReadingTask] = useState<Task | null>(null);
   const [resumedTimerState, setResumedTimerState] = useState<ResumeTimerState | undefined>(undefined);
   const [showFreeStudy, setShowFreeStudy] = useState(false);
-  const [freeCourseId, setFreeCourseId] = useState(safeCourses[0]?.id || '');
+  const [freeCourseId, setFreeCourseId] = useState('');
   const [freeType, setFreeType] = useState<string>('ders çalışma');
   const [freeDuration, setFreeDuration] = useState('30');
   const [freeQuestionCount, setFreeQuestionCount] = useState('20');
@@ -362,6 +367,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
   const [showAllCompletedToday, setShowAllCompletedToday] = useState(false);
 
   const today = getTodayString();
+  const freeCourseOptions = useMemo(() => safeCourses.filter((course) => course.active !== false), [safeCourses]);
   const courseNameMap = useMemo(() => new Map(safeCourses.map((course) => [course.id, safeText(course.name, course.id)])), [safeCourses]);
   const analysis = useMemo(() => analysisSnapshot || deriveAnalysisSnapshot(safeTasks, safeCourses), [analysisSnapshot, safeTasks, safeCourses]);
   const selectedCourseName = courseNameMap.get(freeCourseId) || '';
@@ -377,11 +383,11 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
   const activeTopics = useMemo(() => (freeUnitName ? activeUnits.find((unit) => unit.name === freeUnitName)?.topics || [] : []), [activeUnits, freeUnitName]);
 
   useEffect(() => {
-    if (!freeCourseId && safeCourses[0]?.id) setFreeCourseId(safeCourses[0].id);
-    if (freeCourseId && !safeCourses.some((course) => course.id === freeCourseId)) {
-      setFreeCourseId(safeCourses[0]?.id || '');
+    if (!freeCourseId && freeCourseOptions[0]?.id) setFreeCourseId(freeCourseOptions[0].id);
+    if (freeCourseId && !freeCourseOptions.some((course) => course.id === freeCourseId)) {
+      setFreeCourseId(freeCourseOptions[0]?.id || '');
     }
-  }, [safeCourses, freeCourseId]);
+  }, [freeCourseOptions, freeCourseId]);
 
   useEffect(() => {
     setFreeUnitName('');
@@ -456,9 +462,9 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
     .reduce((sum, task) => sum + (task.pagesRead || 0), 0), [completedTasksForSummary]);
   const resumableSessions = useMemo(() => safeTasks
     .filter((task) => task.status === 'bekliyor')
-    .map((task) => ({ task, timerState: parseSavedTimerState(task.id) }))
+    .map((task) => ({ task, timerState: parseSavedTimerState(task.id) || task.liveSession }))
     .filter((item): item is { task: Task; timerState: ResumeTimerState } => Boolean(item.timerState))
-    .sort((left, right) => (right.timerState.pausedAt || 0) - (left.timerState.pausedAt || 0)), [safeTasks]);
+    .sort((left, right) => (right.timerState.pausedAt || right.timerState.updatedAt || 0) - (left.timerState.pausedAt || left.timerState.updatedAt || 0)), [safeTasks]);
   const currentLiveSession = resumableSessions[0];
 
   useEffect(() => {
@@ -527,7 +533,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
   const handleCreateFreeStudy = async (event: React.FormEvent) => {
     event.preventDefault();
     if (creatingFreeStudy) return;
-    const selectedCourseExists = safeCourses.some((course) => course.id === freeCourseId);
+    const selectedCourseExists = freeCourseOptions.some((course) => course.id === freeCourseId);
     const plannedDuration = Number(freeDuration);
     const questionCount = Number(freeQuestionCount);
     const requiresTopic = freeType !== 'kitap okuma' && activeUnits.length > 0;
@@ -765,8 +771,8 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                       <div className="space-y-3.5">
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)] mb-1">Ders</label>
-                          <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="dr-form-field text-xs font-semibold rounded-[16px] w-full px-3 py-2.5 outline-none cursor-pointer">
-                            {safeCourses.map((course) => <option key={course.id} value={course.id}>{safeText(course.name, course.id)}</option>)}
+                          <select value={freeCourseId} onChange={(e) => setFreeCourseId(e.target.value)} className="dr-form-field text-xs font-semibold rounded-[16px] w-full px-3 py-2.5 outline-none cursor-pointer disabled:opacity-60" disabled={freeCourseOptions.length === 0}>
+                            {freeCourseOptions.map((course) => <option key={course.id} value={course.id}>{safeText(course.name, course.id)}</option>)}
                           </select>
                         </div>
 
@@ -837,7 +843,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                       </button>
                       <button
                         type="submit"
-                        disabled={creatingFreeStudy}
+                        disabled={creatingFreeStudy || freeCourseOptions.length === 0}
                         className="ios-button-active flex-1 rounded-[16px] px-4 py-2.5 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.96]"
                       >
                         {creatingFreeStudy ? 'Başlatılıyor...' : 'Oluştur ve Başlat'}
@@ -1024,6 +1030,10 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
 };
 
 export default ChildDashboard;
+
+
+
+
 
 
 

@@ -1,6 +1,6 @@
-import { getLocalDateString } from '../../utils/dateUtils';
+import { getLocalDateString, getTaskClockRangeLabel } from '../../utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
-import type { Course, CurriculumUnit, ScheduleDayWindow, SubjectCurriculum, Task, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
+import type { Course, CurriculumUnit, ScheduleDayWindow, SchoolTopicHistoryEntry, SubjectCurriculum, Task, WeeklySchedule, WeeklyScheduleSlot } from '../../types';
 import { Calendar, CheckCircle, ClipboardList, Clock, PlusCircle, Trash2, X } from '../icons';
 import ContextHelp from '../shared/ContextHelp';
 import {
@@ -20,6 +20,7 @@ interface WeeklySchedulePanelProps {
   deleteTask?: (taskId: string) => void;
   onSave: (schedule: WeeklySchedule) => void;
   onAddExam?: () => void;
+  onRecordSchoolTopicHistory?: (entry: Omit<SchoolTopicHistoryEntry, 'id' | 'createdAt'>) => void;
 }
 
 type EditorMode = 'school' | 'study';
@@ -179,6 +180,13 @@ const formatDuration = (minutes: number) => {
   const rest = minutes % 60;
   return rest ? `${hours}s ${rest}dk` : `${hours}s`;
 };
+
+const formatLiveSeconds = (seconds: number) => {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return String(minutes).padStart(2, '0') + ':' + String(remainingSeconds).padStart(2, '0');
+};
 const timesOverlap = (leftStart: string, leftEnd: string, rightStart: string, rightEnd: string) => leftStart < rightEnd && rightStart < leftEnd;
 
 const dayHasChanges = (left: WeeklySchedule[string] | string | undefined, right: WeeklySchedule[string] | string | undefined) => {
@@ -187,7 +195,7 @@ const dayHasChanges = (left: WeeklySchedule[string] | string | undefined, right:
   return JSON.stringify(leftDay) !== JSON.stringify(rightDay);
 };
 
-const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, courses, curriculum, tasks, addTask, deleteTask, onSave, onAddExam }) => {
+const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, courses, curriculum, tasks, addTask, deleteTask, onSave, onAddExam, onRecordSchoolTopicHistory }) => {
   const safeSchedule = useMemo(() => schedule || ({} as WeeklySchedule), [schedule]);
   const safeCourses = useMemo(() => (Array.isArray(courses) ? courses : []), [courses]);
   const safeTasks = useMemo(() => (Array.isArray(tasks) ? tasks : []), [tasks]);
@@ -363,6 +371,11 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       return;
     }
 
+    if (activeDaySchedule.availableWindows.some((window) => timesOverlap(startTime, endTime, window.startTime, window.endTime))) {
+      setError('Bu saat aralığı ev çalışma penceresiyle çakışıyor.');
+      return;
+    }
+
     updateDay(activeDay, (currentDay) => ({
       ...currentDay,
       slots: sortSlots([
@@ -389,6 +402,11 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
 
     if (activeDaySchedule.availableWindows.some((window) => timesOverlap(studyStartTime, studyEndTime, window.startTime, window.endTime))) {
       setError('Bu saat aralığında başka bir çalışma penceresi var.');
+      return;
+    }
+
+    if (activeDaySchedule.slots.some((slot) => timesOverlap(studyStartTime, studyEndTime, slot.startTime, slot.endTime))) {
+      setError('Bu saat aralığı okul bloğuyla çakışıyor.');
       return;
     }
 
@@ -449,8 +467,23 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
     updateDay(day, (currentDay) => ({
       ...currentDay,
       slots: currentDay.slots.map((slot) => slot.id === slotId ? updater(slot) : slot),
-      confirmed: false,
+      confirmed: currentDay.confirmed,
     }));
+  };
+
+  const recordSchoolTopicHistory = (day: string, slot: WeeklyScheduleSlot, status: SchoolTopicHistoryEntry['status'], unitName?: string, topicName?: string) => {
+    onRecordSchoolTopicHistory?.({
+      date: getLocalDateString(),
+      dayName: day,
+      slotId: slot.id,
+      courseName: slot.courseName,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      status,
+      unitName,
+      topicName,
+      source: 'planning',
+    });
   };
 
   const handleToggleNotCovered = (day: string, slot: WeeklyScheduleSlot) => {
@@ -463,6 +496,9 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       schoolCurriculumUpdatedAt: new Date().toISOString(),
     }));
     setSchoolCurriculumMessage(nextIsNotCovered ? `${slot.courseName}: konu işlenmedi olarak işaretlendi.` : `${slot.courseName}: işlenmedi işareti kaldırıldı.`);
+    if (nextIsNotCovered) {
+      recordSchoolTopicHistory(day, slot, 'not-covered');
+    }
   };
 
   const handleSaveSchoolCurriculum = () => {
@@ -480,6 +516,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       schoolCurriculumUpdatedAt: new Date().toISOString(),
     }));
     setSchoolCurriculumMessage(`${activeSchoolCurriculumSlot.courseName}: okul konusu kaydedildi.`);
+    recordSchoolTopicHistory(schoolCurriculumSlot.day, activeSchoolCurriculumSlot, 'covered', schoolUnitName, schoolTopicName);
     window.setTimeout(() => closeSchoolCurriculumEditor(), 450);
   };
 
@@ -628,11 +665,11 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       candidate.id !== task.id &&
       candidate.status === 'bekliyor' &&
       candidate.dueDate === today &&
-      candidate.title === task.title &&
+      normalizeForLookup(candidate.title) === normalizeForLookup(task.title) &&
       candidate.courseId === task.courseId &&
       candidate.taskType === task.taskType &&
-      (candidate.curriculumUnitName || '') === (task.curriculumUnitName || '') &&
-      (candidate.curriculumTopicName || '') === (task.curriculumTopicName || '')
+      normalizeForLookup(candidate.curriculumUnitName || '') === normalizeForLookup(task.curriculumUnitName || '') &&
+      normalizeForLookup(candidate.curriculumTopicName || '') === normalizeForLookup(task.curriculumTopicName || '')
     ));
 
     if (duplicateExists) {
@@ -764,6 +801,11 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 task.taskGoalType ? formatTaskGoal(task.taskGoalType) : '',
                 task.questionCount ? String(task.questionCount) + ' soru' : '',
               ].filter(Boolean).join(' / ');
+              const clockLabel = getTaskClockRangeLabel(task.startTimestamp, task.completionTimestamp);
+              const isLiveStarted = task.status === 'bekliyor' && Boolean(task.startTimestamp);
+              const liveStatusLabel = task.status === 'bekliyor' && task.liveSession
+                ? (task.liveSession.status === 'break' ? 'Molada' : task.liveSession.status === 'paused' ? 'Durakladı' : 'Çalışıyor') + ' / ' + formatLiveSeconds(task.liveSession.mainTime)
+                : '';
 
               return (
                 <article key={task.id} className={['group flex min-h-[4.75rem] items-center gap-3 rounded-[16px] border px-3 py-2.5 transition-colors', courseVisual.row].join(' ')}>
@@ -773,6 +815,14 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                       <span className={['dr-assigned-course-pill max-w-[13rem] truncate rounded-full border px-2 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]', courseVisual.pill].join(' ')}>{courseName}</span>
                       <span>{getTaskDateKey(task.dueDate)}</span>
                       <span>{task.plannedDuration} dk</span>
+                      {clockLabel ? (
+                        <span className={['rounded-full border px-2 py-0.5 normal-case tracking-normal shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]', isLiveStarted ? 'border-emerald-300/50 bg-emerald-100/80 text-emerald-900 dark:border-emerald-200/35 dark:bg-emerald-300/18 dark:text-emerald-100' : courseVisual.pill].join(' ')}>
+                          {isLiveStarted ? 'Canli / ' : ''}{clockLabel}
+                        </span>
+                      ) : null}
+                      {liveStatusLabel ? (
+                        <span className="rounded-full border border-emerald-300/45 bg-emerald-100/80 px-2 py-0.5 normal-case tracking-normal text-emerald-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] dark:border-emerald-200/35 dark:bg-emerald-300/18 dark:text-emerald-100">{liveStatusLabel}</span>
+                      ) : null}
                     </div>
                     <h4 className={['mt-1 line-clamp-2 text-sm font-black leading-snug drop-shadow-sm', courseVisual.title].join(' ')}>{task.title}</h4>
                     <p className={['mt-0.5 line-clamp-1 text-xs font-semibold', courseVisual.detail].join(' ')}>{taskDetail || 'Detay eklenmedi'}</p>

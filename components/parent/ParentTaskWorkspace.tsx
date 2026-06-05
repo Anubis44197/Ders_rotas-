@@ -38,6 +38,13 @@ import {
 
 type AnalysisSnapshot = ReturnType<typeof deriveAnalysisSnapshot>;
 
+const formatLiveSeconds = (seconds: number) => {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return String(minutes).padStart(2, '0') + ':' + String(remainingSeconds).padStart(2, '0');
+};
+
 interface ParentTaskWorkspaceProps {
   courses: Course[];
   tasks: Task[];
@@ -119,6 +126,17 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
   const today = getTodayString();
   const activeCourses = useMemo(() => courses.filter((course) => course.active !== false), [courses]);
   const activeCourseNameSet = useMemo(() => new Set(activeCourses.map((course) => normalizeForLookup(course.name))), [activeCourses]);
+  const resolveActiveCourseByInput = (value: string) => {
+    const normalized = normalizeForLookup(value);
+    if (!normalized) return null;
+    const exact = activeCourses.find((course) => normalizeForLookup(course.name) === normalized);
+    if (exact) return exact;
+    const looseMatches = activeCourses.filter((course) => {
+      const courseKey = normalizeForLookup(course.name);
+      return courseKey.startsWith(normalized) || courseKey.includes(normalized) || normalized.includes(courseKey);
+    });
+    return looseMatches.length === 1 ? looseMatches[0] : null;
+  };
   const pendingCount = tasks.filter((task) => task.status === 'bekliyor').length;
   const completedCount = tasks.filter((task) => isCompletedTask(task)).length;
   const selectedCourseName = courseId || '';
@@ -210,6 +228,21 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
     }
   }, [taskTypeKey]);
 
+
+  useEffect(() => {
+    if (!selectedUnitName) return;
+    if (!activeUnits.some((unit) => unit.name === selectedUnitName)) {
+      setSelectedUnitName('');
+      setSelectedTopicName('');
+    }
+  }, [activeUnits, selectedUnitName]);
+
+  useEffect(() => {
+    if (!selectedTopicName) return;
+    if (!activeTopics.some((topic) => topic.name === selectedTopicName)) {
+      setSelectedTopicName('');
+    }
+  }, [activeTopics, selectedTopicName]);
   useEffect(() => {
     if (!activeCourses.length) {
       setExamCourseId('');
@@ -403,6 +436,11 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
       return;
     }
 
+    if (parsedScore < 0 || parsedScore > 100) {
+      onActionMessage('error', 'Sınav puanı 0 ile 100 arasında olmalı.');
+      return;
+    }
+
     onChangeExamRecords((prev) => [
       {
         id: buildLocalId('exam'),
@@ -413,7 +451,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         date: examDate,
         termKey: examTermKey.trim() || 'genel',
         scopeType: examScopeType,
-        score: Math.max(0, Math.min(100, Math.round(parsedScore))),
+        score: Math.round(parsedScore),
         weight: Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : 1,
         notes: examNotes.trim() || undefined,
         source: 'manual',
@@ -445,17 +483,27 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         if (parts.length < 2) return null;
         const courseName = parts.slice(0, -1).join(' ');
         const score = Number(parts[parts.length - 1]);
-        const matchedCourse = activeCourses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(courseName));
+        const matchedCourse = resolveActiveCourseByInput(courseName);
         if (!matchedCourse || !Number.isFinite(score)) return null;
         return {
           courseId: matchedCourse.id,
           courseName: matchedCourse.name,
-          score: Math.max(0, Math.min(100, Math.round(score))),
+          score: Math.round(score),
         };
       });
 
     if (!compositeTitle.trim() || !compositeDate || !courseRows.length || courseRows.some((row) => row === null)) {
       onActionMessage('error', 'Genel sınav için başlık, tarih ve her satırda Ders: Puan formatı zorunludur.');
+      return;
+    }
+
+    const validCourseRows = courseRows.filter((row): row is NonNullable<typeof row> => row !== null);
+    if (validCourseRows.some((row) => row.score < 0 || row.score > 100)) {
+      onActionMessage('error', 'Genel sınav ders puanları 0 ile 100 arasında olmalı.');
+      return;
+    }
+    if (new Set(validCourseRows.map((row) => row.courseId)).size !== validCourseRows.length) {
+      onActionMessage('error', 'Genel sınavda aynı ders birden fazla yazılamaz.');
       return;
     }
 
@@ -465,7 +513,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         title: compositeTitle.trim(),
         examType: compositeType,
         date: compositeDate,
-        courses: courseRows.filter((row): row is NonNullable<typeof row> => row !== null),
+        courses: validCourseRows,
         totalScore: Number.isFinite(Number(compositeTotalScore)) ? Number(compositeTotalScore) : undefined,
         notes: compositeNotes.trim() || undefined,
       },
@@ -500,6 +548,9 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
       .map(({ key }) => key);
     const taskMetrics = Array.from(new Set([...normalizedSelectedMetrics, ...legacySelectedMetrics]));
     const clockLabel = getTaskClockRangeLabel(task.startTimestamp, task.completionTimestamp);
+    const liveStatusLabel = task.status === 'bekliyor' && task.liveSession
+      ? (task.liveSession.status === 'break' ? 'Molada' : task.liveSession.status === 'paused' ? 'Durakladı' : 'Çalışıyor') + ' / ' + formatLiveSeconds(task.liveSession.mainTime)
+      : '';
 
     return (
       <div key={task.id} className={`ios-widget rounded-[20px] p-4 border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none transition-all active:scale-[0.98] ${isOverdue ? 'ios-coral' : ''}`}>
@@ -511,6 +562,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               <span>{task.plannedDuration} dk</span>
               {typeof task.questionCount === 'number' && task.questionCount > 0 && <><span>/</span><span>{task.questionCount} soru</span></>}
               {clockLabel && <span className="rounded-full border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/75 px-2.5 py-0.5 text-[var(--dr-text-primary)]">{clockLabel}</span>}
+              {liveStatusLabel && <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-0.5 font-bold text-emerald-700 dark:text-emerald-200">{liveStatusLabel}</span>}
               <span>/</span>
               <span>{task.dueDate}</span>
               <span className="rounded-full bg-[var(--dr-surface)] border border-[var(--dr-std-border-strong)]/10 px-2.5 py-0.5 text-[var(--dr-text-secondary)]">{formatPlanSource(task.planSource, task.planLabel)}</span>
@@ -635,25 +687,31 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
           </span>
         </nav>
 
+        {assignmentSubjectOptions.length === 0 && (
+          <div className="ios-coral mb-4 rounded-[22px] px-4 py-3 text-sm font-bold text-rose-950">
+            Gorev atamak icin once Mufredat Paneli'nde aktif bir ders, unite ve konu ekleyin.
+          </div>
+        )}
+
         <form onSubmit={handleAddTask} className="space-y-4">
           <div className="ios-widget rounded-[26px] p-4">
             <div className="grid gap-3 lg:grid-cols-3">
               <label className="block">
                 <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Ders</span>
-                <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setSelectedUnitName(''); setSelectedTopicName(''); }} className="dr-form-field w-full rounded-[20px] px-3 py-3 text-sm font-semibold outline-none">
+                <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setSelectedUnitName(''); setSelectedTopicName(''); }} disabled={assignmentSubjectOptions.length === 0} className="dr-form-field w-full rounded-[20px] px-3 py-3 text-sm font-semibold outline-none disabled:cursor-not-allowed disabled:opacity-50">
                   {assignmentSubjectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Ünite</span>
-                <select value={selectedUnitName} onChange={(e) => { setSelectedUnitName(e.target.value); setSelectedTopicName(''); }} className="dr-form-field w-full rounded-[20px] px-3 py-3 text-sm font-semibold outline-none">
+                <select value={selectedUnitName} onChange={(e) => { setSelectedUnitName(e.target.value); setSelectedTopicName(''); }} disabled={activeUnits.length === 0} className="dr-form-field w-full rounded-[20px] px-3 py-3 text-sm font-semibold outline-none disabled:cursor-not-allowed disabled:opacity-50">
                   <option value="">Ünite seç</option>
                   {activeUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}
                 </select>
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Konu</span>
-                <select value={selectedTopicName} onChange={(e) => setSelectedTopicName(e.target.value)} className="dr-form-field w-full rounded-[20px] px-3 py-3 text-sm font-semibold outline-none" disabled={!selectedUnitName}>
+                <select value={selectedTopicName} onChange={(e) => setSelectedTopicName(e.target.value)} className="dr-form-field w-full rounded-[20px] px-3 py-3 text-sm font-semibold outline-none disabled:cursor-not-allowed disabled:opacity-50" disabled={!selectedUnitName || activeTopics.length === 0}>
                   <option value="">Konu sec</option>
                   {activeTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}
                 </select>

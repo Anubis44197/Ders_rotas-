@@ -5,6 +5,7 @@ import {
   UserType,
   Course,
   Task,
+  TaskLiveSession,
   PerformanceData,
   ExamRecord,
   CompositeExamResult,
@@ -16,6 +17,7 @@ import {
   WeeklySchedule,
   WeeklyScheduleDay,
   WeeklyScheduleSlot,
+  SchoolTopicHistoryEntry,
   ExamScheduleEntry,
   StoredStudyPlan,
   StudyPlan,
@@ -1037,6 +1039,25 @@ const normalizeOptionalInteger = (value: unknown, min = 0, max = Number.MAX_SAFE
   return typeof numeric === 'number' ? Math.round(numeric) : undefined;
 };
 
+const normalizeTaskLiveSession = (value: any): TaskLiveSession | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const status = value.status === 'paused' || value.status === 'break' ? value.status : 'running';
+  const mainTime = normalizeOptionalInteger(value.mainTime, 0, 24 * 60 * 60) ?? 0;
+  const breakTime = normalizeOptionalInteger(value.breakTime, 0, 24 * 60 * 60) ?? 0;
+  const pauseTime = normalizeOptionalInteger(value.pauseTime, 0, 24 * 60 * 60) ?? 0;
+  const updatedAt = normalizeOptionalInteger(value.updatedAt, 0, Number.MAX_SAFE_INTEGER) ?? Date.now();
+  return {
+    mainTime,
+    breakTime,
+    pauseTime,
+    status,
+    updatedAt,
+    isPaused: Boolean(value.isPaused),
+    pausedAt: normalizeOptionalInteger(value.pausedAt, 0, Number.MAX_SAFE_INTEGER),
+    note: repairText(value.note) || undefined,
+  };
+};
+
 const normalizeTask = (task: any): Task => {
   const rawStatus = task?.status as string | undefined;
   const normalizedStatus = rawStatus === 'tamamland\u0131' || rawStatus === 'tamamlandi' ? 'tamamland\u0131' : 'bekliyor';
@@ -1091,6 +1112,46 @@ const normalizeTask = (task: any): Task => {
     targetFocus: Number.isFinite(Number(task?.targetFocus)) ? Number(task.targetFocus) : undefined,
     minimumDuration: Number.isFinite(Number(task?.minimumDuration)) ? Number(task.minimumDuration) : undefined,
   } as Task;
+};
+
+const SCHOOL_TOPIC_HISTORY_LIMIT = 2500;
+
+const normalizeSchoolTopicHistory = (value: unknown): SchoolTopicHistoryEntry[] => {
+  const rows = Array.isArray(value) ? value : [];
+  const seen = new Set<string>();
+  return rows
+    .map((item: any, index): SchoolTopicHistoryEntry | null => {
+      const date = typeof item?.date === 'string' && item.date ? item.date : getLocalDateString();
+      const dayName = repairedText(item?.dayName).trim();
+      const slotId = String(item?.slotId || 'slot');
+      const courseName = repairedText(item?.courseName).trim();
+      const status = item?.status === 'not-covered' ? 'not-covered' : item?.status === 'covered' ? 'covered' : null;
+      if (!dayName || !courseName || !status) return null;
+      const createdAt = repairedText(item?.createdAt).trim() || new Date().toISOString();
+      return {
+        id: String(item?.id || `school_topic_${date}_${slotId}_${index}`),
+        date,
+        dayName,
+        slotId,
+        courseName,
+        startTime: repairedText(item?.startTime).trim() || undefined,
+        endTime: repairedText(item?.endTime).trim() || undefined,
+        status,
+        unitName: repairedText(item?.unitName).trim() || undefined,
+        topicName: repairedText(item?.topicName).trim() || undefined,
+        createdAt,
+        source: item?.source === 'overview' ? 'overview' : 'planning',
+      };
+    })
+    .filter((item): item is SchoolTopicHistoryEntry => Boolean(item))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .filter((item) => {
+      const key = `${item.date}::${item.dayName}::${item.slotId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, SCHOOL_TOPIC_HISTORY_LIMIT);
 };
 
 const normalizeWeeklyScheduleSlot = (slot: any, fallbackIndex: number): WeeklyScheduleSlot => ({
@@ -2140,6 +2201,27 @@ const deriveTopicStatuses = (curriculumTopics: CurriculumTopicRecord[], sessions
   });
 };
 
+const stripScheduleCurriculumMarkers = (schedule: WeeklySchedule) => Object.fromEntries(
+  SCHEDULE_DAYS.map((dayName) => {
+    const day = schedule[dayName] || createEmptyScheduleDay();
+    return [dayName, {
+      confirmed: Boolean(day.confirmed),
+      slots: (day.slots || []).map((slot) => ({
+        id: slot.id,
+        courseName: slot.courseName,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        note: slot.note,
+      })),
+      availableWindows: Array.isArray(day.availableWindows) ? day.availableWindows : [],
+    }];
+  }),
+) as WeeklySchedule;
+
+const hasScheduleTimeStructureChanged = (left: WeeklySchedule, right: WeeklySchedule) => (
+  JSON.stringify(stripScheduleCurriculumMarkers(left)) !== JSON.stringify(stripScheduleCurriculumMarkers(right))
+);
+
 const deriveReplanTriggers = (
   topicStatuses: TopicStatusRecord[],
   curriculumTopics: CurriculumTopicRecord[],
@@ -2226,7 +2308,7 @@ const deriveReplanTriggers = (
     }
   }
 
-  if (activePlan && JSON.stringify(activePlan.schedule) !== JSON.stringify(weeklySchedule)) {
+  if (activePlan && hasScheduleTimeStructureChanged(activePlan.schedule, weeklySchedule)) {
     triggers.push({
       id: `trigger_schedule_change_week_${activePlan.week}`,
       type: 'schedule-change',
@@ -2387,6 +2469,7 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useStickyState<Task[]>([], 'tasks', normalizeSafeTasks);
   const [curriculum, setCurriculum] = useStickyState<SubjectCurriculum>({}, 'curriculum', normalizeSafeCurriculum);
   const [weeklySchedule, setWeeklySchedule] = useStickyState<WeeklySchedule>(defaultWeeklySchedule, 'weeklySchedule', normalizeWeeklySchedule);
+  const [schoolTopicHistory, setSchoolTopicHistory] = useStickyState<SchoolTopicHistoryEntry[]>([], 'schoolTopicHistory', normalizeSchoolTopicHistory);
   const [examScheduleEntries, setExamScheduleEntries] = useStickyState<ExamScheduleEntry[]>([], 'examScheduleEntries', normalizeSafeArray<ExamScheduleEntry>);
   const [examRecords, setExamRecords] = useStickyState<ExamRecord[]>([], 'examRecords', normalizeSafeArray<ExamRecord>);
   const [compositeExamResults, setCompositeExamResults] = useStickyState<CompositeExamResult[]>([], 'compositeExamResults', normalizeSafeArray<CompositeExamResult>);
@@ -2582,7 +2665,7 @@ const App: React.FC = () => {
     if (isIdbHydrationPending('tasks', tasks)) return;
     const subjectNames = Object.keys(curriculum || {});
 
-    const nextCourses = subjectNames.map((subjectName, index) => {
+    const nextCurriculumCourses = subjectNames.map((subjectName, index) => {
       const matched = courses.find((course) => normalizeForLookup(course.name) === normalizeForLookup(subjectName));
       if (matched) {
         return { ...matched, name: subjectName };
@@ -2595,6 +2678,11 @@ const App: React.FC = () => {
         icon: 'BookOpen',
       };
     });
+    const nextCurriculumCourseKeys = new Set(nextCurriculumCourses.map((course) => normalizeForLookup(course.name)));
+    const retiredCourses = courses
+      .filter((course) => !nextCurriculumCourseKeys.has(normalizeForLookup(course.name)))
+      .map((course) => ({ ...course, active: false }));
+    const nextCourses = sortCourses([...nextCurriculumCourses, ...retiredCourses]);
 
     if (JSON.stringify(nextCourses) !== JSON.stringify(courses)) {
       setCourses(nextCourses);
@@ -2656,6 +2744,19 @@ const App: React.FC = () => {
     }, 3000);
   };
 
+  const recordSchoolTopicHistory = useCallback((entry: Omit<SchoolTopicHistoryEntry, 'id' | 'createdAt'>) => {
+    const createdAt = new Date().toISOString();
+    const nextEntry: SchoolTopicHistoryEntry = {
+      ...entry,
+      id: `school_topic_${entry.date}_${entry.dayName}_${entry.slotId}`,
+      createdAt,
+    };
+    setSchoolTopicHistory((prev) => normalizeSchoolTopicHistory([
+      nextEntry,
+      ...prev.filter((item) => !(item.date === entry.date && item.dayName === entry.dayName && item.slotId === entry.slotId)),
+    ]));
+  }, [setSchoolTopicHistory]);
+
   const remoteAppData = useMemo<RemoteAppData>(() => ({
     courses,
     tasks,
@@ -2665,12 +2766,13 @@ const App: React.FC = () => {
     successPoints,
     curriculum,
     weeklySchedule,
+    schoolTopicHistory,
     examRecords,
     compositeExamResults,
     examScheduleEntries,
     studyPlans,
     planningEngineSnapshot,
-  }), [badges, compositeExamResults, courses, curriculum, examRecords, examScheduleEntries, performanceData, planningEngineSnapshot, rewards, studyPlans, successPoints, tasks, weeklySchedule]);
+  }), [badges, compositeExamResults, courses, curriculum, examRecords, examScheduleEntries, performanceData, planningEngineSnapshot, rewards, schoolTopicHistory, studyPlans, successPoints, tasks, weeklySchedule]);
 
   const applyRemoteAppData = useCallback((payload: RemoteAppData) => {
     remoteApplyingRef.current = true;
@@ -2682,6 +2784,7 @@ const App: React.FC = () => {
     setSuccessPoints(normalizeSafeNumber(payload.successPoints));
     setCurriculum(normalizeSafeCurriculum(payload.curriculum));
     setWeeklySchedule(normalizeWeeklySchedule(payload.weeklySchedule || defaultWeeklySchedule));
+    setSchoolTopicHistory(normalizeSchoolTopicHistory(payload.schoolTopicHistory));
     setExamRecords(normalizeSafeArray<ExamRecord>(payload.examRecords));
     setCompositeExamResults(normalizeSafeArray<CompositeExamResult>(payload.compositeExamResults));
     setExamScheduleEntries(normalizeSafeArray<ExamScheduleEntry>(payload.examScheduleEntries));
@@ -2690,7 +2793,7 @@ const App: React.FC = () => {
     window.setTimeout(() => {
       remoteApplyingRef.current = false;
     }, 0);
-  }, [setBadges, setCompositeExamResults, setCourses, setCurriculum, setExamRecords, setExamScheduleEntries, setPerformanceData, setPlanningEngineSnapshot, setRewards, setStudyPlans, setSuccessPoints, setTasks, setWeeklySchedule]);
+  }, [setBadges, setCompositeExamResults, setCourses, setCurriculum, setExamRecords, setExamScheduleEntries, setPerformanceData, setPlanningEngineSnapshot, setRewards, setSchoolTopicHistory, setStudyPlans, setSuccessPoints, setTasks, setWeeklySchedule]);
 
   useEffect(() => {
     if (isE2EMode) return;
@@ -2881,6 +2984,7 @@ const App: React.FC = () => {
     setSuccessPoints(parsedSuccessPoints || 0);
     setCurriculum(normalizeCurriculum(payload.curriculum));
     setWeeklySchedule(normalizeWeeklySchedule(payload.weeklySchedule || defaultWeeklySchedule));
+    setSchoolTopicHistory(normalizeSchoolTopicHistory(payload.schoolTopicHistory));
     setExamRecords(normalizeExamRecords(payload.examRecords, normalizedCourses));
     setCompositeExamResults(normalizeCompositeExamResults(payload.compositeExamResults, normalizedCourses));
     setExamScheduleEntries(normalizeExamScheduleEntries(payload.examScheduleEntries, normalizedCourses));
@@ -2898,6 +3002,7 @@ const App: React.FC = () => {
       successPoints,
       curriculum,
       weeklySchedule,
+      schoolTopicHistory,
       examRecords,
       compositeExamResults,
       examScheduleEntries,
@@ -2915,6 +3020,7 @@ const App: React.FC = () => {
           badges: badges.length,
           examRecords: examRecords.length,
           studyPlans: studyPlans.length,
+          schoolTopicHistory: schoolTopicHistory.length,
         },
       },
       appData,
@@ -2939,6 +3045,7 @@ const App: React.FC = () => {
     setStudyPlans([]);
     setCurriculum({});
     setWeeklySchedule(defaultWeeklySchedule);
+    setSchoolTopicHistory([]);
     setExamRecords([]);
     setCompositeExamResults([]);
     setExamScheduleEntries([]);
@@ -3105,6 +3212,11 @@ const App: React.FC = () => {
       throw new Error('Görev süresi 0 dakikadan büyük olmalı.');
     }
 
+    const matchedCourse = courses.find((course) => course.id === task.courseId);
+    if (!matchedCourse || matchedCourse.active === false) {
+      throw new Error('Bu ders pasif olduğu için yeni görev oluşturulamaz.');
+    }
+
     const rawQuestionCount = typeof task.questionCount === 'number' ? task.questionCount : Number(task.questionCount);
     const questionCount = Number.isFinite(rawQuestionCount) && rawQuestionCount > 0
       ? Math.round(rawQuestionCount)
@@ -3265,7 +3377,7 @@ const App: React.FC = () => {
 
   const startTask = (taskId: string) => {
     playHaptic('start');
-    setTasks((prevTasks) => prevTasks.map((task) => (task.id === taskId ? { ...task, startTimestamp: Date.now() } : task)));
+    setTasks((prevTasks) => prevTasks.map((task) => (task.id === taskId ? { ...task, startTimestamp: task.startTimestamp || Date.now() } : task)));
   };
 
   const completeTask = (taskId: string, data: TaskCompletionData) => {
@@ -3284,7 +3396,6 @@ const App: React.FC = () => {
       return;
     }
 
-    const today = getLocalDateString();
     const correctAnswers = isQuestionTask(task) ? data.correctCount || 0 : 0;
     const incorrectAnswers = isQuestionTask(task) ? data.incorrectCount || 0 : 0;
     const emptyAnswers = isQuestionTask(task) ? data.emptyCount || 0 : 0;
@@ -3330,10 +3441,15 @@ const App: React.FC = () => {
     const attentionErrorCount = isQuestionTask(task)
       ? Math.max(0, data.attentionErrorCount ?? (hasExplicitErrorBreakdown ? 0 : emptyAnswers))
       : 0;
-    const completionTimestamp = Date.now();
-    const inferredStartTimestamp = data.actualDuration > 0
-      ? Math.max(0, completionTimestamp - data.actualDuration * 1000)
-      : completionTimestamp;
+    const completionTimestamp = typeof data.completionTimestamp === 'number' && Number.isFinite(data.completionTimestamp) && data.completionTimestamp > 0
+      ? data.completionTimestamp
+      : Date.now();
+    const completionDate = data.completionDate || getLocalDateString(new Date(completionTimestamp));
+    const inferredStartTimestamp = typeof data.startTimestamp === 'number' && Number.isFinite(data.startTimestamp) && data.startTimestamp > 0
+      ? data.startTimestamp
+      : data.actualDuration > 0
+        ? Math.max(0, completionTimestamp - data.actualDuration * 1000)
+        : completionTimestamp;
 
     const completedTask: Task = {
       ...task,
@@ -3341,7 +3457,7 @@ const App: React.FC = () => {
       ...data,
       pagesRead: data.pagesRead,
       startTimestamp: task.startTimestamp || inferredStartTimestamp,
-      completionDate: today,
+      completionDate,
       completionTimestamp,
       correctCount: correctAnswers,
       incorrectCount: incorrectAnswers,
@@ -4368,9 +4484,9 @@ const App: React.FC = () => {
         const diff = Math.round((todayDate.getTime() - start.getTime()) / dayMs);
         return diff === 0 ? 'Bugun' : `G-${diff}`;
       }
+      if (overviewStudyPeriod === 'week3') return `${index + 1}. Hafta`;
       if (overviewStudyPeriod === 'total') return `${index + 1}. Aralik`;
-      if (overviewStudyPeriod === 'quarter') return `${index + 1}. Hf`;
-      return `${index + 1}. Hafta`;
+      return `${index + 1}. Bolum`;
     };
     const completedQuestionTasks = tasks
       .filter((task) => isCompletedTask(task) && task.completionDate && isQuestionTask(task))
@@ -4387,19 +4503,23 @@ const App: React.FC = () => {
         });
       }
 
-      const weekCount = overviewStudyPeriod === 'week3'
-        ? 3
+      const fixedRange = overviewStudyPeriod === 'week3'
+        ? { days: 21, points: 3 }
         : overviewStudyPeriod === 'month'
-          ? 4
+          ? { days: 30, points: 10 }
           : overviewStudyPeriod === 'quarter'
-            ? 12
-            : 0;
+            ? { days: 90, points: 12 }
+            : null;
 
-      if (weekCount > 0) {
-        return Array.from({ length: weekCount }, (_, index) => {
-          const start = startOfWeek(new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() - (weekCount - 1 - index) * 7));
+      if (fixedRange) {
+        const rangeStart = new Date(todayDate);
+        rangeStart.setDate(rangeStart.getDate() - (fixedRange.days - 1));
+        const bucketSize = Math.max(1, Math.ceil(fixedRange.days / fixedRange.points));
+        return Array.from({ length: fixedRange.points }, (_, index) => {
+          const start = new Date(rangeStart);
+          start.setDate(start.getDate() + index * bucketSize);
           const end = new Date(start);
-          end.setDate(end.getDate() + 6);
+          end.setDate(end.getDate() + bucketSize - 1);
           if (end > todayDate) end.setTime(todayDate.getTime());
           return { start, end, label: formatBucketLabel(start, end, index) };
         });
@@ -4946,6 +5066,7 @@ const App: React.FC = () => {
             onOpenCurriculumEditor={() => setCurriculumEditorOpen(true)}
             onReactivateCourse={reactivateCourse}
             courseReferenceHealth={courseReferenceHealth}
+            onRecordSchoolTopicHistory={recordSchoolTopicHistory}
           />
         </Suspense>
       );
@@ -4983,6 +5104,7 @@ const App: React.FC = () => {
                 weeklySchedule={weeklySchedule}
                 curriculum={curriculum}
                 onWeeklyScheduleChange={setWeeklySchedule}
+                onRecordSchoolTopicHistory={recordSchoolTopicHistory}
                 overviewUpcomingExam={overviewUpcomingExam}
                 overviewTodayName={overviewTodayName}
                 overviewTodaySlots={overviewTodaySlots}
@@ -5028,6 +5150,7 @@ const App: React.FC = () => {
           weeklySchedule={weeklySchedule}
           curriculum={curriculum}
           onWeeklyScheduleChange={setWeeklySchedule}
+          onRecordSchoolTopicHistory={recordSchoolTopicHistory}
           overviewUpcomingExam={overviewUpcomingExam}
           overviewTodayName={overviewTodayName}
           overviewTodaySlots={overviewTodaySlots}
@@ -5493,6 +5616,8 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
 
 
 

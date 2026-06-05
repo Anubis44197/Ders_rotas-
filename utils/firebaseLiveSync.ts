@@ -11,6 +11,7 @@ export interface RemoteAppData {
   successPoints: number;
   curriculum: Record<string, unknown>;
   weeklySchedule: Record<string, unknown>;
+  schoolTopicHistory: unknown[];
   examRecords: unknown[];
   compositeExamResults: unknown[];
   examScheduleEntries: unknown[];
@@ -57,6 +58,7 @@ const sectionIds = [
   'badges',
   'curriculum',
   'weeklySchedule',
+  'schoolTopicHistory',
   'examRecords',
   'compositeExamResults',
   'examScheduleEntries',
@@ -71,6 +73,7 @@ const sectionDefaults: Record<SectionId, SectionValue> = {
   badges: [],
   curriculum: {},
   weeklySchedule: {},
+  schoolTopicHistory: [],
   examRecords: [],
   compositeExamResults: [],
   examScheduleEntries: [],
@@ -229,6 +232,7 @@ const splitRemoteAppData = (appData: RemoteAppData): Record<SectionId, SectionVa
   badges: appData.badges,
   curriculum: appData.curriculum,
   weeklySchedule: appData.weeklySchedule,
+  schoolTopicHistory: appData.schoolTopicHistory,
   examRecords: appData.examRecords,
   compositeExamResults: appData.compositeExamResults,
   examScheduleEntries: appData.examScheduleEntries,
@@ -250,6 +254,7 @@ const assembleRemoteAppData = (sections: Map<SectionId, SectionValue>, tasks: un
     successPoints: typeof meta.successPoints === 'number' ? meta.successPoints : 0,
     curriculum: (sections.get('curriculum') || sectionDefaults.curriculum) as Record<string, unknown>,
     weeklySchedule: (sections.get('weeklySchedule') || sectionDefaults.weeklySchedule) as Record<string, unknown>,
+    schoolTopicHistory: (sections.get('schoolTopicHistory') || sectionDefaults.schoolTopicHistory) as unknown[],
     examRecords: (sections.get('examRecords') || sectionDefaults.examRecords) as unknown[],
     compositeExamResults: (sections.get('compositeExamResults') || sectionDefaults.compositeExamResults) as unknown[],
     examScheduleEntries: (sections.get('examScheduleEntries') || sectionDefaults.examScheduleEntries) as unknown[],

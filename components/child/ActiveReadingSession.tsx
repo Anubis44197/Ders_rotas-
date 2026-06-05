@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Task, TaskCompletionData } from '../../types';
+import { Task, TaskCompletionData, TaskLiveSession } from '../../types';
 import { Play, Pause, Coffee, StopCircle, Trash2, Maximize, Minimize } from '../icons';
 import { playHaptic } from '../../utils/haptics';
 
@@ -20,11 +20,12 @@ interface ActiveReadingSessionProps {
   task: Task;
   tasks: Task[];
   onComplete: (taskId: string, data: TaskCompletionData) => void;
+  onLiveSessionChange?: (taskId: string, liveSession?: TaskLiveSession) => void;
   onFinishSession: () => void;
   initialTimerState?: TimerState;
 }
 
-const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks, onComplete, onFinishSession, initialTimerState }) => {
+const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks, onComplete, onLiveSessionChange, onFinishSession, initialTimerState }) => {
   const [mainTime, setMainTime] = useState(initialTimerState?.mainTime || 0);
   const [breakTime, setBreakTime] = useState(initialTimerState?.breakTime || 0);
   const [pauseTime, setPauseTime] = useState(initialTimerState?.pauseTime || 0);
@@ -38,6 +39,8 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
   const sessionRef = useRef<HTMLDivElement | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTickRef = useRef<number | null>(null);
+  const lastLivePublishRef = useRef(0);
+  const lastLiveStatusRef = useRef(status);
 
   useEffect(() => {
     const taskStillExists = tasks.some((item) => item.id === task.id);

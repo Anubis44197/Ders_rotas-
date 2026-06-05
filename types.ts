@@ -24,6 +24,17 @@ export interface Course {
   icon: React.ComponentType<{ className?: string }> | string; // String for Firebase compatibility
 }
 
+export interface TaskLiveSession {
+  mainTime: number;
+  breakTime: number;
+  pauseTime: number;
+  status: 'running' | 'paused' | 'break';
+  updatedAt: number;
+  isPaused?: boolean;
+  pausedAt?: number;
+  note?: string;
+}
+
 export interface Task {
   id: string;
   courseId: string;
@@ -72,6 +83,7 @@ export interface Task {
   pointsAwarded?: number;
   isSelfAssigned?: boolean;
   createdAt?: string; // ISO string for Firebase compatibility
+  liveSession?: TaskLiveSession;
 }
 
 export interface PerformanceData {
@@ -218,6 +230,9 @@ export interface TaskCompletionData {
     actualDuration: number;
     breakTime: number;
     pauseTime: number;
+    startTimestamp?: number;
+    completionTimestamp?: number;
+    completionDate?: string;
   selfAssessmentScore?: number;
     pagesRead?: number;
     correctCount?: number;
@@ -294,6 +309,21 @@ export interface WeeklyScheduleDay {
 
 export interface WeeklySchedule {
   [day: string]: WeeklyScheduleDay;
+}
+
+export interface SchoolTopicHistoryEntry {
+  id: string;
+  date: string;
+  dayName: string;
+  slotId: string;
+  courseName: string;
+  startTime?: string;
+  endTime?: string;
+  status: 'covered' | 'not-covered';
+  unitName?: string;
+  topicName?: string;
+  createdAt: string;
+  source: 'planning' | 'overview';
 }
 
 export interface ExamScheduleEntry {

@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Task, TaskCompletionData } from '../../types';
 
 interface ManualTaskCompletionModalProps {
@@ -9,8 +9,15 @@ interface ManualTaskCompletionModalProps {
 }
 
 const getDefaultTimes = () => ({ start: '17:00', end: '18:00' });
+const getDateKey = (value?: string) => (typeof value === 'string' && value ? value.split('T')[0] : new Date().toISOString().slice(0, 10));
+const getLocalDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 const isQuestionBasedTask = (taskType: Task['taskType']) =>
-  taskType === 'soru çözme' || taskType === 'branş deneme' || taskType === 'genel deneme';
+  taskType === 'soru \u00e7\u00f6zme' || taskType === 'bran\u015f deneme' || taskType === 'genel deneme';
 
 const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ show, onClose, task, onComplete }) => {
   const defaults = useMemo(() => getDefaultTimes(), []);
@@ -21,6 +28,7 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
   const [incorrectCount, setIncorrectCount] = useState('');
   const [emptyCount, setEmptyCount] = useState('');
   const [selfAssessmentScore, setSelfAssessmentScore] = useState('');
+  const [crossesMidnight, setCrossesMidnight] = useState(false);
   const [error, setError] = useState('');
 
   const totalQuestions = (Number(correctCount) || 0) + (Number(incorrectCount) || 0) + (Number(emptyCount) || 0);
@@ -34,17 +42,27 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
       return;
     }
 
-    const start = new Date(`${task.dueDate}T${startTime}`);
-    const end = new Date(`${task.dueDate}T${endTime}`);
+    const taskDateKey = getDateKey(task.dueDate);
+    const start = new Date(`${taskDateKey}T${startTime}`);
+    const end = new Date(`${taskDateKey}T${endTime}`);
+    if (crossesMidnight) end.setDate(end.getDate() + 1);
     if (end <= start) {
       setError('Bitis saati baslangictan sonra olmali.');
       return;
     }
+    const actualDuration = Math.floor((end.getTime() - start.getTime()) / 1000);
+    if (actualDuration <= 0 || actualDuration > 12 * 60 * 60) {
+      setError('Manuel sure 12 saati gecemez.');
+      return;
+    }
 
     const completionData: TaskCompletionData = {
-      actualDuration: Math.floor((end.getTime() - start.getTime()) / 1000),
+      actualDuration,
       breakTime: 0,
       pauseTime: 0,
+      startTimestamp: start.getTime(),
+      completionTimestamp: end.getTime(),
+      completionDate: getLocalDateKey(end),
       selfAssessmentScore: selfAssessmentScore ? Number(selfAssessmentScore) : undefined,
     };
 
@@ -57,6 +75,10 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
     }
 
     if (isQuestionBasedTask(task.taskType)) {
+      if (totalQuestions <= 0) {
+        setError('Soru gorevinde en az 1 sonuc gir.');
+        return;
+      }
       if (task.questionCount && totalQuestions !== task.questionCount) {
         setError(`Toplam ${task.questionCount} soru olmali.`);
         return;
@@ -77,9 +99,9 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
       <form className="ios-card dr-compact-modal dr-modal-scroll max-h-[min(76dvh,34rem)] w-[min(34rem,calc(100vw-1.5rem))] overflow-y-auto p-4" onSubmit={handleSubmit}>
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Geçmiş kayıt</div>
-            <h3 className="mt-1 text-xl font-black text-slate-900">Görevi manuel tamamla</h3>
-            <p className="mt-1 text-xs leading-5 text-slate-500">Geçmiş tarihli süre ve sonuç bilgisini gir.</p>
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Gecmis kayit</div>
+            <h3 className="mt-1 text-xl font-black text-slate-900">Gorevi manuel tamamla</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Gecmis tarihli sure ve sonuc bilgisini gir.</p>
           </div>
           <button type="button" onClick={onClose} className="ios-button rounded-full px-3 py-2 text-sm font-bold text-slate-500">Kapat</button>
         </div>
@@ -90,28 +112,32 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
             <span className="rounded-full bg-white px-3 py-1">{task.dueDate}</span>
             <span className="rounded-full bg-white px-3 py-1">{task.plannedDuration} dk plan</span>
             {task.questionCount ? <span className="rounded-full bg-white px-3 py-1">{task.questionCount} soru</span> : null}
-            {task.curriculumUnitName ? <span className="rounded-full bg-white px-3 py-1">Ünite: {task.curriculumUnitName}</span> : null}
+            {task.curriculumUnitName ? <span className="rounded-full bg-white px-3 py-1">Unite: {task.curriculumUnitName}</span> : null}
             {task.curriculumTopicName ? <span className="rounded-full bg-white px-3 py-1">Konu: {task.curriculumTopicName}</span> : null}
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr]">
           <section className="ios-widget ios-blue rounded-[18px] p-3">
-            <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Süre bilgisi</div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Sure bilgisi</div>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm font-semibold text-slate-700">
-                Başlama
+                Baslama
                 <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="ios-button mt-1 w-full rounded-[18px] px-3 py-3" required />
               </label>
               <label className="text-sm font-semibold text-slate-700">
-                Bitiş
+                Bitis
                 <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="ios-button mt-1 w-full rounded-[18px] px-3 py-3" required />
               </label>
             </div>
+            <label className="mt-3 flex items-center gap-2 rounded-[16px] bg-white/70 px-3 py-2 text-xs font-bold text-slate-700">
+              <input type="checkbox" checked={crossesMidnight} onChange={(e) => setCrossesMidnight(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+              Bitis saati ertesi gune gecti
+            </label>
           </section>
 
           <section className="ios-widget ios-mint rounded-[18px] p-3">
-            <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Sonuç bilgisi</div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Sonuc bilgisi</div>
             <div className="space-y-3">
               {task.taskType === 'kitap okuma' && (
                 <label className="text-sm font-semibold text-slate-700">
@@ -138,11 +164,11 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
                 </div>
               )}
 
-              {task.taskType === 'ders çalışma' && <div className="ios-widget rounded-[18px] px-3 py-3 text-sm text-slate-600">Bu görevde süre bilgisi yeterli. Odak ve verim sonraki analizde hesaplanır.</div>}
+              {task.taskType === 'ders \u00e7al\u0131\u015fma' && <div className="ios-widget rounded-[18px] px-3 py-3 text-sm text-slate-600">Bu gorevde sure bilgisi yeterli. Odak ve verim sonraki analizde hesaplanir.</div>}
 
               {task.taskType !== 'kitap okuma' && (
                 <label className="text-sm font-semibold text-slate-700">
-                  Başlamadan önce bu konuda kendine kaç puan verirdin? (0-100)
+                  Baslamadan once bu konuda kendine kac puan verirdin? (0-100)
                   <input
                     type="number"
                     min="0"

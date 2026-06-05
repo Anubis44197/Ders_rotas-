@@ -87,6 +87,11 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
 
     const next = cloneCurriculum(draft);
     next[subjectName] = next[subjectName] || [];
+    const duplicateUnit = next[subjectName].some((unit) => normalizeSubjectName(unit.name) === normalizeSubjectName(unitName));
+    if (duplicateUnit) {
+      setNewUnitNames((prev) => ({ ...prev, [subjectName]: '' }));
+      return;
+    }
     next[subjectName].push({ name: unitName, topics: [] });
     setDraft(next);
     setNewUnitNames((prev) => ({ ...prev, [subjectName]: '' }));
@@ -106,6 +111,11 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
     if (!topicName) return;
 
     const next = cloneCurriculum(draft);
+    const duplicateTopic = next[subjectName][unitIndex].topics.some((topic) => normalizeSubjectName(topic.name) === normalizeSubjectName(topicName));
+    if (duplicateTopic) {
+      setNewTopicNames((prev) => ({ ...prev, [key]: '' }));
+      return;
+    }
     next[subjectName][unitIndex].topics.push({ name: topicName, completed: false });
     setDraft(next);
     setNewTopicNames((prev) => ({ ...prev, [key]: '' }));

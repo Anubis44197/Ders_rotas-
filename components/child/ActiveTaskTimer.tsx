@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Task, TaskCompletionData } from '../../types';
+import { Task, TaskCompletionData, TaskLiveSession } from '../../types';
 import { Play, Pause, Coffee, StopCircle, Trash2, Clock, Maximize, Minimize } from '../icons';
 import NotesModal from '../shared/NotesModal';
 import { playHaptic } from '../../utils/haptics';
@@ -33,6 +33,7 @@ interface ActiveTaskTimerProps {
   onComplete: (taskId: string, data: TaskCompletionData) => void;
   onFinishSession: () => void;
   onPauseForLater: (taskId: string, timerState: TimerState) => void;
+  onLiveSessionChange?: (taskId: string, liveSession?: TaskLiveSession) => void;
   initialTimerState?: TimerState;
 }
 
@@ -56,7 +57,7 @@ const Countdown: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
   );
 };
 
-const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComplete, onFinishSession, onPauseForLater, initialTimerState }) => {
+const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComplete, onFinishSession, onPauseForLater, onLiveSessionChange, initialTimerState }) => {
   const [mainTime, setMainTime] = useState(initialTimerState?.mainTime || 0);
   const [breakTime, setBreakTime] = useState(initialTimerState?.breakTime || 0);
   const [pauseTime, setPauseTime] = useState(initialTimerState?.pauseTime || 0);
@@ -83,6 +84,9 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
   const sessionRef = useRef<HTMLDivElement | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTickRef = useRef<number | null>(null);
+  const lastLivePublishRef = useRef(0);
+  const lastLiveStatusRef = useRef(status);
+  const lastLiveNoteRef = useRef(taskNote);
 
   const plannedSeconds = task.plannedDuration * 60;
   const isOvertime = mainTime > plannedSeconds;

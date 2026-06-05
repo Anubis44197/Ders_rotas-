@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Course, ExamScheduleEntry, SubjectCurriculum, Task, WeeklySchedule } from '../../types';
+import type { Course, ExamScheduleEntry, SchoolTopicHistoryEntry, SubjectCurriculum, Task, WeeklySchedule } from '../../types';
 import { BookOpen, Calendar, CheckCircle, ClipboardList, Clock, PlusCircle, Target, Trash2 } from '../icons';
 import WeeklySchedulePanel from './WeeklySchedulePanel';
 import { getTodayString } from '../../utils/dateUtils';
@@ -31,6 +31,7 @@ interface ParentPlanningWorkspaceProps {
   addTask: (task: Omit<Task, 'id' | 'status'>) => Promise<Task>;
   deleteTask: (taskId: string) => void;
   onChangeSchedule: (schedule: WeeklySchedule) => void;
+  onRecordSchoolTopicHistory?: (entry: Omit<SchoolTopicHistoryEntry, 'id' | 'createdAt'>) => void;
   onChangeExamSchedules: React.Dispatch<React.SetStateAction<ExamScheduleEntry[]>>;
   onOpenCurriculumEditor: () => void;
   onReactivateCourse: (courseId: string) => void;
@@ -56,6 +57,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
   addTask,
   deleteTask,
   onChangeSchedule,
+  onRecordSchoolTopicHistory,
   onChangeExamSchedules,
   onOpenCurriculumEditor,
   onReactivateCourse,
@@ -71,11 +73,25 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
   const safeCourses = Array.isArray(courses) ? courses : [];
 
   const handleAddExamSchedule = () => {
-    const course = safeCourses.find((item) => item.id === selectedExamCourseId);
-    if (!course || !examNameInput.trim() || !examDateInput) {
-      setExamFormMessage('Lütfen ders, sınav adı ve tarih alanlarını doldurun.');
+    const course = activeCourses.find((item) => item.id === selectedExamCourseId);
+    if (activeCourses.length === 0) {
+      setExamFormMessage('Sınav takvimi için önce aktif bir ders olmalı.');
       return;
     }
+    if (!course || !examNameInput.trim() || !examDateInput) {
+      setExamFormMessage('Lütfen aktif ders, sınav adı ve tarih alanlarını doldurun.');
+      return;
+    }
+    const duplicateExam = (Array.isArray(examScheduleEntries) ? examScheduleEntries : []).some((entry) => (
+      entry.courseId === course.id &&
+      entry.date === examDateInput &&
+      entry.examName.trim().toLocaleLowerCase('tr-TR') === examNameInput.trim().toLocaleLowerCase('tr-TR')
+    ));
+    if (duplicateExam) {
+      setExamFormMessage('Bu ders, tarih ve sınav adıyla zaten kayıt var.');
+      return;
+    }
+
     const nextEntry: ExamScheduleEntry = {
       id: `exam_schedule_${course.id}_${examDateInput}_${Date.now()}`,
       examName: examNameInput.trim(),
@@ -102,6 +118,12 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
   const activeCourses = safeCourses.filter((course) => course.active !== false);
   const inactiveCourses = safeCourses.filter((course) => course.active === false);
   const brokenReferenceTotal = Object.values(safeCourseReferenceHealth).reduce((sum, count) => sum + count, 0);
+  React.useEffect(() => {
+    if (!selectedExamCourseId) return;
+    if (!activeCourses.some((course) => course.id === selectedExamCourseId)) {
+      setSelectedExamCourseId('');
+    }
+  }, [activeCourses, selectedExamCourseId]);
   const today = getTodayString();
 
   // Sınav takvimi — tarih sıralı, geçmiş sınavlar altta
@@ -264,7 +286,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         )}
       </section>
 
-      <WeeklySchedulePanel schedule={weeklySchedule} courses={safeCourses} curriculum={curriculum} tasks={tasks} addTask={addTask} deleteTask={deleteTask} onSave={onChangeSchedule} onAddExam={() => { setExamFormMessage(null); setIsExamModalOpen(true); }} />
+      <WeeklySchedulePanel schedule={weeklySchedule} courses={safeCourses} curriculum={curriculum} tasks={tasks} addTask={addTask} deleteTask={deleteTask} onSave={onChangeSchedule} onRecordSchoolTopicHistory={onRecordSchoolTopicHistory} onAddExam={() => { setExamFormMessage(null); setIsExamModalOpen(true); }} />
 
       {isExamModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl transition-all">
@@ -280,7 +302,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
                 <label className="mb-1.5 block text-xs font-bold uppercase text-[var(--dr-text-secondary)]">Ders Seçin</label>
                 <select value={selectedExamCourseId} onChange={(event) => { setSelectedExamCourseId(event.target.value); setExamFormMessage(null); }} className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none">
                   <option value="">Ders Seçiniz</option>
-                  {safeCourses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
+                  {activeCourses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
                 </select>
               </div>
               <div>
@@ -303,7 +325,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/20 px-4 py-3">
               <button type="button" onClick={() => { setExamFormMessage(null); setIsExamModalOpen(false); }} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Sınav eklemeyi iptal et">İptal</button>
-              <button type="button" onClick={handleAddExamSchedule} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all active:scale-[0.96] cursor-pointer">
+              <button type="button" onClick={handleAddExamSchedule} disabled={activeCourses.length === 0} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
                 Kaydet
               </button>
             </div>
