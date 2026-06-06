@@ -171,6 +171,34 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
   onOpenOverviewReport,
   onOpenWeeklyAnalysis,
 }) => {
+  const gridRef = React.useRef<HTMLDivElement>(null);
+  const [isDown, setIsDown] = React.useState(false);
+  const [startX, setStartX] = React.useState(0);
+  const [scrollLeft, setScrollLeft] = React.useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!gridRef.current) return;
+    setIsDown(true);
+    setStartX(e.pageX - gridRef.current.offsetLeft);
+    setScrollLeft(gridRef.current.scrollLeft);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDown(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsDown(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDown || !gridRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - gridRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    gridRef.current.scrollLeft = scrollLeft - walk;
+  };
+
   const activeCourses = useMemo(() => {
     const seen = new Set<string>();
     return courses.filter((course) => {
@@ -399,7 +427,15 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="dr-curriculum-showcase-grid">
+        <div 
+          ref={gridRef}
+          className="dr-curriculum-showcase-grid"
+          onMouseDown={handleMouseDown}
+          onMouseLeave={handleMouseLeave}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          style={{ cursor: isDown ? 'grabbing' : 'grab' }}
+        >
           {cards.map((card) => {
             const Icon = card.Icon;
             const StatusIcon = card.statusKind === 'behind' ? TrendingDown : card.statusKind === 'ahead' ? TrendingUp : CheckCircle;
