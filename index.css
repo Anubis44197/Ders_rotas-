@@ -4875,3 +4875,14 @@ button.ios-coral {
 .dr-theme-dark .dr-curriculum-cards-slider:hover::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.16) !important;
 }
+
+@media (min-width: 1181px) {
+  /* Konu Öğrenme Analizi kartını sağ taraftaki orijinal 2 sütuna hizala */
+  .dr-curriculum-showcase-grid > .dr-curriculum-progress-compare:first-of-type {
+    grid-column: 2 / -1 !important;
+  }
+  /* Canlı Karşılaştırma kartını en altta tam genişlik yap */
+  .dr-curriculum-showcase-grid > .dr-curriculum-progress-compare:last-of-type {
+    grid-column: 1 / -1 !important;
+  }
+}
