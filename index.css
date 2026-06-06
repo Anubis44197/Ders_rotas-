@@ -53,11 +53,15 @@ html {
     radial-gradient(circle at 76% 92%, rgba(255, 79, 24, 0.06), transparent 30%),
     linear-gradient(180deg, #FAF8F5 0%, var(--dr-bg) 100%);
   min-height: 100%;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100%;
   color: var(--dr-text);
   background: transparent;
   font-size: var(--dr-type-body);
@@ -265,6 +269,8 @@ textarea:focus-visible {
 
 #root {
   min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .dr-launch-screen {
@@ -409,10 +415,14 @@ textarea:focus-visible {
 
 .dr-main {
   padding-top: calc(5rem + env(safe-area-inset-top));
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .dr-content-pad {
   padding: 1rem max(1rem, env(safe-area-inset-left)) calc(2rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .dr-parent-workspace-strip {

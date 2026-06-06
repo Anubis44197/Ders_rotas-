@@ -784,7 +784,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             </div>
           </div>
 
-          <div className="ios-panel rounded-[24px] p-2 border border-[var(--dr-std-border-strong)]/20 shadow-md">
+          <div className="ios-panel rounded-[24px] p-2 border border-[var(--dr-std-border-strong)]/20 shadow-md overflow-hidden">
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {analysisWorkspaceTabs.map((tab) => {
               const Icon = tab.icon;
@@ -1240,7 +1240,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
               <div className={`${subtleSurface} border border-slate-100 flex flex-col justify-between`} data-testid="exam-card-school">
                 <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Toplam Okul Sınavı</div>
                 <div className="mt-4 flex items-baseline gap-1.5">
@@ -1430,7 +1430,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
                 <div className="text-[10px] font-black uppercase text-slate-400">Ortalama Hakimiyet</div>
                 <div className="mt-3">
@@ -1492,7 +1492,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
               <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
                 <div>
                   <div className="text-[10px] font-black uppercase text-slate-400">İlk Deneme Başarısı</div>
@@ -1544,7 +1544,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
               <div>
                 <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-3 block">En Çok Gelişen Konular</h4>
                 <div className="space-y-2">

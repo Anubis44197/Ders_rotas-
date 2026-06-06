@@ -106,10 +106,7 @@ const createPopulatedScheduleDay = (dayName: string): WeeklyScheduleDay => {
     };
   }
   return {
-    slots: [
-      createScheduleSlot('Matematik', '09:00', '10:00'),
-      createScheduleSlot('Türkçe', '10:00', '11:00'),
-    ],
+    slots: [],
     availableWindows: [
       { id: `win_${dayName}_1`.toLowerCase(), startTime: '17:00', endTime: '19:00', quality: 'medium' },
       { id: `win_${dayName}_2`.toLowerCase(), startTime: '19:30', endTime: '21:30', quality: 'deep' },
@@ -5176,7 +5173,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen ${themeMode === 'dark' ? 'dr-theme-dark' : 'dr-theme-light'}`}>
+    <div className={`min-h-screen overflow-x-hidden ${themeMode === 'dark' ? 'dr-theme-dark' : 'dr-theme-light'}`}>
       <header className={`dr-topbar dr-toolbar fixed left-0 right-0 top-0 z-50 border-b ${userType === UserType.Parent && !isParentLocked && parentSidebarOpen ? 'xl:left-64' : ''}`}>
         <div className="flex h-20 items-center justify-between gap-2 px-3 md:gap-4 md:px-8">
           <div className="flex min-w-0 items-center gap-6">

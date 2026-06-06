@@ -1294,11 +1294,11 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 </div>
               </div>
 
-              <div className="ios-widget mt-4 rounded-[20px] p-4 border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md">
+              <div className="ios-widget mt-4 rounded-[20px] p-4 border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md min-w-0 overflow-hidden">
                 <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Secili Periyot Trendi</div>
                 {selectedCourseTrend.points.length > 0 ? (
                   <div className="rounded-[18px] bg-[var(--dr-surface)]/80 border border-[var(--dr-std-border-strong)]/10 p-3 shadow-inner">
-                    <svg viewBox="0 0 520 180" className="h-44 w-full" role="img" aria-label="Secili periyot ders trendi">
+                    <svg viewBox="0 0 520 180" className="h-44 w-full max-w-full" role="img" aria-label="Secili periyot ders trendi">
                       <line x1="24" y1="146" x2="500" y2="146" stroke="var(--dr-border, #CBD5E1)" strokeWidth="1" />
                       <line x1="24" y1="116" x2="500" y2="116" stroke="var(--dr-border-subtle, #E2E8F0)" strokeWidth="1" />
                       <line x1="24" y1="86" x2="500" y2="86" stroke="var(--dr-border-subtle, #E2E8F0)" strokeWidth="1" />
@@ -1549,7 +1549,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               <button type="button" onClick={() => setReportCardTab('topic')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.96] ${reportCardTab === 'topic' ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}>Konu Raporu</button>
               <button type="button" onClick={() => setReportCardTab('time')} className={`rounded-[12px] px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.96] ${reportCardTab === 'time' ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}>Zaman Raporu</button>
             </div>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
               {reportSummaryItems.map((item) => (
                 <div key={`report-summary-${item.label}`} className="ios-widget rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 px-3 py-3 shadow-inner">
                   <div className="text-[11px] text-[var(--dr-text-secondary)] font-semibold">{item.label}</div>
@@ -1560,7 +1560,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
             </div>
             {reportCardTab === 'course' ? (
               <div className="mt-4">
-                <div className="ios-widget rounded-[14px] p-3">
+                <div className="ios-widget rounded-[14px] p-3 min-w-0 overflow-hidden">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Ders Raporu Trendi</span>
                     <ContextHelp title="Ders Raporu Trendi" tone="blue">
@@ -1569,7 +1569,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   </div>
                   {courseReportSeriesForChart.length > 0 ? (
                     <>
-                      <svg viewBox="0 0 620 220" className="h-52 w-full" aria-label="Ders raporu trendi">
+                      <svg viewBox="0 0 620 220" className="h-52 w-full max-w-full" aria-label="Ders raporu trendi">
                         <line x1="30" y1="182" x2="600" y2="182" stroke="#CBD5E1" strokeWidth="1" />
                         {[0, 25, 50, 75, 100].map((tick, i) => (
                           <g key={`ctick-${tick}`}>
@@ -1611,14 +1611,14 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     </div>
                   )}
                 </div>
-                <div className="ios-widget rounded-[14px] p-3">
+                <div className="ios-widget rounded-[14px] p-3 min-w-0 overflow-hidden">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Ders Durumu</span>
                     <ContextHelp title="Ders Durumu" tone="blue">
                       Bu grafik, çocuğunuzun şu anki aktif derslerdeki genel konu hakimiyeti ve ilerleme yüzdelerini karşılaştırmalı olarak gösterir.
                     </ContextHelp>
                   </div>
-                  <svg viewBox="0 0 620 220" className="h-52 w-full" aria-label="Ders durumu cizgi grafigi">
+                  <svg viewBox="0 0 620 220" className="h-52 w-full max-w-full" aria-label="Ders durumu cizgi grafigi">
                     <line x1="30" y1="182" x2="600" y2="182" stroke="#CBD5E1" strokeWidth="1" />
                     {[0, 25, 50, 75, 100].map((tick, i) => (
                       <g key={`status-tick-${tick}`}>
@@ -1655,14 +1655,14 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_300px]">
-                <div className="ios-widget rounded-[14px] p-3">
+              <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_300px] w-full min-w-0 overflow-hidden">
+                <div className="ios-widget rounded-[14px] p-3 min-w-0 overflow-hidden">
                   <div className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
                     {reportCardTab === 'general' && 'Derslere Gore Hakimiyet Trendi'}
                     {reportCardTab === 'topic' && 'Konu Raporu Trendi'}
                     {reportCardTab === 'time' && 'Zaman Raporu Trendi'}
                   </div>
-                  <svg viewBox="0 0 620 220" className="h-52 w-full" aria-label="Derslere gore hakimiyet trendi">
+                  <svg viewBox="0 0 620 220" className="h-52 w-full max-w-full" aria-label="Derslere gore hakimiyet trendi">
                     <line x1="30" y1="182" x2="600" y2="182" stroke="#CBD5E1" strokeWidth="1" />
                     {[0, 25, 50, 75, 100].map((tick, i) => (
                       <g key={`gtick-${tick}`}>
@@ -1695,14 +1695,14 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     ))}
                   </div>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3 min-w-0 overflow-hidden">
                   <div className="ios-widget rounded-[14px] p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
                         <div className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Konu ozeti</div>
-                        <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">Genel Bakis yalnizca ilk 3 sinyali gosterir; detayli siralama Karar sayfasinda.</p>
+                        <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500 break-words">Genel Bakis yalnizca ilk 3 sinyali gosterir; detayli siralama Karar sayfasinda.</p>
                       </div>
-                      <button type="button" onClick={onOpenAnalysis} className="ios-button shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black text-[var(--dr-text-primary)] transition active:scale-[0.96]">
+                      <button type="button" onClick={onOpenAnalysis} className="ios-button self-start shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black text-[var(--dr-text-primary)] transition active:scale-[0.96]">
                         Karar'a git
                       </button>
                     </div>
@@ -1714,8 +1714,8 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     </div>
                     <div className="space-y-1.5">
                       {topicImproving.map((item, idx) => (
-                        <div key={`grow-topic-${item.key}`} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="min-w-0 truncate text-[var(--dr-text-primary)]">{idx + 1}. {item.topicName}</span>
+                        <div key={`grow-topic-${item.key}`} className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 text-xs">
+                          <span className="min-w-0 break-words text-[var(--dr-text-primary)] flex-1">{idx + 1}. {item.topicName}</span>
                           <span className="shrink-0 font-black text-emerald-600">+%{item.delta}</span>
                         </div>
                       ))}
@@ -1731,8 +1731,8 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     </div>
                     <div className="space-y-1.5">
                       {topicHard.map((item, idx) => (
-                        <div key={`hard-${item.key}`} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="min-w-0 truncate text-[var(--dr-text-primary)]">{idx + 1}. {item.topicName}</span>
+                        <div key={`hard-${item.key}`} className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 text-xs">
+                          <span className="min-w-0 break-words text-[var(--dr-text-primary)] flex-1">{idx + 1}. {item.topicName}</span>
                           <span className="shrink-0 font-black text-rose-600">{item.riskScore !== null ? `risk ${item.riskScore}` : 'risk'}</span>
                         </div>
                       ))}
