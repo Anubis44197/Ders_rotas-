@@ -4715,3 +4715,113 @@ button.ios-coral {
     inset 0 1px 0 rgba(255,255,255,0.06),
     0 24px 56px rgba(0,0,0,0.28) !important;
 }
+
+/* Velvety iOS Cards and Micro-Interactions */
+.dr-curriculum-showcase-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 2px 4px rgba(15, 23, 42, 0.015),
+    0 8px 16px rgba(15, 23, 42, 0.03),
+    0 20px 40px rgba(15, 23, 42, 0.06),
+    0 32px 64px rgba(15, 23, 42, 0.04) !important;
+  transition:
+    transform 550ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 550ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 450ms ease,
+    background-color 450ms ease,
+    filter 450ms ease !important;
+}
+
+.dr-theme-dark .dr-curriculum-showcase-card {
+  border-color: rgba(245, 186, 117, 0.16) !important;
+  background: rgba(13, 20, 36, 0.92) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 4px 10px rgba(0, 0, 0, 0.16),
+    0 16px 36px rgba(0, 0, 0, 0.28),
+    0 32px 64px rgba(0, 0, 0, 0.32) !important;
+}
+
+.dr-curriculum-showcase-card:hover {
+  transform: translateY(-6px) scale(1.01) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+    0 6px 12px rgba(15, 23, 42, 0.02),
+    0 18px 36px rgba(15, 23, 42, 0.06),
+    0 36px 72px rgba(15, 23, 42, 0.1),
+    0 48px 96px rgba(15, 23, 42, 0.07) !important;
+}
+
+.dr-theme-dark .dr-curriculum-showcase-card:hover {
+  border-color: rgba(245, 186, 117, 0.32) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.065),
+    0 8px 20px rgba(0, 0, 0, 0.22),
+    0 24px 48px rgba(0, 0, 0, 0.35),
+    0 48px 96px rgba(0, 0, 0, 0.42) !important;
+}
+
+.dr-curriculum-showcase-card:active {
+  transform: translateY(-2px) scale(0.985) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 4px 8px rgba(15, 23, 42, 0.04) !important;
+  transition: transform 100ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Micro-interactions inside showcase cards */
+.dr-curriculum-showcase-card .dr-curriculum-watermark {
+  transition: transform 550ms cubic-bezier(0.16, 1, 0.3, 1), opacity 550ms ease !important;
+  opacity: 0.14;
+}
+
+.dr-curriculum-showcase-card:hover .dr-curriculum-watermark {
+  transform: translate(-4px, -4px) scale(1.08) rotate(-4deg) !important;
+  opacity: 0.22;
+}
+
+.dr-curriculum-showcase-card .dr-curriculum-progress {
+  transition: transform 550ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 550ms ease !important;
+}
+
+.dr-curriculum-showcase-card:hover .dr-curriculum-progress {
+  transform: scale(1.06) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
+}
+
+.dr-curriculum-showcase-card .dr-curriculum-star {
+  transition: transform 750ms cubic-bezier(0.16, 1, 0.3, 1), filter 550ms ease !important;
+}
+
+.dr-curriculum-showcase-card:hover .dr-curriculum-star-a {
+  transform: translate(-2px, -4px) rotate(15deg) scale(1.1) !important;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8)) !important;
+}
+
+.dr-curriculum-showcase-card:hover .dr-curriculum-star-b {
+  transform: translate(3px, 2px) rotate(-25deg) scale(1.15) !important;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7)) !important;
+}
+
+.dr-curriculum-showcase-card .dr-curriculum-topic-card {
+  transition:
+    transform 550ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 450ms ease,
+    background-color 450ms ease,
+    box-shadow 550ms ease !important;
+}
+
+.dr-curriculum-showcase-card:hover .dr-curriculum-topic-card {
+  transform: translateY(-2px) !important;
+  border-color: rgba(105, 119, 150, 0.12) !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03) !important;
+}
+
+.dr-theme-dark .dr-curriculum-showcase-card:hover .dr-curriculum-topic-card {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.095) !important;
+}
