@@ -1,0 +1,74 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "ignorePatterns": [
+    "node_modules/**",
+    "dist/**",
+    ".fallow/**",
+    "scripts/**",
+    "workers/**",
+    "utils/planEngine.ts",
+    "components/child/ManualTaskCompletionModal.tsx",
+    "components/child/StudyStats.tsx",
+    "components/child/progress-bar.css",
+    "components/parent/AnalysisGraphCenter.tsx",
+    "components/parent/BestPeriodAnalysis.tsx",
+    "components/parent/CompletionSpeedAnalysis.tsx",
+    "components/parent/CoursePerformanceTrendChart.tsx",
+    "components/parent/CourseTimeDistribution.tsx",
+    "components/parent/CustomReportModal.tsx",
+    "components/parent/DataManagementPanel.tsx",
+    "components/parent/PerformanceAnalytics.tsx",
+    "components/parent/ReadingAnalytics.tsx",
+    "components/parent/ReportsCourseTrends.tsx",
+    "components/parent/TaskTypeAnalysis.tsx",
+    "components/shared/DrawerMenu.tsx",
+    "components/shared/EmptyState.tsx",
+    "components/shared/FloatingNotification.tsx",
+    "components/shared/PersonalizedLearningAssistant.tsx",
+    "components/shared/StudyStats.tsx",
+    "components/shared/TimeRangeFilter.tsx",
+    "utils/curriculumParser.ts",
+    "utils/performanceOptimizer.ts"
+  ],
+  "ignoreExports": [
+    {
+      "file": "utils/dateUtils.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "utils/parentDecisionEngine.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "utils/scoringAlgorithm.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "utils/haptics.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "constants.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "components/icons.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "components/shared/chartDesign.tsx",
+      "exports": ["*"]
+    },
+    {
+      "file": "components/parent/parentDashboardShared.ts",
+      "exports": ["*"]
+    }
+  ],
+  "ignoreDependencies": [
+    "date-fns",
+    "lucide-react"
+  ],
+  "rules": {
+    "unused-types": "off"
+  }
+}
