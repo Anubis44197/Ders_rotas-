@@ -102,6 +102,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
   const [showDeleteDataModal, setShowDeleteDataModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   const [examCourseId, setExamCourseId] = useState(initialActiveCourse?.id || '');
   const [examType, setExamType] = useState<ExamType>('school-written');
   const [examTitle, setExamTitle] = useState('');
@@ -530,12 +531,26 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
 
   const handleDeleteExamRecord = (recordId: string) => {
     if (!onChangeExamRecords) return;
-    onChangeExamRecords((prev) => prev.filter((item) => item.id !== recordId));
+    const record = examRecords?.find((item) => item.id === recordId);
+    setConfirmDelete({
+      title: 'Sınav Kaydını Sil',
+      message: `"${record?.title || 'Bu sınav'}" sınav kaydını silmek istediğinize emin misiniz?`,
+      onConfirm: () => {
+        onChangeExamRecords((prev) => prev.filter((item) => item.id !== recordId));
+      },
+    });
   };
 
   const handleDeleteCompositeExam = (examId: string) => {
     if (!onChangeCompositeExamResults) return;
-    onChangeCompositeExamResults((prev) => prev.filter((item) => item.id !== examId));
+    const record = compositeExamResults?.find((item) => item.id === examId);
+    setConfirmDelete({
+      title: 'Genel Sınav Sonucunu Sil',
+      message: `"${record?.title || 'Bu sınav'}" genel sınav sonucunu silmek istediğinize emin misiniz?`,
+      onConfirm: () => {
+        onChangeCompositeExamResults((prev) => prev.filter((item) => item.id !== examId));
+      },
+    });
   };
 
   const renderTaskCard = (task: Task) => {
@@ -601,7 +616,11 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                     className="dr-context-menu-item dr-context-menu-item-destructive"
                     onClick={() => {
                       setOpenTaskMenuId(null);
-                      deleteTask(task.id);
+                      setConfirmDelete({
+                        title: 'Görevi Sil',
+                        message: `"${task.title}" görevini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+                        onConfirm: () => deleteTask(task.id),
+                      });
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -1128,6 +1147,33 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
           </div>
         </div>
       </div>}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex justify-center items-center p-4">
+          <div className="ios-card w-full max-w-sm p-6 space-y-4 border border-[var(--dr-std-border-strong)]/20 shadow-2xl bg-white dark:bg-[#1c1c1e] text-[var(--dr-text-primary)] animate-scale-in">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{confirmDelete.title}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">{confirmDelete.message}</p>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 ios-button rounded-xl py-2.5 text-xs font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2e2e38] transition active:scale-[0.96] cursor-pointer"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  confirmDelete.onConfirm();
+                  setConfirmDelete(null);
+                }}
+                className="flex-1 dr-destructive-button rounded-xl py-2.5 text-xs font-black text-white transition active:scale-[0.96] cursor-pointer"
+              >
+                Sil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

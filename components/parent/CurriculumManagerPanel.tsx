@@ -33,6 +33,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
   const [newUnitNames, setNewUnitNames] = useState<Record<string, string>>({});
   const [newTopicNames, setNewTopicNames] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
   useEffect(() => {
     setDraft(cloneCurriculum(curriculum));
@@ -71,14 +72,20 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
   };
 
   const handleDeleteSubject = (subjectName: string) => {
-    const next = cloneCurriculum(draft);
-    delete next[subjectName];
-    setDraft(next);
-    if (activeSubject === subjectName) {
-      const fallback = Object.keys(next)[0] || '';
-      setActiveSubject(fallback);
-    }
-    setSaved(false);
+    setConfirmModal({
+      title: 'Dersi Sil',
+      message: `'${subjectName}' dersini ve altındaki tüm ünite/konuları müfredat taslağından silmek istediğinize emin misiniz? (Değişikliklerin kaydedilmesi için en alttaki Müfredatı Kaydet butonuna basmalısınız)`,
+      onConfirm: () => {
+        const next = cloneCurriculum(draft);
+        delete next[subjectName];
+        setDraft(next);
+        if (activeSubject === subjectName) {
+          const fallback = Object.keys(next)[0] || '';
+          setActiveSubject(fallback);
+        }
+        setSaved(false);
+      },
+    });
   };
 
   const handleAddUnit = (subjectName: string) => {
@@ -99,10 +106,18 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
   };
 
   const handleDeleteUnit = (subjectName: string, unitIndex: number) => {
-    const next = cloneCurriculum(draft);
-    next[subjectName].splice(unitIndex, 1);
-    setDraft(next);
-    setSaved(false);
+    const unit = draft[subjectName]?.[unitIndex];
+    if (!unit) return;
+    setConfirmModal({
+      title: 'Üniteyi Sil',
+      message: `'${unit.name}' ünitesini ve altındaki tüm konuları silmek istediğinize emin misiniz?`,
+      onConfirm: () => {
+        const next = cloneCurriculum(draft);
+        next[subjectName].splice(unitIndex, 1);
+        setDraft(next);
+        setSaved(false);
+      },
+    });
   };
 
   const handleAddTopic = (subjectName: string, unitIndex: number) => {
@@ -123,10 +138,18 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
   };
 
   const handleDeleteTopic = (subjectName: string, unitIndex: number, topicIndex: number) => {
-    const next = cloneCurriculum(draft);
-    next[subjectName][unitIndex].topics.splice(topicIndex, 1);
-    setDraft(next);
-    setSaved(false);
+    const topic = draft[subjectName]?.[unitIndex]?.topics?.[topicIndex];
+    if (!topic) return;
+    setConfirmModal({
+      title: 'Konuyu Sil',
+      message: `'${topic.name}' konusunu silmek istediğinize emin misiniz?`,
+      onConfirm: () => {
+        const next = cloneCurriculum(draft);
+        next[subjectName][unitIndex].topics.splice(topicIndex, 1);
+        setDraft(next);
+        setSaved(false);
+      },
+    });
   };
 
   const handleToggleTopic = (subjectName: string, unitIndex: number, topicIndex: number) => {
@@ -304,6 +327,33 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
           </button>
         </div>
       </div>
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex justify-center items-center p-4">
+          <div className="ios-card w-full max-w-sm p-6 space-y-4 border border-[var(--dr-std-border-strong)]/20 shadow-2xl bg-white dark:bg-[#1c1c1e] text-[var(--dr-text-primary)] animate-scale-in">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{confirmModal.title}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">{confirmModal.message}</p>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 ios-button rounded-xl py-2.5 text-xs font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2e2e38] transition active:scale-[0.96] cursor-pointer"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(null);
+                }}
+                className="flex-1 dr-destructive-button rounded-xl py-2.5 text-xs font-black text-white transition active:scale-[0.96] cursor-pointer"
+              >
+                Sil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
