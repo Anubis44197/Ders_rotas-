@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { SubjectCurriculum } from '../../types';
 import { BookOpen, PlusCircle, CheckCircle, Sparkles, Trash2 } from '../icons';
+import ContextHelp from '../shared/ContextHelp';
 
 interface CurriculumManagerPanelProps {
   curriculum: SubjectCurriculum;
@@ -172,7 +173,12 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
         <aside className="ios-widget rounded-[24px] p-4 border border-[var(--dr-std-border-strong)]/20 shadow-sm bg-[var(--dr-surface)]/50">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <div className="text-sm font-bold text-[var(--dr-text-primary)]">Dersler</div>
+              <div className="flex items-center gap-1.5 text-sm font-bold text-[var(--dr-text-primary)]">
+                <span>Dersler</span>
+                <ContextHelp title="Ders Listesi" tone="blue">
+                  Çocuğunuzun LGS hazırlık sürecinde takip edeceği tüm dersleri buradan yönetebilirsiniz. Ders silme veya ekleme yaptığınızda geçmiş çalışma verileri korunur.
+                </ContextHelp>
+              </div>
               <div className="text-xs text-[var(--dr-text-secondary)]">Aktif dersi seç, ünite ve konu düzenle.</div>
             </div>
             <div className="ios-button rounded-full px-2.5 py-1 text-xs font-semibold text-[var(--dr-text-primary)] border border-[var(--dr-std-border-strong)]/15">{subjects.length}</div>
@@ -226,7 +232,12 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">Aktif Ders</div>
-                    <h3 className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">{activeSubject}</h3>
+                    <div className="mt-2 flex items-center gap-2">
+                      <h3 className="text-2xl font-black text-[var(--dr-text-primary)]">{activeSubject}</h3>
+                      <ContextHelp title="Müfredat Yapılandırması" tone="blue">
+                        Seçtiğiniz dersin ünitelerini ve her ünitenin alt konularını ekleyip düzenleyebilirsiniz. Çocuk panelinde bu konu başlıklarına göre ders çalışma ve soru çözme takibi yapılacaktır.
+                      </ContextHelp>
+                    </div>
                     <p className="mt-1 text-sm text-[var(--dr-text-secondary)]">Önce üniteyi kur, sonra konu listesini netleştir. Tamamlanan konular burada işaretlenir.</p>
                   </div>
                   <div className="flex gap-2">

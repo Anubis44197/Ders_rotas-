@@ -670,7 +670,12 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Görev atama</div>
-            <h3 className="mt-1 text-2xl font-black text-slate-900">Çocuğa görev gönder</h3>
+            <div className="mt-1 flex items-center gap-2">
+              <h3 className="mt-1 text-2xl font-black text-slate-900">Çocuğa görev gönder</h3>
+              <ContextHelp title="Görev Atama" tone="blue">
+                Çocuğunuza belirli bir günde tamamlaması için ders, konu, çalışma türü (ders çalışma, soru çözme vb.) ve hedef süre belirterek yeni bir görev atayabilirsiniz.
+              </ContextHelp>
+            </div>
             <p className="mt-1 text-sm text-slate-500">Günlük ana işlem: ders, konu, tarih ve süre seç; görevi tek adımda ata.</p>
           </div>
           <div className="ios-widget rounded-[22px] px-4 py-3 text-sm text-slate-600">
@@ -977,7 +982,10 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
             <div>
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-primary-600">
                 <PlusCircle className="h-4 w-4" />
-                Sınav merkezi
+                <span>Sınav merkezi</span>
+                <ContextHelp title="Sınav Takip Merkezi" tone="blue">
+                  Çocuğunuzun okul sınavlarını, quizlerini ve deneme sınavlarını buradan takip edebilir veya yeni sınav sonuçları ekleyebilirsiniz. Girilen deneme sınavı netleri ve puanları, gelişim grafiklerini doğrudan günceller.
+                </ContextHelp>
               </div>
               <h3 className="mt-2 text-2xl font-black text-slate-900">Kayıt özeti</h3>
               <p className="mt-1 max-w-xl text-sm text-slate-500">Sonuçlar burada izlenir. Yeni okul sınavı veya deneme kaydı sadece gerektiğinde açılan pencereden girilir.</p>
@@ -1035,7 +1043,13 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
                 <div>
                   <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Sınav girişi</div>
-                  <h3 className="mt-2 text-2xl font-black text-slate-900">Yeni sonuc kaydi</h3>
+                  <div className="mt-2 flex items-center gap-2">
+                    <h3 className="text-2xl font-black text-slate-900">Yeni sonuc kaydi</h3>
+                    <ContextHelp title="Sınav Giriş Türleri" tone="blue">
+                      <strong>Ders bazlı sınav:</strong> Okulda ders özelinde yapılan yazılı sınavlar, quiz veya sözlü notları içindir.<br />
+                      <strong>Genel sınav / deneme:</strong> LGS deneme sınavlarının puan ve netlerini tüm dersler için tek adımda girmek içindir.
+                    </ContextHelp>
+                  </div>
                   <p className="mt-1 text-sm text-slate-500">Kayıt tamamlanınca bu pencere kapanır ve sayfada sadece özet kalır.</p>
                 </div>
                 <button type="button" onClick={() => setExamFormOpen(false)} className="ios-button flex h-11 w-11 items-center justify-center rounded-full text-slate-600" aria-label="Sınav kaydını kapat">

@@ -747,6 +747,18 @@ button svg,
   transform: translateY(-1px);
 }
 
+.dr-theme-dark .dr-destructive-button {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.05);
+}
+
+.dr-theme-dark .dr-destructive-button:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+}
+
 .dr-button-row {
   display: flex;
   flex-direction: column;
