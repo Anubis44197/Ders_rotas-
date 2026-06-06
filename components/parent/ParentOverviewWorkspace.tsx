@@ -129,6 +129,11 @@ interface ParentOverviewWorkspaceProps {
     minutes: number;
     taskCount: number;
     lastCompletedAt: string;
+    masteryScore: number;
+    learningVelocityLabel: string;
+    topicCostScore: number;
+    topicCostLabel: string;
+    learningDecision: string;
   }>;
   overviewReportSeries: Array<{
     courseName: string;
@@ -666,6 +671,13 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       .slice(0, 3),
     [overviewTopicInsights],
   );
+  const resourceHeavyTopics = useMemo(
+    () => [...overviewTopicPerformanceRows]
+      .filter((item) => item.taskCount > 0)
+      .sort((a, b) => (b.topicCostScore - a.topicCostScore) || (a.masteryScore - b.masteryScore))
+      .slice(0, 3),
+    [overviewTopicPerformanceRows],
+  );
   const bestCourse = useMemo(
     () => [...overviewCourseInsights].filter((item) => item.hasWeeklyData).sort((a, b) => (b.change || 0) - (a.change || 0))[0] || null,
     [overviewCourseInsights],
@@ -722,6 +734,9 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     : null;
   const selectedTopicTaskMetrics = selectedTopicDetail
     ? overviewTopicMetricsMap[selectedTopicDetail.key] || null
+    : null;
+  const selectedTopicLearningRow = selectedTopicDetail
+    ? overviewTopicPerformanceRows.find((row) => row.key === selectedTopicDetail.key) || null
     : null;
   const performanceStorageKey = 'overviewPerformanceNavigatorV1';
   React.useEffect(() => {
@@ -1433,6 +1448,14 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       <div className="font-black text-[var(--dr-text-primary)]">%{selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail.currentAccuracy ?? 0}</div>
                     </div>
                     <div>
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Ogrenme hizi</span>
+                      <div className="font-black text-[var(--dr-text-primary)]">{selectedTopicLearningRow?.learningVelocityLabel || 'Veri yok'}</div>
+                    </div>
+                    <div>
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Konu maliyeti</span>
+                      <div className="font-black text-[var(--dr-text-primary)]">{selectedTopicLearningRow ? selectedTopicLearningRow.topicCostLabel + ' / ' + selectedTopicLearningRow.topicCostScore : 'Veri yok'}</div>
+                    </div>
+                    <div>
                       <span className="text-[var(--dr-text-secondary)] text-xs">Tekrar Ihtiyaci</span>
                       <div className={`font-black ${selectedTopicTaskMetrics?.retryNeed === 'Yuksek' ? 'text-[var(--dr-orange)]' : selectedTopicTaskMetrics?.retryNeed === 'Orta' ? 'text-amber-600' : 'text-emerald-600'}`}>
                         {selectedTopicTaskMetrics?.retryNeed || 'Dusuk'}
@@ -1530,6 +1553,11 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               <div className="mt-4 rounded-[18px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/80 px-4 py-3 text-xs font-semibold text-[var(--dr-text-primary)] shadow-sm">
                 <span className="text-[var(--dr-orange)] font-bold">Öneri:</span> Bu konuda düzenli tekrar ve bol soru çözümü ile %70+ seviyeye ulaşılabilir.
               </div>
+              {selectedTopicLearningRow && (
+                <div className="mt-4 rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/70 px-4 py-3 text-xs font-semibold leading-5 text-[var(--dr-text-secondary)]">
+                  <strong className="text-[var(--dr-text-primary)]">Karar:</strong> {selectedTopicLearningRow.learningDecision}
+                </div>
+              )}
             </div>
           )}
 
@@ -1738,6 +1766,26 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       ))}
                       {topicHard.length === 0 && (
                         <div className="text-xs text-[var(--dr-text-secondary)]">Risk analizi icin konu verisi yok.</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="ios-widget rounded-[14px] p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Kaynak tuketen konular</span>
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-700">{resourceHeavyTopics.length}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {resourceHeavyTopics.map((item, idx) => (
+                        <div key={`resource-heavy-${item.key}`} className="rounded-[12px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/70 px-2.5 py-2 text-xs">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="min-w-0 break-words font-black text-[var(--dr-text-primary)]">{idx + 1}. {item.topicName}</span>
+                            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">{item.topicCostLabel}</span>
+                          </div>
+                          <div className="mt-1 text-[11px] font-semibold text-[var(--dr-text-secondary)]">{item.taskCount} oturum / {formatMinutes(item.minutes)} / {item.totalQuestions} soru / %{item.masteryScore}</div>
+                        </div>
+                      ))}
+                      {resourceHeavyTopics.length === 0 && (
+                        <div className="text-xs text-[var(--dr-text-secondary)]">Kaynak maliyeti icin konu verisi yok.</div>
                       )}
                     </div>
                   </div>

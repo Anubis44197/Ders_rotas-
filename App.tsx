@@ -4397,6 +4397,30 @@ const App: React.FC = () => {
       taskCount: number;
       lastCompletedAt: string;
     }>();
+    const analysisTopicByKey = new Map(
+      overviewAnalysis.topics.map((topic) => [
+        normalizeForLookup(`${topic.courseName}::${topic.unitName}::${topic.topicName}`),
+        topic,
+      ]),
+    );
+    const getLearningVelocityLabel = (taskCount: number, minutes: number, mastery: number) => {
+      if (taskCount <= 0 && minutes <= 0) return 'Veri yok';
+      if (mastery >= 85 && taskCount <= 3 && minutes <= 240) return 'Hizli ogrenilen';
+      if (taskCount >= 6 || minutes >= 600 || mastery < 70) return 'Zor ogrenilen';
+      return 'Normal ogrenilen';
+    };
+    const getTopicCostScore = (taskCount: number, minutes: number, questions: number) => {
+      const sessionCost = Math.min(40, taskCount * 5);
+      const timeCost = Math.min(35, minutes / 18);
+      const questionCost = Math.min(25, questions / 20);
+      return Math.max(0, Math.min(100, Math.round(sessionCost + timeCost + questionCost)));
+    };
+    const getTopicCostLabel = (score: number) => {
+      if (score >= 75) return 'Cok yuksek';
+      if (score >= 55) return 'Yuksek';
+      if (score >= 35) return 'Orta';
+      return 'Dusuk';
+    };
 
     Object.entries(curriculum).forEach(([rawCourseName, units]) => {
       const courseName = repairedText(rawCourseName).trim();
@@ -4464,12 +4488,32 @@ const App: React.FC = () => {
     });
 
     return Array.from(aggregate.values())
-      .map((item) => ({
-        ...item,
-        accuracyPercent: item.correctCount + item.incorrectCount > 0
+      .map((item) => {
+        const accuracyPercent = item.correctCount + item.incorrectCount > 0
           ? Math.round((item.correctCount / Math.max(1, item.correctCount + item.incorrectCount)) * 100)
-          : 0,
-      }))
+          : 0;
+        const analysisTopic = analysisTopicByKey.get(normalizeForLookup(`${item.courseName}::${item.unitName}::${item.topicName}`));
+        const masteryScore = analysisTopic?.masteryScore ?? accuracyPercent;
+        const costScore = getTopicCostScore(item.taskCount, item.minutes, item.totalQuestions);
+        const velocityLabel = getLearningVelocityLabel(item.taskCount, item.minutes, masteryScore);
+        const costLabel = getTopicCostLabel(costScore);
+        const decisionText = item.taskCount <= 0
+          ? 'Bu konu icin henuz olcumlu calisma yok.'
+          : costScore >= 75 && masteryScore < 82
+            ? 'Bu konu fazla kaynak tuketiyor; ayni yontem yerine kisa tekrar ve karma test denenmeli.'
+            : velocityLabel === 'Zor ogrenilen'
+              ? 'Bu konu ogrenme hizi dusuk gorunuyor; daha kucuk calisma donguleriyle takip edilmeli.'
+              : 'Kaynak kullanimi normal sinirda gorunuyor.';
+        return {
+          ...item,
+          accuracyPercent,
+          masteryScore,
+          learningVelocityLabel: velocityLabel,
+          topicCostScore: costScore,
+          topicCostLabel: costLabel,
+          learningDecision: decisionText,
+        };
+      })
       .sort((a, b) => {
         const dateCompare = (b.lastCompletedAt || '').localeCompare(a.lastCompletedAt || '');
         if (dateCompare !== 0) return dateCompare;
@@ -4479,7 +4523,7 @@ const App: React.FC = () => {
         if (unitCompare !== 0) return unitCompare;
         return a.topicName.localeCompare(b.topicName, 'tr');
       });
-  }, [courses, curriculum, tasks]);
+  }, [courses, curriculum, overviewAnalysis.topics, tasks]);
   const overviewReportSeries = useMemo(() => {
     const todayDate = new Date(`${today}T00:00:00`);
     const dayMs = 86400000;
