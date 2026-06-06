@@ -427,141 +427,143 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
           </div>
         </div>
 
-        <div 
-          ref={gridRef}
-          className="dr-curriculum-showcase-grid"
-          onMouseDown={handleMouseDown}
-          onMouseLeave={handleMouseLeave}
-          onMouseUp={handleMouseUp}
-          onMouseMove={handleMouseMove}
-          style={{ cursor: isDown ? 'grabbing' : 'grab' }}
-        >
-          {cards.map((card) => {
-            const Icon = card.Icon;
-            const StatusIcon = card.statusKind === 'behind' ? TrendingDown : card.statusKind === 'ahead' ? TrendingUp : CheckCircle;
-            const circumference = 2 * Math.PI * 38;
-            const progressValue = typeof card.lgsProgress === 'number' ? card.lgsProgress : 0;
-            const dashOffset = circumference - (circumference * progressValue) / 100;
-            return (
-              <article key={`curriculum-showcase-${card.courseName}`} className={`dr-curriculum-showcase-card ${card.theme.className} dr-curriculum-status-${card.statusKind}`}>
-                <div className="dr-curriculum-card-top">
-                  <div className="dr-curriculum-watermark dr-curriculum-watermark-left">
-                    <Icon className="h-12 w-12" />
+        <div className="dr-curriculum-showcase-grid">
+          <div 
+            ref={gridRef}
+            className="dr-curriculum-cards-slider"
+            onMouseDown={handleMouseDown}
+            onMouseLeave={handleMouseLeave}
+            onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
+            style={{ cursor: isDown ? 'grabbing' : 'grab' }}
+          >
+            {cards.map((card) => {
+              const Icon = card.Icon;
+              const StatusIcon = card.statusKind === 'behind' ? TrendingDown : card.statusKind === 'ahead' ? TrendingUp : CheckCircle;
+              const circumference = 2 * Math.PI * 38;
+              const progressValue = typeof card.lgsProgress === 'number' ? card.lgsProgress : 0;
+              const dashOffset = circumference - (circumference * progressValue) / 100;
+              return (
+                <article key={`curriculum-showcase-${card.courseName}`} className={`dr-curriculum-showcase-card ${card.theme.className} dr-curriculum-status-${card.statusKind}`}>
+                  <div className="dr-curriculum-card-top">
+                    <div className="dr-curriculum-watermark dr-curriculum-watermark-left">
+                      <Icon className="h-12 w-12" />
+                    </div>
+                    <Star className="dr-curriculum-star dr-curriculum-star-a h-5 w-5" />
+                    <Star className="dr-curriculum-star dr-curriculum-star-b h-3.5 w-3.5" />
+                    <div className="relative z-10 min-w-0">
+                      <h4>{card.courseName.toLocaleUpperCase('tr-TR')}</h4>
+                      <div className="flex items-center gap-1.5">
+                        <p>{card.progressLabel}</p>
+                        <ContextHelp title={`${card.courseName} ilerlemesi`} tone="blue">
+                          Yuvarlak rozet, bu ders icin kayitli mufredat verisine gore ogrencinin konu veya ev calismasi ilerlemesini gosterir. Veri yoksa hesap uydurulmaz; kart veri yok der.
+                        </ContextHelp>
+                      </div>
+                    </div>
+                    <div className={`dr-curriculum-progress ${card.hasProgressData ? '' : 'is-empty'}`} aria-label={card.hasProgressData ? `${card.progressBadgeLabel} yüzde ${card.lgsProgress}` : 'Konu ilerleme verisi yok'}>
+                      <svg viewBox="0 0 92 92" aria-hidden="true">
+                        <circle cx="46" cy="46" r="38" />
+                        <circle cx="46" cy="46" r="38" style={{ strokeDasharray: circumference, strokeDashoffset: dashOffset }} />
+                      </svg>
+                      <span>{card.hasProgressData ? <>{card.progressBadgeLabel}<br />%{card.lgsProgress}</> : <>KONU<br />Veri yok</>}</span>
+                    </div>
                   </div>
-                  <Star className="dr-curriculum-star dr-curriculum-star-a h-5 w-5" />
-                  <Star className="dr-curriculum-star dr-curriculum-star-b h-3.5 w-3.5" />
-                  <div className="relative z-10 min-w-0">
-                    <h4>{card.courseName.toLocaleUpperCase('tr-TR')}</h4>
-                    <div className="flex items-center gap-1.5">
-                      <p>{card.progressLabel}</p>
-                      <ContextHelp title={`${card.courseName} ilerlemesi`} tone="blue">
-                        Yuvarlak rozet, bu ders icin kayitli mufredat verisine gore ogrencinin konu veya ev calismasi ilerlemesini gosterir. Veri yoksa hesap uydurulmaz; kart veri yok der.
+
+                  <div className="dr-curriculum-card-body">
+                    <div className="dr-curriculum-detail-title flex items-center gap-2">
+                      Durum Özeti
+                      <ContextHelp title="Durum ozeti" tone="mint">
+                        Okul gundemi son okul programi kaydindan, ev gundemi cocuga atanip tamamlanan veya bekleyen konu gorevlerinden gelir. Ikisi ayni ders icinde karsilastirilir.
                       </ContextHelp>
                     </div>
-                  </div>
-                  <div className={`dr-curriculum-progress ${card.hasProgressData ? '' : 'is-empty'}`} aria-label={card.hasProgressData ? `${card.progressBadgeLabel} yüzde ${card.lgsProgress}` : 'Konu ilerleme verisi yok'}>
-                    <svg viewBox="0 0 92 92" aria-hidden="true">
-                      <circle cx="46" cy="46" r="38" />
-                      <circle cx="46" cy="46" r="38" style={{ strokeDasharray: circumference, strokeDashoffset: dashOffset }} />
-                    </svg>
-                    <span>{card.hasProgressData ? <>{card.progressBadgeLabel}<br />%{card.lgsProgress}</> : <>KONU<br />Veri yok</>}</span>
-                  </div>
-                </div>
+                    <div className="dr-curriculum-topic-card">
+                      <div className="dr-curriculum-topic-icon">
+                        <BookOpen className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <span className="inline-flex items-center gap-1.5">
+                          Okul Gündemi:
+                          <ContextHelp title="Okul gundemi" tone="blue">
+                            Haftalik Calisma Programi icinde okulda islenen konu olarak isaretlenen son konu burada gorunur. Okul verisi girilmezse takip karti bunu eksik veri olarak gosterir.
+                          </ContextHelp>
+                        </span>
+                        <strong>{card.schoolTopic}</strong>
+                      </div>
+                      {card.statusKind === 'sync' && <CheckCircle className="dr-curriculum-topic-check h-7 w-7" />}
+                    </div>
 
-                <div className="dr-curriculum-card-body">
-                  <div className="dr-curriculum-detail-title flex items-center gap-2">
-                    Durum Özeti
-                    <ContextHelp title="Durum ozeti" tone="mint">
-                      Okul gundemi son okul programi kaydindan, ev gundemi cocuga atanip tamamlanan veya bekleyen konu gorevlerinden gelir. Ikisi ayni ders icinde karsilastirilir.
-                    </ContextHelp>
-                  </div>
-                  <div className="dr-curriculum-topic-card">
-                    <div className="dr-curriculum-topic-icon">
-                      <BookOpen className="h-6 w-6" />
+                    <div className="dr-curriculum-topic-card">
+                      <div className="dr-curriculum-topic-icon">
+                        <Home className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <span className="inline-flex items-center gap-1.5">
+                          Ev Gündemi:
+                          <ContextHelp title="Ev gundemi" tone="mint">
+                            Cocugun evde calistigi veya kendisine atanmis son ders-konu kaydi burada gorunur. Bu veri gorevler ve tamamlanan calismalardan beslenir.
+                          </ContextHelp>
+                        </span>
+                        <strong>{card.childTopic}</strong>
+                      </div>
                     </div>
-                    <div>
-                      <span className="inline-flex items-center gap-1.5">
-                        Okul Gündemi:
-                        <ContextHelp title="Okul gundemi" tone="blue">
-                          Haftalik Calisma Programi icinde okulda islenen konu olarak isaretlenen son konu burada gorunur. Okul verisi girilmezse takip karti bunu eksik veri olarak gosterir.
-                        </ContextHelp>
-                      </span>
-                      <strong>{card.schoolTopic}</strong>
-                    </div>
-                    {card.statusKind === 'sync' && <CheckCircle className="dr-curriculum-topic-check h-7 w-7" />}
-                  </div>
 
-                  <div className="dr-curriculum-topic-card">
-                    <div className="dr-curriculum-topic-icon">
-                      <Home className="h-6 w-6" />
+                    <div className={`dr-curriculum-track dr-curriculum-track-${card.statusKind}`}>
+                      <div className="dr-curriculum-track-line" />
+                      <div className="dr-curriculum-track-arrow" aria-hidden="true" />
+                      <div className="dr-curriculum-track-node">
+                        <Home className="h-5 w-5" />
+                        <span>OKUL</span>
+                      </div>
+                      <div className={`dr-curriculum-track-node dr-curriculum-track-student ${card.statusKind === 'behind' ? 'is-behind' : card.statusKind === 'ahead' ? 'is-ahead' : ''}`}>
+                        <GraduationCap className="h-5 w-5" />
+                        <span>ÖĞRENCİ</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="inline-flex items-center gap-1.5">
-                        Ev Gündemi:
-                        <ContextHelp title="Ev gundemi" tone="mint">
-                          Cocugun evde calistigi veya kendisine atanmis son ders-konu kaydi burada gorunur. Bu veri gorevler ve tamamlanan calismalardan beslenir.
-                        </ContextHelp>
-                      </span>
-                      <strong>{card.childTopic}</strong>
+
+                    {card.gap !== null && card.gap !== 0 && (
+                      <div className="dr-curriculum-floating-badge" aria-label={card.statusLabel}>
+                        <StatusIcon className="h-6 w-6" />
+                        <span>{card.statusKind === 'ahead' ? 'Öğrenci okulun önünde' : 'Okulun gerisinde'}</span>
+                        <strong>{card.gap > 0 ? `+${card.gap}` : card.gap} {card.compareUnitLabelLower}</strong>
+                      </div>
+                    )}
+
+                    <div className="dr-curriculum-status-box">
+                      <div className="dr-curriculum-status-copy">
+                        <span>Durum:</span>
+                        <strong>{card.statusLabel}</strong>
+                      </div>
+                      <div className="dr-curriculum-status-badge">
+                        <StatusIcon className="h-7 w-7" />
+                      </div>
+                      <div className="dr-curriculum-gap-pill">
+                        {card.gap === null ? '-' : card.gap > 0 ? `+${card.gap}` : `${card.gap}`}
+                        <span>{card.compareUnitLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="dr-curriculum-actions">
+                      <button type="button" onClick={onOpenOverviewReport}><FileText className="h-4 w-4" />Durum Raporu</button>
+                      <button type="button" onClick={onOpenWeeklyAnalysis}><BarChart className="h-4 w-4" />Haftalık Analiz</button>
+                    </div>
+
+                    <div className="dr-curriculum-question-card">
+                      <div className="dr-curriculum-question-title">Haftalık Soru Çözümü</div>
+                      <div className="dr-curriculum-question-bar" aria-label={`Bu hafta ${card.currentWeekQuestions} soru`}>
+                        <span style={{ width: `${Math.min(100, Math.round((card.currentWeekQuestions / card.weeklyQuestionTarget) * 100))}%` }} />
+                      </div>
+                      <div className="dr-curriculum-question-meta">
+                        Bu Hafta: <strong>{card.currentWeekQuestions} Soru</strong>
+                        <em className={card.weeklyQuestionDelta >= 0 ? 'is-up' : 'is-down'}>
+                          {card.weeklyQuestionDelta >= 0 ? `(+${card.weeklyQuestionDelta} artış)` : `(${card.weeklyQuestionDelta} düşüş)`}
+                        </em>
+                      </div>
                     </div>
                   </div>
-
-                  <div className={`dr-curriculum-track dr-curriculum-track-${card.statusKind}`}>
-                    <div className="dr-curriculum-track-line" />
-                    <div className="dr-curriculum-track-arrow" aria-hidden="true" />
-                    <div className="dr-curriculum-track-node">
-                      <Home className="h-5 w-5" />
-                      <span>OKUL</span>
-                    </div>
-                    <div className={`dr-curriculum-track-node dr-curriculum-track-student ${card.statusKind === 'behind' ? 'is-behind' : card.statusKind === 'ahead' ? 'is-ahead' : ''}`}>
-                      <GraduationCap className="h-5 w-5" />
-                      <span>ÖĞRENCİ</span>
-                    </div>
-                  </div>
-
-                  {card.gap !== null && card.gap !== 0 && (
-                    <div className="dr-curriculum-floating-badge" aria-label={card.statusLabel}>
-                      <StatusIcon className="h-6 w-6" />
-                      <span>{card.statusKind === 'ahead' ? 'Öğrenci okulun önünde' : 'Okulun gerisinde'}</span>
-                      <strong>{card.gap > 0 ? `+${card.gap}` : card.gap} {card.compareUnitLabelLower}</strong>
-                    </div>
-                  )}
-
-                  <div className="dr-curriculum-status-box">
-                    <div className="dr-curriculum-status-copy">
-                      <span>Durum:</span>
-                      <strong>{card.statusLabel}</strong>
-                    </div>
-                    <div className="dr-curriculum-status-badge">
-                      <StatusIcon className="h-7 w-7" />
-                    </div>
-                    <div className="dr-curriculum-gap-pill">
-                      {card.gap === null ? '-' : card.gap > 0 ? `+${card.gap}` : `${card.gap}`}
-                      <span>{card.compareUnitLabel}</span>
-                    </div>
-                  </div>
-
-                  <div className="dr-curriculum-actions">
-                    <button type="button" onClick={onOpenOverviewReport}><FileText className="h-4 w-4" />Durum Raporu</button>
-                    <button type="button" onClick={onOpenWeeklyAnalysis}><BarChart className="h-4 w-4" />Haftalık Analiz</button>
-                  </div>
-
-                  <div className="dr-curriculum-question-card">
-                    <div className="dr-curriculum-question-title">Haftalık Soru Çözümü</div>
-                    <div className="dr-curriculum-question-bar" aria-label={`Bu hafta ${card.currentWeekQuestions} soru`}>
-                      <span style={{ width: `${Math.min(100, Math.round((card.currentWeekQuestions / card.weeklyQuestionTarget) * 100))}%` }} />
-                    </div>
-                    <div className="dr-curriculum-question-meta">
-                      Bu Hafta: <strong>{card.currentWeekQuestions} Soru</strong>
-                      <em className={card.weeklyQuestionDelta >= 0 ? 'is-up' : 'is-down'}>
-                        {card.weeklyQuestionDelta >= 0 ? `(+${card.weeklyQuestionDelta} artış)` : `(${card.weeklyQuestionDelta} düşüş)`}
-                      </em>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+                </article>
+              );
+            })}
+          </div>
 
           <section className="dr-curriculum-progress-compare" aria-label="Konu ogrenme hizi ve maliyet analizi">
             <div className="dr-curriculum-progress-compare-head">

@@ -4826,8 +4826,9 @@ button.ios-coral {
   background: rgba(255, 255, 255, 0.095) !important;
 }
 
-/* Horizontal Swipeable/Scrollable Curriculum Grid */
-.dr-curriculum-showcase-grid {
+/* Horizontal Swipeable/Scrollable Curriculum Cards Slider */
+.dr-curriculum-cards-slider {
+  grid-column: 1 / -1;
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
@@ -4848,29 +4849,29 @@ button.ios-coral {
   scroll-snap-align: center !important; /* Snaps beautifully to the center */
 }
 
-/* Custom Elegant Scrollbar for the Grid */
-.dr-curriculum-showcase-grid::-webkit-scrollbar {
+/* Custom Elegant Scrollbar for the Cards Slider */
+.dr-curriculum-cards-slider::-webkit-scrollbar {
   height: 5px !important;
 }
 
-.dr-curriculum-showcase-grid::-webkit-scrollbar-track {
+.dr-curriculum-cards-slider::-webkit-scrollbar-track {
   background: transparent !important;
 }
 
-.dr-curriculum-showcase-grid::-webkit-scrollbar-thumb {
+.dr-curriculum-cards-slider::-webkit-scrollbar-thumb {
   background: rgba(105, 119, 150, 0.12) !important;
   border-radius: 99px !important;
   transition: background-color 0.2s ease !important;
 }
 
-.dr-curriculum-showcase-grid:hover::-webkit-scrollbar-thumb {
+.dr-curriculum-cards-slider:hover::-webkit-scrollbar-thumb {
   background: rgba(105, 119, 150, 0.24) !important;
 }
 
-.dr-theme-dark .dr-curriculum-showcase-grid::-webkit-scrollbar-thumb {
+.dr-theme-dark .dr-curriculum-cards-slider::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.08) !important;
 }
 
-.dr-theme-dark .dr-curriculum-showcase-grid:hover::-webkit-scrollbar-thumb {
+.dr-theme-dark .dr-curriculum-cards-slider:hover::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.16) !important;
 }
