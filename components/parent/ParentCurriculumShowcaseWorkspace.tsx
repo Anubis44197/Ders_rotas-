@@ -16,6 +16,7 @@ import {
   User,
 } from '../icons';
 import ParentWorkspaceFrame from './ParentWorkspaceFrame';
+import ContextHelp from '../shared/ContextHelp';
 
 const DAY_NAMES_ORDERED = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
 
@@ -371,7 +372,12 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
       <section className="dr-curriculum-showcase-panel" data-testid="curriculum-showcase-panel">
         <div className="dr-curriculum-showcase-head">
           <div>
-            <h3>Veli Paneli - Öğrenci</h3>
+            <div className="flex items-center gap-2">
+              <h3>Veli Paneli - Öğrenci</h3>
+              <ContextHelp title="Mufredat Paneli" tone="blue">
+                Bu alan okul programinda girilen konu ile cocugun evde calistigi son konuyu karsilastirir. Okul verisi eksikse kart bunu acikca soyler; ev calismasi varsa yine takipte kalir.
+              </ContextHelp>
+            </div>
             <p><strong>GENEL BAKIŞ:</strong> Çocuğunuz {aheadCount} derste okulun önünde, {behindCount} derste geride.</p>
           </div>
           <div className="dr-curriculum-avatar">
@@ -396,7 +402,12 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
                   <Star className="dr-curriculum-star dr-curriculum-star-b h-3.5 w-3.5" />
                   <div className="relative z-10 min-w-0">
                     <h4>{card.courseName.toLocaleUpperCase('tr-TR')}</h4>
-                    <p>{card.progressLabel}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p>{card.progressLabel}</p>
+                      <ContextHelp title={`${card.courseName} ilerlemesi`} tone="blue">
+                        Yuvarlak rozet, bu ders icin kayitli mufredat verisine gore ogrencinin konu veya ev calismasi ilerlemesini gosterir. Veri yoksa hesap uydurulmaz; kart veri yok der.
+                      </ContextHelp>
+                    </div>
                   </div>
                   <div className={`dr-curriculum-progress ${card.hasProgressData ? '' : 'is-empty'}`} aria-label={card.hasProgressData ? `${card.progressBadgeLabel} yüzde ${card.lgsProgress}` : 'Konu ilerleme verisi yok'}>
                     <svg viewBox="0 0 92 92" aria-hidden="true">
@@ -408,13 +419,23 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
                 </div>
 
                 <div className="dr-curriculum-card-body">
-                  <div className="dr-curriculum-detail-title">Durum Özeti</div>
+                  <div className="dr-curriculum-detail-title flex items-center gap-2">
+                    Durum Özeti
+                    <ContextHelp title="Durum ozeti" tone="mint">
+                      Okul gundemi son okul programi kaydindan, ev gundemi cocuga atanip tamamlanan veya bekleyen konu gorevlerinden gelir. Ikisi ayni ders icinde karsilastirilir.
+                    </ContextHelp>
+                  </div>
                   <div className="dr-curriculum-topic-card">
                     <div className="dr-curriculum-topic-icon">
                       <BookOpen className="h-6 w-6" />
                     </div>
                     <div>
-                      <span>Okul Gündemi:</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        Okul Gündemi:
+                        <ContextHelp title="Okul gundemi" tone="blue">
+                          Haftalik Calisma Programi icinde okulda islenen konu olarak isaretlenen son konu burada gorunur. Okul verisi girilmezse takip karti bunu eksik veri olarak gosterir.
+                        </ContextHelp>
+                      </span>
                       <strong>{card.schoolTopic}</strong>
                     </div>
                     {card.statusKind === 'sync' && <CheckCircle className="dr-curriculum-topic-check h-7 w-7" />}
@@ -425,7 +446,12 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
                       <Home className="h-6 w-6" />
                     </div>
                     <div>
-                      <span>Ev Gündemi:</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        Ev Gündemi:
+                        <ContextHelp title="Ev gundemi" tone="mint">
+                          Cocugun evde calistigi veya kendisine atanmis son ders-konu kaydi burada gorunur. Bu veri gorevler ve tamamlanan calismalardan beslenir.
+                        </ContextHelp>
+                      </span>
                       <strong>{card.childTopic}</strong>
                     </div>
                   </div>
@@ -491,7 +517,12 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
             <div className="dr-curriculum-progress-compare-head">
               <div>
                 <span>Canlı Karşılaştırma</span>
-                <h4>Genel Konu İlerlemesi</h4>
+                <div className="flex items-center gap-2">
+                  <h4>Genel Konu İlerlemesi</h4>
+                  <ContextHelp title="Genel konu ilerlemesi" tone="lilac">
+                    Her satirda okul ve ogrenci noktasi ayni mufredat sirasi uzerinde gosterilir. Ogrenci ondeyse arti, gerideyse eksi fark yazilir; veri yoksa tahmini sonuc uretilmez.
+                  </ContextHelp>
+                </div>
               </div>
               <div className="dr-curriculum-progress-compare-score">
                 <strong>{aheadCount}</strong>

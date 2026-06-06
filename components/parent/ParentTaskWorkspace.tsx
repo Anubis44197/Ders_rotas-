@@ -101,6 +101,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null);
   const [showDeleteDataModal, setShowDeleteDataModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteBackupAcknowledged, setDeleteBackupAcknowledged] = useState(false);
   const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   const [examCourseId, setExamCourseId] = useState(initialActiveCourse?.id || '');
@@ -402,6 +403,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
   const handleDeleteAllData = async () => {
     if (isDeletingAllData) return;
     setDeleteConfirmText('');
+    setDeleteBackupAcknowledged(false);
     setShowDeleteDataModal(true);
   };
 
@@ -411,12 +413,17 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
       onActionMessage('error', 'Silmek için onay alanına SIL yazın.');
       return;
     }
+    if (!deleteBackupAcknowledged) {
+      onActionMessage('error', 'Devam etmeden once yedek aldiginizi onaylayin.');
+      return;
+    }
 
     setIsDeletingAllData(true);
     try {
       await onDeleteAllData();
       setShowDeleteDataModal(false);
       setDeleteConfirmText('');
+      setDeleteBackupAcknowledged(false);
     } finally {
       setIsDeletingAllData(false);
     }
@@ -833,7 +840,12 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
       {showTaskListSection && <div className={card}>
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h3 className="text-xl font-bold">Görevler</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-bold">Görevler</h3>
+              <ContextHelp title="Gorevler" tone="blue">
+                Bu liste cocuga gonderilen gorevlerin durumunu gosterir. Bekleyen, takipte, tamamlanan ve tum gorev filtreleri ayni kayit havuzunu farkli durumlara gore ayirir.
+              </ContextHelp>
+            </div>
             <div className="text-sm text-slate-500">Bekleyen {pendingCount} / Tamamlanan {completedCount}</div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -885,7 +897,12 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-emerald-200/40 bg-emerald-500/10 text-emerald-600">
               <Download className="h-5 w-5" />
             </div>
-            <h4 className="text-lg font-black text-slate-900">Yedek oluştur</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-lg font-black text-slate-900">Yedek oluştur</h4>
+              <ContextHelp title="Yedek olustur" tone="mint">
+                Ders, gorev, sinav, odul ve plan kayitlarini tek JSON dosyasi olarak indirir. Bu islem mevcut veriyi degistirmez.
+              </ContextHelp>
+            </div>
             <p className="mt-2 min-h-[60px] text-sm text-slate-600">Bugünkü verileri indirilebilir bir dosyaya kaydeder. Dosya adı tarihli gelir.</p>
             <button onClick={handleExportData} disabled={isExporting || !onExportData} className={`ios-button mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold ${isExporting || !onExportData ? 'cursor-not-allowed opacity-50' : ''}`}>
               <Download className="h-4 w-4" />
@@ -897,7 +914,12 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-blue-200/40 bg-blue-500/10 text-blue-600">
               <Upload className="h-5 w-5" />
             </div>
-            <h4 className="text-lg font-black text-slate-900">Yedekten yükle</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-lg font-black text-slate-900">Yedekten yükle</h4>
+              <ContextHelp title="Yedekten yukle" tone="blue">
+                Secilen Ders Rotasi JSON dosyasi once beklemeye alinir. Veli onay vermeden mevcut kayitlarin uzerine yazilmaz.
+              </ContextHelp>
+            </div>
             <p className="mt-2 min-h-[60px] text-sm text-slate-600">Seçilen dosya önce incelenir. Onay vermeden mevcut veri değişmez.</p>
             <button onClick={handleImportClick} disabled={isImporting} className={`ios-button mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-3 font-bold ${isImporting ? 'cursor-not-allowed opacity-50' : ''}`}>
               <Upload className="h-4 w-4" />
@@ -909,7 +931,12 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-[18px] border border-rose-200/40 bg-rose-500/10 text-rose-600">
               <Trash2 className="h-5 w-5" />
             </div>
-            <h4 className="text-lg font-black text-slate-900">Veriyi temizle</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-lg font-black text-slate-900">Veriyi temizle</h4>
+              <ContextHelp title="Veriyi temizle" tone="peach">
+                Yerel kayitlari silmek icindir. Ek onay ister ve geri alinmaz; bu yuzden once yedek almak en guvenli yoldur.
+              </ContextHelp>
+            </div>
             <p className="mt-2 min-h-[60px] text-sm text-slate-600">Tüm yerel kayıtları siler. Bu adımdan önce yedek almak en güvenli akıştır.</p>
             <button onClick={handleDeleteAllData} disabled={isDeletingAllData} className={`mt-4 flex w-full items-center justify-center gap-2 rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 font-bold text-rose-600 transition hover:bg-rose-100 ${isDeletingAllData ? 'cursor-not-allowed opacity-50' : ''}`}>
               <Trash2 className="h-4 w-4" />
@@ -957,6 +984,15 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               </div>
             </div>
             <div className="ios-coral rounded-[20px] px-4 py-3 text-sm text-rose-950">Devam etmeden önce yedek indirmeniz önerilir. Silme işlemi geri alınmaz.</div>
+            <label className="mt-4 flex items-start gap-2 rounded-[16px] border border-amber-300/30 bg-amber-50/70 px-3 py-3 text-xs font-bold text-amber-900">
+              <input
+                type="checkbox"
+                checked={deleteBackupAcknowledged}
+                onChange={(event) => setDeleteBackupAcknowledged(event.target.checked)}
+                className="mt-0.5 h-4 w-4"
+              />
+              <span>Yedek aldim veya verileri kalici olarak silmeyi bilerek onayliyorum.</span>
+            </label>
             <label className="mt-4 block text-sm font-bold text-slate-700">
               Onay için SIL yazın
               <input
@@ -967,8 +1003,8 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               />
             </label>
             <div className="dr-button-row mt-6">
-              <button type="button" onClick={() => { setShowDeleteDataModal(false); setDeleteConfirmText(''); }} disabled={isDeletingAllData} className="ios-button rounded-[18px] px-5 py-3 text-sm font-bold text-slate-700 disabled:opacity-50">Vazgeç</button>
-              <button type="button" onClick={handleConfirmDeleteAllData} disabled={isDeletingAllData || deleteConfirmText.trim().toUpperCase() !== 'SIL'} className="dr-destructive-button px-5 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="button" onClick={() => { setShowDeleteDataModal(false); setDeleteConfirmText(''); setDeleteBackupAcknowledged(false); }} disabled={isDeletingAllData} className="ios-button rounded-[18px] px-5 py-3 text-sm font-bold text-slate-700 disabled:opacity-50">Vazgeç</button>
+              <button type="button" onClick={handleConfirmDeleteAllData} disabled={isDeletingAllData || !deleteBackupAcknowledged || deleteConfirmText.trim().toUpperCase() !== 'SIL'} className="dr-destructive-button px-5 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-50">
                 {isDeletingAllData ? 'Siliniyor...' : 'Kalıcı olarak sil'}
               </button>
             </div>

@@ -22,6 +22,7 @@ interface TimerState {
   breakTime: number;
   pauseTime: number;
   status: 'running' | 'paused' | 'break';
+  updatedAt?: number;
   isPaused?: boolean;
   pausedAt?: number;
   note?: string;
@@ -114,13 +115,35 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
     if (exists) return;
     if (intervalRef.current) clearInterval(intervalRef.current);
     window.localStorage.removeItem(`timerState_${task.id}`);
+    onLiveSessionChange?.(task.id, undefined);
     setWasTaskDeleted(true);
-  }, [tasks, task.id]);
+  }, [tasks, task.id, onLiveSessionChange]);
 
   useEffect(() => {
-    const timerState: TimerState = { mainTime, breakTime, pauseTime, status, note: taskNote };
+    const timerState: TimerState = { mainTime, breakTime, pauseTime, status, note: taskNote, updatedAt: Date.now() };
     window.localStorage.setItem(`timerState_${task.id}`, JSON.stringify(timerState));
   }, [mainTime, breakTime, pauseTime, status, task.id, taskNote]);
+
+  useEffect(() => {
+    if (!onLiveSessionChange || showCompleteModal || showAnalysisModal) return;
+    const now = Date.now();
+    const statusChanged = lastLiveStatusRef.current !== status;
+    const noteChanged = lastLiveNoteRef.current !== taskNote;
+    const shouldPublish = statusChanged || noteChanged || now - lastLivePublishRef.current >= 10000;
+    if (!shouldPublish) return;
+
+    lastLivePublishRef.current = now;
+    lastLiveStatusRef.current = status;
+    lastLiveNoteRef.current = taskNote;
+    onLiveSessionChange(task.id, {
+      mainTime,
+      breakTime,
+      pauseTime,
+      status,
+      note: taskNote || undefined,
+      updatedAt: now,
+    });
+  }, [breakTime, mainTime, onLiveSessionChange, pauseTime, showAnalysisModal, showCompleteModal, status, task.id, taskNote]);
 
   useEffect(() => {
     if (showCountdown || showCompleteModal || showAnalysisModal) return;
@@ -200,11 +223,13 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
       breakTime,
       pauseTime,
       status: 'paused',
+      updatedAt: Date.now(),
       isPaused: true,
       pausedAt: Date.now(),
       note,
     };
     window.localStorage.setItem(`timerState_${task.id}`, JSON.stringify(currentTimerState));
+    onLiveSessionChange?.(task.id, { ...currentTimerState, updatedAt: currentTimerState.updatedAt ?? Date.now() });
     onPauseForLater(task.id, currentTimerState);
     onFinishSession();
   };
@@ -213,6 +238,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
     if (isCompleting) return;
     setIsCompleting(true);
     window.localStorage.removeItem(`timerState_${task.id}`);
+    onLiveSessionChange?.(task.id, undefined);
 
     const finalDuration = editedDuration ? Number(editedDuration) * 60 : mainTime;
 

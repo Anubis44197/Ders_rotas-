@@ -147,10 +147,10 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         : `${nextExamDaysLeft} gün`
     : 'Yok';
   const planningPulseItems = [
-    { label: 'Aktif ders', value: activeCourses.length, detail: 'planlanabilir ders', icon: BookOpen },
-    { label: 'Açık görev', value: openTaskCount, detail: openTaskCount === 0 ? 'bekleyen iş yok' : 'takip bekliyor', icon: ClipboardList },
-    { label: 'Sıradaki sınav', value: nextExamLabel, detail: nextExam ? nextExam.courseName : 'takvim temiz', icon: Calendar },
-    { label: 'Müfredat', value: `%${curriculumCompletionRate}`, detail: `${safeCurriculumSummary.completedTopicCount}/${safeCurriculumSummary.topicCount} konu`, icon: Target },
+    { label: 'Aktif ders', value: activeCourses.length, detail: 'planlanabilir ders', icon: BookOpen, help: 'Gorev atanabilen, okul programina eklenebilen ve raporlara katilan aktif ders sayisidir.' },
+    { label: 'Açık görev', value: openTaskCount, detail: openTaskCount === 0 ? 'bekleyen iş yok' : 'takip bekliyor', icon: ClipboardList, help: 'Cocuga atanmis ve henuz tamamlanmamis gorevleri sayar. Cocuk bitirdikce bu sayi canli olarak azalir.' },
+    { label: 'Sıradaki sınav', value: nextExamLabel, detail: nextExam ? nextExam.courseName : 'takvim temiz', icon: Calendar, help: 'Sinav Takvimi icindeki bugunden sonraki en yakin sinavi ve kalan gun bilgisini gosterir.' },
+    { label: 'Müfredat', value: `%${curriculumCompletionRate}`, detail: `${safeCurriculumSummary.completedTopicCount}/${safeCurriculumSummary.topicCount} konu`, icon: Target, help: 'Kayitli mufredatta takip edilen konular icinde tamamlanmis konu oranini gosterir.' },
   ];
   return (
     <div className="dr-planning-workspace space-y-5">
@@ -172,7 +172,10 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
             return (
               <div key={item.label} className="dr-planning-metric flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="dr-hig-caption font-bold uppercase text-[var(--dr-text-secondary)]">{item.label}</div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="dr-hig-caption font-bold uppercase text-[var(--dr-text-secondary)]">{item.label}</div>
+                    <ContextHelp title={item.label} tone="blue">{item.help}</ContextHelp>
+                  </div>
                   <div className="mt-2 dr-hig-title text-[var(--dr-text-primary)]">{item.value}</div>
                   <div className="mt-1 truncate text-xs font-semibold text-[var(--dr-text-secondary)]">{item.detail}</div>
                 </div>
@@ -338,6 +341,9 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-[var(--dr-orange)]" />
             <h3 className="dr-planning-section-title dr-hig-headline text-[var(--dr-text-primary)]">Sınav Takvimi</h3>
+            <ContextHelp title="Sinav Takvimi" tone="peach">
+              Okul sinav tarihleri burada tutulur. Yaklasan sinavlar ustte, gecmis sinavlar altta kalir; planlama ozetindeki siradaki sinav bilgisi buradan beslenir.
+            </ContextHelp>
           </div>
           <span className="dr-planning-count-pill">
             {upcomingExams.length} yaklaşan · {pastExams.length} geçmiş

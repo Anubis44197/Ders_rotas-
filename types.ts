@@ -252,6 +252,7 @@ export interface ChildDashboardProps {
   badges: Badge[];
   successPoints: number;
   startTask: (taskId: string) => void;
+  updateTaskLiveSession: (taskId: string, liveSession?: TaskLiveSession) => void;
   updateTaskStatus: (taskId: string, status: 'bekliyor' | 'tamamland\u0131') => void;
   completeTask: (taskId: string, data: TaskCompletionData) => void;
   claimReward: (rewardId: string) => void;

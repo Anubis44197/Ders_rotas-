@@ -84,11 +84,21 @@ const formatTime = (seconds: number) => {
   return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 };
 
+const hydrateTimerState = (state: ResumeTimerState): ResumeTimerState => {
+  const updatedAt = typeof state.updatedAt === 'number' && Number.isFinite(state.updatedAt) ? state.updatedAt : undefined;
+  if (!updatedAt) return state;
+  const elapsedSeconds = Math.max(0, Math.min(24 * 60 * 60, Math.floor((Date.now() - updatedAt) / 1000)));
+  if (elapsedSeconds <= 0) return state;
+  if (state.status === 'break') return { ...state, breakTime: (state.breakTime || 0) + elapsedSeconds, updatedAt: Date.now() };
+  if (state.status === 'paused') return { ...state, pauseTime: (state.pauseTime || 0) + elapsedSeconds, updatedAt: Date.now() };
+  return { ...state, mainTime: (state.mainTime || 0) + elapsedSeconds, updatedAt: Date.now() };
+};
+
 const parseSavedTimerState = (taskId: string): ResumeTimerState | undefined => {
   const saved = window.localStorage.getItem(`timerState_${taskId}`);
   if (!saved) return undefined;
   try {
-    return JSON.parse(saved) as ResumeTimerState;
+    return hydrateTimerState(JSON.parse(saved) as ResumeTimerState);
   } catch {
     return undefined;
   }
@@ -329,6 +339,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
   badges,
   successPoints,
   startTask,
+  updateTaskLiveSession,
   completeTask,
   claimReward,
   addTask,
@@ -631,13 +642,14 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
           setResumedTimerState(undefined);
         }}
         onPauseForLater={handlePauseForLater}
+        onLiveSessionChange={updateTaskLiveSession}
         initialTimerState={resumedTimerState}
       />
     );
   }
 
   if (activeReadingTask) {
-    return <ActiveReadingSession task={activeReadingTask} tasks={safeTasks} onComplete={completeTask} onFinishSession={() => { setActiveReadingTask(null); setResumedTimerState(undefined); }} initialTimerState={resumedTimerState} />;
+    return <ActiveReadingSession task={activeReadingTask} tasks={safeTasks} onComplete={completeTask} onLiveSessionChange={updateTaskLiveSession} onFinishSession={() => { setActiveReadingTask(null); setResumedTimerState(undefined); }} initialTimerState={resumedTimerState} />;
   }
 
   return (

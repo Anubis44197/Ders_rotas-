@@ -14,6 +14,7 @@ interface TimerState {
   breakTime: number;
   pauseTime: number;
   status: 'running' | 'paused' | 'break';
+  updatedAt?: number;
 }
 
 interface ActiveReadingSessionProps {
@@ -47,13 +48,32 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
     if (taskStillExists) return;
     if (intervalRef.current) clearInterval(intervalRef.current);
     window.localStorage.removeItem(`timerState_${task.id}`);
+    onLiveSessionChange?.(task.id, undefined);
     setWasTaskDeleted(true);
-  }, [tasks, task.id]);
+  }, [tasks, task.id, onLiveSessionChange]);
 
   useEffect(() => {
-    const timerState: TimerState = { mainTime, breakTime, pauseTime, status };
+    const timerState: TimerState = { mainTime, breakTime, pauseTime, status, updatedAt: Date.now() };
     window.localStorage.setItem(`timerState_${task.id}`, JSON.stringify(timerState));
   }, [mainTime, breakTime, pauseTime, status, task.id]);
+
+  useEffect(() => {
+    if (!onLiveSessionChange || showCompleteModal) return;
+    const now = Date.now();
+    const statusChanged = lastLiveStatusRef.current !== status;
+    const shouldPublish = statusChanged || now - lastLivePublishRef.current >= 10000;
+    if (!shouldPublish) return;
+
+    lastLivePublishRef.current = now;
+    lastLiveStatusRef.current = status;
+    onLiveSessionChange(task.id, {
+      mainTime,
+      breakTime,
+      pauseTime,
+      status,
+      updatedAt: now,
+    });
+  }, [breakTime, mainTime, onLiveSessionChange, pauseTime, showCompleteModal, status, task.id]);
 
   useEffect(() => {
     if (showCompleteModal) return;
@@ -113,6 +133,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
     setCompletionError('');
     setIsCompleting(true);
     window.localStorage.removeItem(`timerState_${task.id}`);
+    onLiveSessionChange?.(task.id, undefined);
     onComplete(task.id, {
       actualDuration: mainTime,
       breakTime,

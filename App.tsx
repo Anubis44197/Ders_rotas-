@@ -3050,6 +3050,11 @@ const App: React.FC = () => {
     setSuccessPoints(0);
     setIsParentLocked(true);
     setLoginError(null);
+    academicStorageKeys.forEach((key) => window.localStorage.removeItem(key));
+    Object.keys(window.localStorage)
+      .filter((key) => key.startsWith('timerState_'))
+      .forEach((key) => window.localStorage.removeItem(key));
+    await clearIndexedDbKeys(academicStorageKeys).catch(() => undefined);
     addToast('Tüm veriler başarıyla silindi.', 'success');
   };
 
@@ -3377,6 +3382,16 @@ const App: React.FC = () => {
     setTasks((prevTasks) => prevTasks.map((task) => (task.id === taskId ? { ...task, startTimestamp: task.startTimestamp || Date.now() } : task)));
   };
 
+  const updateTaskLiveSession = (taskId: string, liveSession?: TaskLiveSession) => {
+    setTasks((prevTasks) => prevTasks.map((task) => {
+      if (task.id !== taskId || isCompletedTask(task)) return task;
+      const nextLiveSession = liveSession ? normalizeTaskLiveSession(liveSession) : undefined;
+      const currentSerialized = JSON.stringify(task.liveSession || null);
+      const nextSerialized = JSON.stringify(nextLiveSession || null);
+      return currentSerialized === nextSerialized ? task : { ...task, liveSession: nextLiveSession };
+    }));
+  };
+
   const completeTask = (taskId: string, data: TaskCompletionData) => {
     if (completeTaskLockRef.current.has(taskId)) return;
     completeTaskLockRef.current.add(taskId);
@@ -3468,6 +3483,7 @@ const App: React.FC = () => {
       successScore: Math.round(successScore),
       focusScore: Math.round(focusScore),
       pointsAwarded: scoringResult.pointsAwarded,
+      liveSession: undefined,
     };
 
     setTasks((prevTasks) => prevTasks.map((item) => (item.id === taskId ? completedTask : item)));
@@ -5436,6 +5452,7 @@ const App: React.FC = () => {
               successPoints={successPoints}
               analysisSnapshot={parentAnalysis}
               startTask={startTask}
+              updateTaskLiveSession={updateTaskLiveSession}
               updateTaskStatus={updateTaskStatus}
               completeTask={completeTask}
               claimReward={claimReward}
