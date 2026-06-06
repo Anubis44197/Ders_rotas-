@@ -109,13 +109,13 @@ export const PARENT_DECISION_RULES_V2: DecisionRuleConfig = {
 export const resolveDecisionRuleConfig = (
   overrides?: DecisionRuleOverrides | null,
 ): DecisionRuleConfig => ({
-  ...PARENT_DECISION_RULES_V1,
+  ...PARENT_DECISION_RULES_V2,
   thresholds: {
-    ...PARENT_DECISION_RULES_V1.thresholds,
+    ...PARENT_DECISION_RULES_V2.thresholds,
     ...(overrides?.thresholds || {}),
   },
   weights: {
-    ...PARENT_DECISION_RULES_V1.weights,
+    ...PARENT_DECISION_RULES_V2.weights,
     ...(overrides?.weights || {}),
   },
 });
@@ -207,7 +207,7 @@ const getAdaptiveConfig = (
 
 export const getTopicDecisionLevel = (
   riskScore: number,
-  config: DecisionRuleConfig = PARENT_DECISION_RULES_V1,
+  config: DecisionRuleConfig = PARENT_DECISION_RULES_V2,
 ): DecisionLevel => {
   if (riskScore >= config.thresholds.riskCriticalMin) return 'Kritik';
   if (riskScore >= config.thresholds.riskWarningMin) return 'Dikkat';
@@ -272,12 +272,17 @@ export const buildParentDecision = (
   }
 
   if (trend === 'Dusuyor' || trend === 'Hizli dusuyor') {
+    const isCritical = trend === 'Hizli dusuyor';
     alerts.push(withTier({
-      level: trend === 'Hizli dusuyor' ? 'Kritik' : 'Dikkat',
-      text: 'Son deneme ortalamasi bir onceki denemeye gore dusuyor.',
-      action: '15 soru hedefi ver',
-      severityScore: adaptiveConfig.weights.trendDrop + (trend === 'Hizli dusuyor' ? 18 : 6),
-      urgency: trend === 'Hizli dusuyor' ? 80 : 60,
+      level: isCritical ? 'Kritik' : 'Dikkat',
+      text: isCritical
+        ? 'Son deneme sinavi ortalamasi ciddi oranda dusus gosterdi! (%15 veya uzeri)'
+        : 'Son deneme sinavi basarisinda dusus egilimi tespit edildi.',
+      action: isCritical
+        ? 'Eksik konulari tespit etmek icin karar/analiz sayfasina git ve deneme analizi yap.'
+        : 'Haftalik soru hedefini 15-20 artirarak pekistirme calismasi planla.',
+      severityScore: adaptiveConfig.weights.trendDrop + (isCritical ? 18 : 6),
+      urgency: isCritical ? 80 : 60,
       confidence,
     }));
   }
