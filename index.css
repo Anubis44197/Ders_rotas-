@@ -2335,33 +2335,53 @@ button svg,
 .dr-planning-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(180, 125, 74, 0.36);
+  border: 1px solid rgba(105, 119, 150, 0.16);
   border-radius: 26px;
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.66), rgba(255,248,240,0.44)),
-    rgba(255,255,255,0.48);
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  background: var(--dr-surface);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 2px 4px rgba(15, 23, 42, 0.015),
+    0 8px 16px rgba(15, 23, 42, 0.03),
+    0 20px 40px rgba(15, 23, 42, 0.06),
+    0 32px 64px rgba(15, 23, 42, 0.04);
   padding: clamp(1rem, 1.8vw, 1.35rem);
   transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
 .dr-planning-card:hover {
   transform: translateY(-1px);
-  border-color: rgba(245, 186, 117, 0.56);
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+  border-color: rgba(105, 119, 150, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+    0 4px 8px rgba(15, 23, 42, 0.02),
+    0 12px 24px rgba(15, 23, 42, 0.05),
+    0 28px 56px rgba(15, 23, 42, 0.08),
+    0 44px 88px rgba(15, 23, 42, 0.06);
 }
 
 .dr-theme-dark .dr-planning-card {
-  border-color: var(--dr-plan-border);
-  background:
-    linear-gradient(145deg, rgba(19, 25, 43, 0.82), rgba(10, 15, 29, 0.78)),
-    var(--dr-plan-card);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border-color: rgba(138, 180, 255, 0.16) !important;
+  background: rgba(13, 20, 36, 0.74) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 4px 10px rgba(0, 0, 0, 0.16),
+    0 16px 36px rgba(0, 0, 0, 0.28),
+    0 32px 64px rgba(0, 0, 0, 0.32) !important;
 }
 
 .dr-theme-dark .dr-planning-card:hover {
-  border-color: var(--dr-plan-border-strong);
-  box-shadow: 0 22px 64px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-color: rgba(138, 180, 255, 0.32) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 6px 14px rgba(0, 0, 0, 0.20),
+    0 20px 44px rgba(0, 0, 0, 0.34),
+    0 40px 80px rgba(0, 0, 0, 0.40) !important;
 }
 
 .dr-planning-card::before {
@@ -2552,20 +2572,22 @@ button svg,
 }
 
 .dr-theme-dark .dr-planning-empty {
-  border-color: rgba(245, 186, 117, 0.22);
+  border-color: rgba(138, 180, 255, 0.16);
   background: rgba(7, 16, 31, 0.30);
   color: var(--dr-plan-muted);
 }
 
 .dr-plan-action-bar {
-  border: 1px solid rgba(180, 125, 74, 0.24);
+  border: 1px solid rgba(105, 119, 150, 0.16);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.26);
+  background: var(--dr-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .dr-theme-dark .dr-plan-action-bar {
-  border-color: rgba(245, 186, 117, 0.20);
-  background: rgba(8, 13, 26, 0.34);
+  border-color: rgba(138, 180, 255, 0.16) !important;
+  background: rgba(13, 20, 36, 0.58) !important;
 }
 
 .dr-plan-action-title {
@@ -2694,14 +2716,13 @@ button svg,
 
 .dr-curriculum-showcase-panel {
   overflow: hidden;
-  border: 1px solid rgba(226, 232, 240, 0.88);
+  border: 1px solid rgba(105, 119, 150, 0.16);
   border-radius: 28px;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(186, 230, 253, 0.55), transparent 28%),
-    radial-gradient(circle at 90% 12%, rgba(220, 252, 231, 0.55), transparent 28%),
-    linear-gradient(135deg, #f8fbff 0%, #eef6ff 54%, #f8fff5 100%);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
-  color: #111827;
+  background: var(--dr-surface);
+  backdrop-filter: blur(24px) saturate(1.35);
+  -webkit-backdrop-filter: blur(24px) saturate(1.35);
+  box-shadow: var(--dr-shadow);
+  color: var(--dr-text);
   padding: clamp(18px, 2vw, 28px);
 }
 
@@ -2752,9 +2773,18 @@ button svg,
   position: relative;
   min-height: 620px;
   overflow: hidden;
+  border: 1px solid rgba(105, 119, 150, 0.16);
   border-radius: 26px;
-  background: #ffffff;
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18);
+  background: var(--dr-surface);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 2px 4px rgba(15, 23, 42, 0.015),
+    0 8px 16px rgba(15, 23, 42, 0.03),
+    0 20px 40px rgba(15, 23, 42, 0.06),
+    0 32px 64px rgba(15, 23, 42, 0.04) !important;
   isolation: isolate;
 }
 
@@ -3298,13 +3328,10 @@ button svg,
 }
 
 .dr-theme-dark .dr-curriculum-showcase-panel {
-  border-color: rgba(245, 186, 117, 0.24);
-  background:
-    radial-gradient(circle at 12% 8%, rgba(59, 130, 246, 0.16), transparent 30%),
-    radial-gradient(circle at 90% 12%, rgba(126, 231, 199, 0.12), transparent 30%),
-    linear-gradient(135deg, rgba(12, 18, 34, 0.98), rgba(7, 12, 24, 0.98));
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
-  color: #f1f5ff;
+  border-color: rgba(138, 180, 255, 0.16) !important;
+  background: var(--dr-surface) !important;
+  box-shadow: var(--dr-shadow) !important;
+  color: var(--dr-text);
 }
 
 .dr-theme-dark .dr-curriculum-showcase-head h3 {
@@ -3316,20 +3343,20 @@ button svg,
 }
 
 .dr-theme-dark .dr-curriculum-avatar {
-  border: 1px solid rgba(245, 186, 117, 0.24);
+  border: 1px solid rgba(138, 180, 255, 0.24);
   background: rgba(15, 23, 42, 0.88);
-  color: #f5ba75;
+  color: #8ab4ff;
 }
 
 .dr-theme-dark .dr-curriculum-showcase-card {
-  border: 1px solid rgba(245, 186, 117, 0.18);
+  border: 1px solid rgba(138, 180, 255, 0.16);
   background: rgba(13, 20, 36, 0.92);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.36);
 }
 
 .dr-theme-dark .dr-curriculum-topic-card,
 .dr-theme-dark .dr-curriculum-status-box {
-  border: 1px solid rgba(245, 186, 117, 0.16);
+  border: 1px solid rgba(138, 180, 255, 0.16);
   background: rgba(255, 255, 255, 0.07);
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.2);
 }
@@ -4734,7 +4761,7 @@ button.ios-coral {
 }
 
 .dr-theme-dark .dr-curriculum-showcase-card {
-  border-color: rgba(245, 186, 117, 0.16) !important;
+  border-color: rgba(138, 180, 255, 0.16) !important;
   background: rgba(13, 20, 36, 0.92) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -4756,7 +4783,7 @@ button.ios-coral {
 }
 
 .dr-theme-dark .dr-curriculum-showcase-card:hover {
-  border-color: rgba(245, 186, 117, 0.32) !important;
+  border-color: rgba(138, 180, 255, 0.32) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     inset 0 0 0 1px rgba(255, 255, 255, 0.065),
