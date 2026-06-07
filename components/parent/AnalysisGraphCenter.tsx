@@ -632,7 +632,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
     >
       <div className={card}>
         <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Detay grafikleri</div>
-        <h3 className="text-2xl font-black text-slate-900">Veli karar grafikleri</h3>
+        <h3 className="text-2xl font-bold text-slate-900">Veli karar grafikleri</h3>
         <p className="mt-2 text-sm text-slate-500">Ana karar kartlarını destekleyen sade grafikler. Veli önce karar özetini görür, burada isterse detaya iner.</p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -712,7 +712,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
           <div className="ios-chart-surface rounded-[26px] p-5">
             <div className="mb-4">
               <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{CATEGORY_LABELS[selectedOption.category]}</div>
-              <h4 className="mt-1 text-xl font-black text-slate-900">{selectedCopy.label}</h4>
+              <h4 className="mt-1 text-xl font-bold text-slate-900">{selectedCopy.label}</h4>
               <p className="mt-1 text-sm text-slate-500">{selectedCopy.description}</p>
             </div>
             <ChartAccessibilitySummary title={selectedCopy.label} summary={selectedChartSummary} />
@@ -732,13 +732,13 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
               <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <div className="ios-widget rounded-[22px] border-l-4 border-l-[#8AB4FF] p-4">
                   <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Ilk deneme basarisi</div>
-                  <div className="mt-2 text-3xl font-black text-slate-900">{qualityInsights.firstAttemptAverage ?? '-'}</div>
+                  <div className="mt-2 text-3xl font-bold text-slate-900">{qualityInsights.firstAttemptAverage ?? '-'}</div>
                   <p className="mt-1 text-xs text-slate-500">Konu bazinda ilk denemedeki dogruluk ortalamasi.</p>
                 </div>
 
                 <div className="ios-widget rounded-[22px] border-l-4 border-l-[#7EE7C7] p-4" data-testid="graph-golden-hour-card">
                   <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">En verimli saat</div>
-                  <div className="mt-2 text-3xl font-black text-slate-900" data-testid="graph-golden-hour-value">{goldenHourInsight.label}</div>
+                  <div className="mt-2 text-3xl font-bold text-slate-900" data-testid="graph-golden-hour-value">{goldenHourInsight.label}</div>
                   <p className="mt-1 text-xs text-slate-500">
                     Odak {goldenHourInsight.focus ?? '-'} / Dogruluk {goldenHourInsight.accuracy ?? '-'}
                   </p>
@@ -765,7 +765,7 @@ const AnalysisGraphCenter: React.FC<Props> = ({ tasks, courses, curriculum, anal
 
                 <div className="ios-widget rounded-[22px] border-l-4 border-l-[#C4B5FD] p-4">
                   <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Calisma dengesi</div>
-                  <div className="mt-2 text-2xl font-black text-slate-900">{throughputInsight.profile}</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-900">{throughputInsight.profile}</div>
                   <p className="mt-1 text-xs text-slate-500">Sure ve dogruluk iliskisine gore ozet yorum.</p>
                 </div>
               </div>

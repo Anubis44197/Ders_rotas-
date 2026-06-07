@@ -24,7 +24,7 @@ const ParentLockScreen: React.FC<ParentLockScreenProps> = ({ onUnlock, error }) 
         </div>
         <div className="mt-6">
           <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">Ebeveyn Alanı</div>
-          <h2 className="dr-title mt-2 text-3xl font-black text-[var(--dr-text-primary)]">Panel kilitli.</h2>
+          <h2 className="dr-title mt-2 text-3xl font-bold text-[var(--dr-text-primary)]">Panel kilitli.</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--dr-text-secondary)]">Müfredat, planlama ve analiz ekranlarını açmak için şifreni gir.</p>
         </div>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">

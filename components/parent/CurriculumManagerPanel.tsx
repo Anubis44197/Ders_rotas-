@@ -193,7 +193,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
             />
             <button onClick={handleAddSubject} className={`${iconPrimaryButtonClass} inline-flex items-center gap-2`} title="Ders ekle">
               <PlusCircle className="h-4 w-4" />
-              <span className="text-sm font-black">Ekle</span>
+              <span className="text-sm font-bold">Ekle</span>
             </button>
           </div>
 
@@ -210,7 +210,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
                       <div className="truncate font-bold">{subject}</div>
                       <div className={`mt-1 text-xs ${isActive ? 'text-orange-100/90' : 'text-[var(--dr-text-secondary)]'}`}>{unitCount} ünite • {topicCount} konu</div>
                     </button>
-                    <button onClick={() => handleDeleteSubject(subject)} className={isActive ? 'inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-2 text-xs font-black text-white hover:bg-white/25 transition-all active:scale-[0.92]' : `${destructiveIconButtonClass} inline-flex items-center gap-1 text-xs font-black`} title="Dersi sil">
+                    <button onClick={() => handleDeleteSubject(subject)} className={isActive ? 'inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-2 text-xs font-bold text-white hover:bg-white/25 transition-all active:scale-[0.92]' : `${destructiveIconButtonClass} inline-flex items-center gap-1 text-xs font-bold`} title="Dersi sil">
                       <Trash2 className="h-4 w-4" />
                       <span>Sil</span>
                     </button>
@@ -233,7 +233,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
                   <div>
                     <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">Aktif Ders</div>
                     <div className="mt-2 flex items-center gap-2">
-                      <h3 className="text-2xl font-black text-[var(--dr-text-primary)]">{activeSubject}</h3>
+                      <h3 className="text-2xl font-bold text-[var(--dr-text-primary)]">{activeSubject}</h3>
                       <ContextHelp title="Müfredat Yapılandırması" tone="blue">
                         Seçtiğiniz dersin ünitelerini ve her ünitenin alt konularını ekleyip düzenleyebilirsiniz. Çocuk panelinde bu konu başlıklarına göre ders çalışma ve soru çözme takibi yapılacaktır.
                       </ContextHelp>
@@ -269,7 +269,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
                       <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <div className="truncate text-xl font-black text-[var(--dr-text-primary)]">{unit.name}</div>
+                            <div className="truncate text-xl font-bold text-[var(--dr-text-primary)]">{unit.name}</div>
                             <button onClick={() => handleDeleteUnit(activeSubject, unitIndex)} className={destructiveIconButtonClass} title="Üniteyi sil">
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -332,7 +332,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
           </div>
           <button
             onClick={handleSave}
-            className={`rounded-[16px] px-5 py-3 text-sm font-black transition-all active:scale-[0.96] cursor-pointer ${saved ? 'ios-button text-[var(--dr-text-primary)]' : 'ios-button-active text-white'}`}
+            className={`rounded-[16px] px-5 py-3 text-sm font-bold transition-all active:scale-[0.96] cursor-pointer ${saved ? 'ios-button text-[var(--dr-text-primary)]' : 'ios-button-active text-white'}`}
           >
             {saved ? 'Kaydedildi' : 'Müfredatı Kaydet'}
           </button>
@@ -347,7 +347,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
               <button
                 type="button"
                 onClick={() => setConfirmModal(null)}
-                className="flex-1 ios-button rounded-xl py-2.5 text-xs font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2e2e38] transition active:scale-[0.96] cursor-pointer"
+                className="flex-1 ios-button rounded-xl py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2e2e38] transition active:scale-[0.96] cursor-pointer"
               >
                 Vazgeç
               </button>
@@ -357,7 +357,7 @@ const CurriculumManagerPanel: React.FC<CurriculumManagerPanelProps> = ({ curricu
                   confirmModal.onConfirm();
                   setConfirmModal(null);
                 }}
-                className="flex-1 dr-destructive-button rounded-xl py-2.5 text-xs font-black text-white transition active:scale-[0.96] cursor-pointer"
+                className="flex-1 dr-destructive-button rounded-xl py-2.5 text-xs font-bold text-white transition active:scale-[0.96] cursor-pointer"
               >
                 Sil
               </button>

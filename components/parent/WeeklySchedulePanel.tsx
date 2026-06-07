@@ -713,7 +713,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
             Haftalık zaman
           </div>
           <div className="mt-2 flex items-center gap-2">
-            <h2 className="dr-planning-section-title text-2xl font-black text-[var(--dr-text-primary)]">Haftalık Program</h2>
+            <h2 className="dr-planning-section-title text-2xl font-bold text-[var(--dr-text-primary)]">Haftalık Program</h2>
             <ContextHelp title="Haftalık Program" tone="blue">
               Ders/konu girişi müfredatta kalır. Burada sadece okul saatleri ve plan motorunun kullanacağı ev çalışma pencereleri yönetilir.
             </ContextHelp>
@@ -752,7 +752,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
             type="button"
             onClick={openTaskAssignment}
             disabled={!addTask}
-            className="ios-button-active inline-flex items-center justify-center gap-2 rounded-[14px] px-3.5 py-2 text-xs font-black text-white transition-all active:scale-[0.96] disabled:opacity-50 cursor-pointer"
+            className="ios-button-active inline-flex items-center justify-center gap-2 rounded-[14px] px-3.5 py-2 text-xs font-bold text-white transition-all active:scale-[0.96] disabled:opacity-50 cursor-pointer"
           >
             <ClipboardList className="h-4 w-4" />
             Görev ata
@@ -766,7 +766,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
             <CheckCircle className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <div className="text-base font-black text-[var(--dr-text-primary)]">{'G\u00f6rev atand\u0131'}</div>
+            <div className="text-base font-bold text-[var(--dr-text-primary)]">{'G\u00f6rev atand\u0131'}</div>
             <div className="mt-0.5 text-sm font-semibold text-[var(--dr-text-secondary)]">{assignmentToast}</div>
           </div>
         </div>
@@ -775,13 +775,13 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       <div className="mt-4 rounded-[22px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/35 p-3 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[var(--dr-orange)]">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[var(--dr-orange)]">
               <ClipboardList className="h-4 w-4" />
               {'Atanan g\u00f6revler'}
             </div>
-            <h3 className="mt-1 text-base font-black text-[var(--dr-text-primary)]">{'Veli g\u00f6rev takibi'}</h3>
+            <h3 className="mt-1 text-base font-bold text-[var(--dr-text-primary)]">{'Veli g\u00f6rev takibi'}</h3>
           </div>
-          <span className="self-start rounded-full border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/70 px-3 py-1.5 text-xs font-black text-[var(--dr-text-primary)]">
+          <span className="self-start rounded-full border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/70 px-3 py-1.5 text-xs font-bold text-[var(--dr-text-primary)]">
             {assignedTasks.length} bekleyen
           </span>
         </div>
@@ -811,7 +811,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 <article key={task.id} className={['group flex min-h-[4.75rem] items-center gap-3 rounded-[16px] border px-3 py-2.5 transition-colors', courseVisual.row].join(' ')}>
                   <div className={['h-11 w-1.5 shrink-0 rounded-full border', courseVisual.rail].join(' ')} aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <div className={['flex flex-wrap items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.11em] drop-shadow-sm', courseVisual.meta].join(' ')}>
+                    <div className={['flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.11em] drop-shadow-sm', courseVisual.meta].join(' ')}>
                       <span className={['dr-assigned-course-pill max-w-[13rem] truncate rounded-full border px-2 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]', courseVisual.pill].join(' ')}>{courseName}</span>
                       <span>{getTaskDateKey(task.dueDate)}</span>
                       <span>{task.plannedDuration} dk</span>
@@ -824,7 +824,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                         <span className="rounded-full border border-emerald-300/45 bg-emerald-100/80 px-2 py-0.5 normal-case tracking-normal text-emerald-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] dark:border-emerald-200/35 dark:bg-emerald-300/18 dark:text-emerald-100">{liveStatusLabel}</span>
                       ) : null}
                     </div>
-                    <h4 className={['mt-1 line-clamp-2 text-sm font-black leading-snug drop-shadow-sm', courseVisual.title].join(' ')}>{task.title}</h4>
+                    <h4 className={['mt-1 line-clamp-2 text-sm font-bold leading-snug drop-shadow-sm', courseVisual.title].join(' ')}>{task.title}</h4>
                     <p className={['mt-0.5 line-clamp-1 text-xs font-semibold', courseVisual.detail].join(' ')}>{taskDetail || 'Detay eklenmedi'}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
@@ -832,7 +832,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                       type="button"
                       onClick={() => handleRepeatAssignedTask(task)}
                       disabled={!addTask || isAssigningTask}
-                      className="ios-button inline-flex h-9 items-center justify-center gap-1.5 rounded-[12px] px-2.5 text-xs font-black text-[var(--dr-text-primary)] transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="ios-button inline-flex h-9 items-center justify-center gap-1.5 rounded-[12px] px-2.5 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label={task.title + ' g\u00f6revini tekrarla'}
                       title={'G\u00f6revi tekrarla'}
                     >
@@ -843,7 +843,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                       type="button"
                       onClick={() => deleteTask?.(task.id)}
                       disabled={!deleteTask}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[12px] border border-rose-400/25 bg-rose-500/10 px-2.5 text-xs font-black text-rose-500 transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[12px] border border-rose-400/25 bg-rose-500/10 px-2.5 text-xs font-bold text-rose-500 transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label={task.title + ' g\u00f6revini sil'}
                       title={'G\u00f6revi sil'}
                     >
@@ -869,7 +869,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
             >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
-                  <div className="text-sm font-black text-slate-900">{day}</div>
+                  <div className="text-sm font-bold text-slate-900">{day}</div>
                   <div className="text-xs text-slate-500">
                     {dayState.slots.length} okul bloğu / {dayState.availableWindows.length} çalışma
                   </div>
@@ -893,7 +893,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                   <PlusCircle className="h-4 w-4" />
                   Haftalık zaman düzeni
                 </div>
-                <h3 className="mt-1 text-base font-black text-[var(--dr-text-primary)]">{activeDay}</h3>
+                <h3 className="mt-1 text-base font-bold text-[var(--dr-text-primary)]">{activeDay}</h3>
                 <p className="mt-0.5 max-w-md text-[11px] text-[var(--dr-text-secondary)]">Okul ve ev çalışma saatlerini ayrı girin.</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -930,7 +930,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                   <div className="mb-4 flex items-start justify-between gap-4">
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--dr-orange)]">Haftalık ön izleme</div>
-                      <h3 className="mt-1 text-lg font-black text-[var(--dr-text-primary)]">Tüm hafta planı</h3>
+                      <h3 className="mt-1 text-lg font-bold text-[var(--dr-text-primary)]">Tüm hafta planı</h3>
                       <p className="mt-1 text-xs font-semibold text-[var(--dr-text-secondary)]">
                         Okul blokları ve ev çalışma pencereleri tek ekranda.
                       </p>
@@ -955,7 +955,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                         <article key={`week-preview-${day}`} className="dr-week-preview-day">
                           <div className="mb-3">
                             <div>
-                              <div className="text-sm font-black text-slate-900 dark:text-white">{day}</div>
+                              <div className="text-sm font-bold text-slate-900 dark:text-white">{day}</div>
                               <div className="mt-0.5 text-[11px] font-semibold text-slate-500">
                                 {dayState.slots.length} okul / {dayState.availableWindows.length} çalışma
                               </div>
@@ -965,11 +965,11 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                           <div className="mb-3 grid grid-cols-2 gap-2">
                             <div className="dr-week-preview-metric">
                               <div className="text-[9px] font-bold uppercase text-slate-500">Okul</div>
-                              <div className="text-xs font-black text-slate-900 dark:text-white">{formatDuration(schoolMinutes)}</div>
+                              <div className="text-xs font-bold text-slate-900 dark:text-white">{formatDuration(schoolMinutes)}</div>
                             </div>
                             <div className="dr-week-preview-metric">
                               <div className="text-[9px] font-bold uppercase text-slate-500">Çalışma</div>
-                              <div className="text-xs font-black text-slate-900 dark:text-white">{formatDuration(studyMinutes)}</div>
+                              <div className="text-xs font-bold text-slate-900 dark:text-white">{formatDuration(studyMinutes)}</div>
                             </div>
                           </div>
 
@@ -988,15 +988,15 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                                 title="Okulda işlenen konuyu seçmek için çift tıklayın"
                               >
                                 <div className="text-[9px] font-bold uppercase opacity-80">{slot.startTime} - {slot.endTime}</div>
-                                <div className="mt-0.5 truncate text-xs font-black text-slate-900 dark:text-white">{slot.courseName}</div>
-                                {slot.schoolCurriculumStatus === 'not-covered' && <div className="mt-1 text-[9px] font-black uppercase">Konu işlenmedi</div>}
+                                <div className="mt-0.5 truncate text-xs font-bold text-slate-900 dark:text-white">{slot.courseName}</div>
+                                {slot.schoolCurriculumStatus === 'not-covered' && <div className="mt-1 text-[9px] font-bold uppercase">Konu işlenmedi</div>}
                                 {slot.schoolCurriculumStatus === 'covered' && slot.schoolTopicName && <div className="mt-1 truncate text-[9px] font-bold opacity-80">{slot.schoolTopicName}</div>}
                               </button>
                             ))}
                             {sortWindows(dayState.availableWindows).map((window, index) => (
                               <div key={`week-window-${day}-${createWindowKey(window, index)}`} className={`dr-compact-row border-l-3 ${QUALITY_META[window.quality].tone}`}>
                                 <div className="text-[9px] font-bold uppercase opacity-80">{window.startTime} - {window.endTime}</div>
-                                <div className="mt-0.5 truncate text-xs font-black text-slate-900 dark:text-white">{QUALITY_META[window.quality].label}</div>
+                                <div className="mt-0.5 truncate text-xs font-bold text-slate-900 dark:text-white">{QUALITY_META[window.quality].label}</div>
                               </div>
                             ))}
                           </div>
@@ -1107,7 +1107,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                             <div className="min-w-0">
                               <div className="text-xs font-bold text-slate-900 dark:text-white">{slot.courseName}</div>
                               <div className="mt-0.5 text-[10px] text-slate-500">{slot.startTime} - {slot.endTime}{slot.note ? ` - ${slot.note}` : ''}</div>
-                              {slot.schoolCurriculumStatus === 'not-covered' && <div className="mt-1 text-[10px] font-black uppercase text-amber-700 dark:text-amber-300">Konu işlenmedi</div>}
+                              {slot.schoolCurriculumStatus === 'not-covered' && <div className="mt-1 text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300">Konu işlenmedi</div>}
                               {slot.schoolCurriculumStatus === 'covered' && slot.schoolTopicName && (
                                 <div className="mt-1 truncate text-[10px] font-bold text-emerald-700 dark:text-emerald-300">{slot.schoolUnitName} / {slot.schoolTopicName}</div>
                               )}
@@ -1119,7 +1119,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                                   event.stopPropagation();
                                   handleToggleNotCovered(activeDay, slot);
                                 }}
-                                className="ios-button rounded-full px-2 py-1 text-[10px] font-black text-slate-700"
+                                className="ios-button rounded-full px-2 py-1 text-[10px] font-bold text-slate-700"
                                 title="Konu işlenmedi durumunu değiştir"
                               >
                                 {slot.schoolCurriculumStatus === 'not-covered' ? 'Normal' : 'İşlenmedi'}
@@ -1205,8 +1205,8 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
           >
             <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
               <div>
-                <div className="dr-planning-kicker text-xs font-black uppercase tracking-[0.18em]">Okulda işlenen konu</div>
-                <h3 className="mt-1 text-base font-black text-slate-900 dark:text-white">{activeSchoolCurriculumSlot.courseName}</h3>
+                <div className="dr-planning-kicker text-xs font-bold uppercase tracking-[0.18em]">Okulda işlenen konu</div>
+                <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">{activeSchoolCurriculumSlot.courseName}</h3>
                 <p className="mt-0.5 text-[11px] text-slate-500">{schoolCurriculumSlot.day} · {activeSchoolCurriculumSlot.startTime} - {activeSchoolCurriculumSlot.endTime}</p>
               </div>
               <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-slate-600" aria-label="Okul müfredatı penceresini kapat">
@@ -1281,7 +1281,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 {activeSchoolCurriculumSlot.schoolCurriculumStatus === 'not-covered' ? 'İşlenmedi kaldır' : 'Konu işlenmedi'}
               </button>
               <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button rounded-xl px-3 py-2 text-xs font-bold text-[var(--dr-text-primary)] transition-all active:scale-[0.96] cursor-pointer">Vazgeç</button>
-              <button type="button" onClick={handleSaveSchoolCurriculum} disabled={schoolCurriculumUnits.length === 0} className="ios-button-active rounded-xl px-3.5 py-2 text-xs font-black text-white transition-all active:scale-[0.96] disabled:opacity-50 cursor-pointer">Kaydet</button>
+              <button type="button" onClick={handleSaveSchoolCurriculum} disabled={schoolCurriculumUnits.length === 0} className="ios-button-active rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all active:scale-[0.96] disabled:opacity-50 cursor-pointer">Kaydet</button>
             </div>
           </section>
         </div>
@@ -1296,7 +1296,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                   <ClipboardList className="h-4 w-4" />
                   Çocuğa görev ata
                 </div>
-                <h3 className="mt-1 text-base font-black text-[var(--dr-text-primary)]">Plan içinden hızlı görev</h3>
+                <h3 className="mt-1 text-base font-bold text-[var(--dr-text-primary)]">Plan içinden hızlı görev</h3>
                 <p className="mt-0.5 text-[11px] text-[var(--dr-text-secondary)]">Ders, ünite ve konu seçerek görevi gönder.</p>
               </div>
               <button type="button" onClick={closeTaskAssignment} className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Görev atama penceresini kapat">

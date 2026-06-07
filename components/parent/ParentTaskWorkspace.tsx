@@ -666,7 +666,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               onClick={() => setTaskWorkspaceTab(tab.id)}
               className={`ios-button rounded-[22px] px-4 py-3 text-left transition ${taskWorkspaceTab === tab.id ? 'ios-button-active' : 'text-slate-700 hover:bg-white/75'}`}
             >
-              <span className="block text-sm font-black">{tab.label}</span>
+              <span className="block text-sm font-bold">{tab.label}</span>
               <span className={`mt-1 block text-xs ${taskWorkspaceTab === tab.id ? 'text-slate-300' : 'text-slate-500'}`}>{tab.description}</span>
             </button>
           ))}
@@ -678,7 +678,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Görev atama</div>
             <div className="mt-1 flex items-center gap-2">
-              <h3 className="mt-1 text-2xl font-black text-slate-900">Çocuğa görev gönder</h3>
+              <h3 className="mt-1 text-2xl font-bold text-slate-900">Çocuğa görev gönder</h3>
               <ContextHelp title="Görev Atama" tone="blue">
                 Çocuğunuza belirli bir günde tamamlaması için ders, konu, çalışma türü (ders çalışma, soru çözme vb.) ve hedef süre belirterek yeni bir görev atayabilirsiniz.
               </ContextHelp>
@@ -832,7 +832,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
             <div className="text-sm text-slate-600">
               <strong>Özet:</strong> {selectedCourseName || 'Ders'} {selectedUnitName ? `/ ${selectedUnitName}` : ''} {selectedTopicName ? `/ ${selectedTopicName}` : ''} için görev atanacak{taskTypeKey === 'question' && Number(questionCount) > 0 ? ` (${questionCount} soru)` : ''}.
             </div>
-            <button type="submit" disabled={!selectedCourseName || !selectedUnitName || !selectedTopicName || isAddingTask} className="ios-button-active rounded-[20px] px-6 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-50">{isAddingTask ? 'Kaydediliyor...' : 'Görevi Ata'}</button>
+            <button type="submit" disabled={!selectedCourseName || !selectedUnitName || !selectedTopicName || isAddingTask} className="ios-button-active rounded-[20px] px-6 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50">{isAddingTask ? 'Kaydediliyor...' : 'Görevi Ata'}</button>
           </div>
         </form>
       </div>}
@@ -878,7 +878,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               Veri dosyalari
             </div>
             <div className="mt-1 flex items-start gap-2">
-              <h3 className="text-2xl font-black text-slate-900">Yedekleme ve geri yukleme</h3>
+              <h3 className="text-2xl font-bold text-slate-900">Yedekleme ve geri yukleme</h3>
               <ContextHelp title="Veri guvenligi" tone="mint">
                 Yedek dosyası öğrenci kayıtlarını taşır. Yükleme onaylanmadan mevcut veri değişmez; silme için ek onay istenir.
               </ContextHelp>
@@ -898,7 +898,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               <Download className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2">
-              <h4 className="text-lg font-black text-slate-900">Yedek oluştur</h4>
+              <h4 className="text-lg font-bold text-slate-900">Yedek oluştur</h4>
               <ContextHelp title="Yedek olustur" tone="mint">
                 Ders, gorev, sinav, odul ve plan kayitlarini tek JSON dosyasi olarak indirir. Bu islem mevcut veriyi degistirmez.
               </ContextHelp>
@@ -915,7 +915,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               <Upload className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2">
-              <h4 className="text-lg font-black text-slate-900">Yedekten yükle</h4>
+              <h4 className="text-lg font-bold text-slate-900">Yedekten yükle</h4>
               <ContextHelp title="Yedekten yukle" tone="blue">
                 Secilen Ders Rotasi JSON dosyasi once beklemeye alinir. Veli onay vermeden mevcut kayitlarin uzerine yazilmaz.
               </ContextHelp>
@@ -932,7 +932,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               <Trash2 className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2">
-              <h4 className="text-lg font-black text-slate-900">Veriyi temizle</h4>
+              <h4 className="text-lg font-bold text-slate-900">Veriyi temizle</h4>
               <ContextHelp title="Veriyi temizle" tone="peach">
                 Yerel kayitlari silmek icindir. Ek onay ister ve geri alinmaz; bu yuzden once yedek almak en guvenli yoldur.
               </ContextHelp>
@@ -950,12 +950,12 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Seçilen yedek</div>
-                <h4 className="mt-1 text-lg font-black text-slate-900">{importFileDetails.name}</h4>
+                <h4 className="mt-1 text-lg font-bold text-slate-900">{importFileDetails.name}</h4>
                 <p className="mt-1 text-sm text-slate-500">Boyut {importFileDetails.size} / Son değişiklik {importFileDetails.modified}</p>
               </div>
               <div className="dr-button-row">
                 <button type="button" onClick={handleCancelImport} disabled={isImporting} className="ios-button rounded-[18px] px-4 py-3 text-sm font-bold text-slate-700 disabled:opacity-50">Vazgeç</button>
-                <button type="button" onClick={handleConfirmImport} disabled={isImporting} className="ios-button-active rounded-[18px] px-4 py-3 text-sm font-black disabled:opacity-50">
+                <button type="button" onClick={handleConfirmImport} disabled={isImporting} className="ios-button-active rounded-[18px] px-4 py-3 text-sm font-bold disabled:opacity-50">
                   {isImporting ? 'Yükleniyor...' : 'Bu yedeği yükle'}
                 </button>
               </div>
@@ -979,7 +979,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                 <Trash2 className="h-5 w-5" />
               </div>
               <div>
-                <h3 id="delete-data-title" className="text-xl font-black text-slate-900">Son Uyarı - Tüm veriyi sil</h3>
+                <h3 id="delete-data-title" className="text-xl font-bold text-slate-900">Son Uyarı - Tüm veriyi sil</h3>
                 <p className="mt-1 text-sm leading-6 text-slate-500">Bu işlem ders, görev, sınav, ödül ve plan kayıtlarını bu cihazdan kalıcı olarak kaldırır.</p>
               </div>
             </div>
@@ -1004,7 +1004,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
             </label>
             <div className="dr-button-row mt-6">
               <button type="button" onClick={() => { setShowDeleteDataModal(false); setDeleteConfirmText(''); setDeleteBackupAcknowledged(false); }} disabled={isDeletingAllData} className="ios-button rounded-[18px] px-5 py-3 text-sm font-bold text-slate-700 disabled:opacity-50">Vazgeç</button>
-              <button type="button" onClick={handleConfirmDeleteAllData} disabled={isDeletingAllData || !deleteBackupAcknowledged || deleteConfirmText.trim().toUpperCase() !== 'SIL'} className="dr-destructive-button px-5 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="button" onClick={handleConfirmDeleteAllData} disabled={isDeletingAllData || !deleteBackupAcknowledged || deleteConfirmText.trim().toUpperCase() !== 'SIL'} className="dr-destructive-button px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50">
                 {isDeletingAllData ? 'Siliniyor...' : 'Kalıcı olarak sil'}
               </button>
             </div>
@@ -1023,10 +1023,10 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                   Çocuğunuzun okul sınavlarını, quizlerini ve deneme sınavlarını buradan takip edebilir veya yeni sınav sonuçları ekleyebilirsiniz. Girilen deneme sınavı netleri ve puanları, gelişim grafiklerini doğrudan günceller.
                 </ContextHelp>
               </div>
-              <h3 className="mt-2 text-2xl font-black text-slate-900">Kayıt özeti</h3>
+              <h3 className="mt-2 text-2xl font-bold text-slate-900">Kayıt özeti</h3>
               <p className="mt-1 max-w-xl text-sm text-slate-500">Sonuçlar burada izlenir. Yeni okul sınavı veya deneme kaydı sadece gerektiğinde açılan pencereden girilir.</p>
             </div>
-            <button type="button" onClick={() => setExamFormOpen(true)} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-[20px] px-5 py-3 text-sm font-black text-slate-900">
+            <button type="button" onClick={() => setExamFormOpen(true)} className="ios-button-active inline-flex items-center justify-center gap-2 rounded-[20px] px-5 py-3 text-sm font-bold text-slate-900">
               <PlusCircle className="h-4 w-4" />
               Sınav Sonucu Ekle
             </button>
@@ -1035,15 +1035,15 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="ios-widget ios-blue rounded-[22px] p-4">
               <div className="text-xs font-bold uppercase text-slate-500">Okul kaydi</div>
-              <div className="mt-2 text-3xl font-black text-slate-900">{examRecords.length}</div>
+              <div className="mt-2 text-3xl font-bold text-slate-900">{examRecords.length}</div>
             </div>
             <div className="ios-widget ios-lilac rounded-[22px] p-4">
               <div className="text-xs font-bold uppercase text-slate-500">Deneme</div>
-              <div className="mt-2 text-3xl font-black text-slate-900">{compositeExamResults.length}</div>
+              <div className="mt-2 text-3xl font-bold text-slate-900">{compositeExamResults.length}</div>
             </div>
             <div className="ios-widget ios-peach rounded-[22px] p-4">
               <div className="text-xs font-bold uppercase text-slate-500">Aktif ders</div>
-              <div className="mt-2 text-3xl font-black text-slate-900">{activeCourses.length}</div>
+              <div className="mt-2 text-3xl font-bold text-slate-900">{activeCourses.length}</div>
             </div>
           </div>
 
@@ -1056,7 +1056,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                 <div key={course.id} className="ios-widget rounded-[22px] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-black text-slate-900">{course.name}</div>
+                      <div className="text-sm font-bold text-slate-900">{course.name}</div>
                       <div className="mt-1 text-xs text-slate-500">Kayıtlı okul sınavı: {course.recordCount}</div>
                     </div>
                     <span className={`rounded-full border px-2 py-1 text-[11px] font-bold ${alignmentToneMap[course.alignmentStatus]}`}>
@@ -1080,7 +1080,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                 <div>
                   <div className="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Sınav girişi</div>
                   <div className="mt-2 flex items-center gap-2">
-                    <h3 className="text-2xl font-black text-slate-900">Yeni sonuc kaydi</h3>
+                    <h3 className="text-2xl font-bold text-slate-900">Yeni sonuc kaydi</h3>
                     <ContextHelp title="Sınav Giriş Türleri" tone="blue">
                       <strong>Ders bazlı sınav:</strong> Okulda ders özelinde yapılan yazılı sınavlar, quiz veya sözlü notları içindir.<br />
                       <strong>Genel sınav / deneme:</strong> LGS deneme sınavlarının puan ve netlerini tüm dersler için tek adımda girmek içindir.
@@ -1206,7 +1206,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 ios-button rounded-xl py-2.5 text-xs font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2e2e38] transition active:scale-[0.96] cursor-pointer"
+                className="flex-1 ios-button rounded-xl py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2e2e38] transition active:scale-[0.96] cursor-pointer"
               >
                 Vazgeç
               </button>
@@ -1216,7 +1216,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
                   confirmDelete.onConfirm();
                   setConfirmDelete(null);
                 }}
-                className="flex-1 dr-destructive-button rounded-xl py-2.5 text-xs font-black text-white transition active:scale-[0.96] cursor-pointer"
+                className="flex-1 dr-destructive-button rounded-xl py-2.5 text-xs font-bold text-white transition active:scale-[0.96] cursor-pointer"
               >
                 Sil
               </button>

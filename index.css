@@ -1361,17 +1361,6 @@ button svg,
   border-color: var(--dr-border);
 }
 
-.font-black {
-  font-weight: 700 !important;
-}
-
-.font-bold {
-  font-weight: 600 !important;
-}
-
-.font-light {
-  font-weight: 400 !important;
-}
 
 .text-3xl {
   font-size: var(--dr-type-title-1) !important;

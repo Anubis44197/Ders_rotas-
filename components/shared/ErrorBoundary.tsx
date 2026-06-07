@@ -39,7 +39,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                                 <AlertTriangle className="h-6 w-6" />
                             </div>
                             <div className="min-w-0">
-                                <h1 className="text-xl font-black">Uygulama acilirken bir veri hatasi yakalandi</h1>
+                                <h1 className="text-xl font-bold">Uygulama acilirken bir veri hatasi yakalandi</h1>
                                 <p className="mt-2 text-sm leading-6 text-slate-300">
                                     Beyaz ekran yerine bu kurtarma ekranı gösteriliyor. Sayfayı yenileyebilir ya da bu tarayıcıdaki yerel DersRotası verisini temizleyip temiz başlangıç yapabilirsiniz.
                                 </p>

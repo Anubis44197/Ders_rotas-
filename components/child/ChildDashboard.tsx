@@ -675,7 +675,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
         <section className="dr-hig-primary-box ios-mint rounded-[30px] p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/70 dark:bg-emerald-950/60 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-300 border border-transparent dark:border-emerald-800/30">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/70 dark:bg-emerald-950/60 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-300 border border-transparent dark:border-emerald-800/30">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 Canli seans
               </div>
@@ -687,7 +687,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
             <button
               type="button"
               onClick={() => startSelectedTask(currentLiveSession.task, currentLiveSession.timerState)}
-              className="ios-button-active flex shrink-0 items-center justify-center gap-2 rounded-[20px] px-5 py-3 text-sm font-black"
+              className="ios-button-active flex shrink-0 items-center justify-center gap-2 rounded-[20px] px-5 py-3 text-sm font-bold"
             >
               <Play className="h-4 w-4" />
               Devam et
@@ -700,8 +700,8 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
         <div className="dr-velvet-stat ios-blue p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-800/80 dark:text-blue-200/80">Atanan bekleyen</div>
-              <div className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{assignedPendingTodayCount}</div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-800/80 dark:text-blue-200/80">Atanan bekleyen</div>
+              <div className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">{assignedPendingTodayCount}</div>
             </div>
             <div className="dr-velvet-stat-icon text-blue-700 dark:text-blue-200"><Target className="h-5 w-5" /></div>
           </div>
@@ -710,8 +710,8 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
         <div className="dr-velvet-stat ios-mint p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-800/80 dark:text-emerald-200/80">Bugün biten</div>
-              <div className="mt-2 text-3xl font-black text-emerald-800 dark:text-emerald-200">{completedToday.length}</div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-800/80 dark:text-emerald-200/80">Bugün biten</div>
+              <div className="mt-2 text-3xl font-bold text-emerald-800 dark:text-emerald-200">{completedToday.length}</div>
             </div>
             <div className="dr-velvet-stat-icon text-emerald-700 dark:text-emerald-200"><CheckCircle className="h-5 w-5" /></div>
           </div>
@@ -720,8 +720,8 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
         <div className="dr-velvet-stat ios-lilac p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-800/80 dark:text-violet-200/80">Odak</div>
-              <div className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{analysis.overall.averageFocus}</div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-violet-800/80 dark:text-violet-200/80">Odak</div>
+              <div className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">{analysis.overall.averageFocus}</div>
             </div>
             <div className="dr-velvet-stat-icon text-violet-700 dark:text-violet-200"><Brain className="h-5 w-5" /></div>
           </div>
@@ -730,8 +730,8 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
         <div className="dr-velvet-stat ios-peach p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-orange-800/80 dark:text-orange-200/80">Hâkimiyet</div>
-              <div className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{analysis.overall.averageMastery}</div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-orange-800/80 dark:text-orange-200/80">Hâkimiyet</div>
+              <div className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">{analysis.overall.averageMastery}</div>
             </div>
             <div className="dr-velvet-stat-icon text-orange-700 dark:text-orange-200"><BookMarked className="h-5 w-5" /></div>
           </div>
@@ -750,7 +750,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex min-w-0 items-start gap-2">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900">Görev panosu</h3>
+                    <h3 className="text-xl font-bold text-slate-900">Görev panosu</h3>
                     <p className="text-sm text-slate-500">Atanan görevler önce, serbest çalışma ikinci adım.</p>
                   </div>
                   <ContextHelp title="Görev sırası" tone="mint">
@@ -771,7 +771,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                     <div className="mb-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <PlusCircle className="h-5 w-5 text-[var(--dr-orange)]" />
-                        <h3 className="text-lg font-black text-[var(--dr-text-primary)]">Serbest Çalışma Başlat</h3>
+                        <h3 className="text-lg font-bold text-[var(--dr-text-primary)]">Serbest Çalışma Başlat</h3>
                       </div>
                       <button type="button" onClick={() => setShowFreeStudy(false)} className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--dr-text-secondary)] hover:bg-[var(--dr-std-border-strong)]/10 transition">
                         <X className="h-4 w-4" />
@@ -856,7 +856,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
                       <button
                         type="submit"
                         disabled={creatingFreeStudy || freeCourseOptions.length === 0}
-                        className="ios-button-active flex-1 rounded-[16px] px-4 py-2.5 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.96]"
+                        className="ios-button-active flex-1 rounded-[16px] px-4 py-2.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.96]"
                       >
                         {creatingFreeStudy ? 'Başlatılıyor...' : 'Oluştur ve Başlat'}
                       </button>
@@ -926,7 +926,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
               <div className={card}>
                 <div className="mb-4 flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-emerald-500" />
-                  <h3 className="text-xl font-black text-slate-900">Bugün tamamlananlar</h3>
+                  <h3 className="text-xl font-bold text-slate-900">Bugün tamamlananlar</h3>
                 </div>
                 <div className="space-y-3">
                   {visibleCompletedToday.map((task) => (
@@ -992,7 +992,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
       {activeView === 'treasures' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className={card}>
-            <div className="mb-2 flex items-center gap-2"><Gift className="h-5 w-5 text-amber-500" /><h3 className="text-xl font-black text-slate-900">Ödül mağazası</h3></div>
+            <div className="mb-2 flex items-center gap-2"><Gift className="h-5 w-5 text-amber-500" /><h3 className="text-xl font-bold text-slate-900">Ödül mağazası</h3></div>
             <p className="mb-4 text-sm text-slate-500">Talep et butonu sadece puanın ödül maliyetine eşit veya fazlaysa aktif olur.</p>
             <div className="space-y-3">
               {safeRewards.length === 0 && <div className="ios-widget rounded-[24px] p-8 text-center text-slate-500">Henüz ödül eklenmemiş.</div>}
@@ -1023,7 +1023,7 @@ const ChildDashboard: React.FC<ChildDashboardInternalProps> = ({
           </div>
 
           <div className={card}>
-            <div className="mb-4 flex items-center gap-2"><BadgeCheck className="h-5 w-5 text-blue-600" /><h3 className="text-xl font-black text-slate-900">Başarılarım</h3></div>
+            <div className="mb-4 flex items-center gap-2"><BadgeCheck className="h-5 w-5 text-blue-600" /><h3 className="text-xl font-bold text-slate-900">Başarılarım</h3></div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {safeBadges.length === 0 && <div className="ios-widget rounded-[24px] p-8 text-center text-slate-500 sm:col-span-2">Rozet oluştukça burada gösterilecek.</div>}
               {safeBadges.map((badge) => (

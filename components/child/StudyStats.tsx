@@ -140,10 +140,10 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div className="ios-widget ios-blue rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Toplam çalışma</p><p className="mt-2 text-2xl font-black">{stats.totalStudyTime} dk</p></div><Clock className="h-7 w-7 text-blue-600" /></div></div>
-        <div className="ios-widget ios-mint rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Çalışma serisi</p><p className="mt-2 text-2xl font-black">{stats.streakDays} gün</p></div><Zap className="h-7 w-7 text-emerald-600" /></div></div>
-        <div className="ios-widget ios-lilac rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Ortalama puan</p><p className="mt-2 text-2xl font-black">{stats.averageSuccessScore}</p></div><Target className="h-7 w-7 text-violet-600" /></div></div>
-        <div className="ios-widget ios-peach rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Tamamlanan</p><p className="mt-2 text-2xl font-black">{stats.totalTasksCompleted}</p></div><TrendingUp className="h-7 w-7 text-orange-600" /></div></div>
+        <div className="ios-widget ios-blue rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Toplam çalışma</p><p className="mt-2 text-2xl font-bold">{stats.totalStudyTime} dk</p></div><Clock className="h-7 w-7 text-blue-600" /></div></div>
+        <div className="ios-widget ios-mint rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Çalışma serisi</p><p className="mt-2 text-2xl font-bold">{stats.streakDays} gün</p></div><Zap className="h-7 w-7 text-emerald-600" /></div></div>
+        <div className="ios-widget ios-lilac rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Ortalama puan</p><p className="mt-2 text-2xl font-bold">{stats.averageSuccessScore}</p></div><Target className="h-7 w-7 text-violet-600" /></div></div>
+        <div className="ios-widget ios-peach rounded-[24px] p-4 text-slate-900"><div className="flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Tamamlanan</p><p className="mt-2 text-2xl font-bold">{stats.totalTasksCompleted}</p></div><TrendingUp className="h-7 w-7 text-orange-600" /></div></div>
       </div>
       <div className="grid grid-cols-1 gap-2 xl:grid-cols-3">
         <div className={`ios-widget rounded-[16px] px-3 py-2 text-xs font-bold ${weeklyDelta.minutes.tone}`}>Calisma suresi: {weeklyDelta.minutes.arrow} {weeklyDelta.minutes.text}</div>
@@ -153,7 +153,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.25fr)_320px]">
         <div className={card}>
-          <div className="mb-4 flex items-center gap-2 text-slate-900"><Calendar className="h-5 w-5 text-primary-600" /><h3 className="text-lg font-black">Son 7 gün</h3></div>
+          <div className="mb-4 flex items-center gap-2 text-slate-900"><Calendar className="h-5 w-5 text-primary-600" /><h3 className="text-lg font-bold">Son 7 gün</h3></div>
           <SafeResponsiveContainer width="100%" height={260}>
             <LineChart data={weeklyTrendData}>
               <CartesianGrid {...chartGridProps} />
@@ -188,7 +188,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
 
         <div className="space-y-5">
           <div className={card}>
-            <h3 className="mb-4 text-base font-black text-slate-900">Çalışma ritmi</h3>
+            <h3 className="mb-4 text-base font-bold text-slate-900">Çalışma ritmi</h3>
             <div className="space-y-3">
               <div className="ios-widget flex items-center justify-between rounded-[18px] px-4 py-3"><span className="text-sm text-slate-600">En verimli saat</span><span className="font-bold text-blue-600">{stats.bestPerformanceHour}</span></div>
               <div className="ios-widget flex items-center justify-between rounded-[18px] px-4 py-3"><span className="text-sm text-slate-600">Favori ders</span><span className="font-bold text-emerald-600">{stats.favoriteSubject}</span></div>
@@ -201,7 +201,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
           </div>
 
           <div className={card}>
-            <h3 className="mb-4 text-base font-black text-slate-900">Ders dağılımı</h3>
+            <h3 className="mb-4 text-base font-bold text-slate-900">Ders dağılımı</h3>
             <SafeResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie legendType="none" data={courseDistribution} cx="50%" cy="50%" outerRadius={70} dataKey="value" innerRadius={38}>
@@ -223,7 +223,7 @@ const StudyStats: React.FC<StudyStatsProps> = ({ tasks, courses }) => {
       </div>
 
       <div className={card}>
-        <div className="mb-4 flex items-center gap-2 text-slate-900"><BookOpen className="h-5 w-5 text-blue-600" /><h3 className="text-lg font-black">Günlük görev dağılımı</h3></div>
+        <div className="mb-4 flex items-center gap-2 text-slate-900"><BookOpen className="h-5 w-5 text-blue-600" /><h3 className="text-lg font-bold">Günlük görev dağılımı</h3></div>
         <SafeResponsiveContainer width="100%" height={240}>
           <BarChart data={weeklyTrendData}>
             <CartesianGrid {...chartGridProps} />

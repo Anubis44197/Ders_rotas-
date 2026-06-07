@@ -100,7 +100,7 @@ const ManualTaskCompletionModal: React.FC<ManualTaskCompletionModalProps> = ({ s
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Gecmis kayit</div>
-            <h3 className="mt-1 text-xl font-black text-slate-900">Gorevi manuel tamamla</h3>
+            <h3 className="mt-1 text-xl font-bold text-slate-900">Gorevi manuel tamamla</h3>
             <p className="mt-1 text-xs leading-5 text-slate-500">Gecmis tarihli sure ve sonuc bilgisini gir.</p>
           </div>
           <button type="button" onClick={onClose} className="ios-button rounded-full px-3 py-2 text-sm font-bold text-slate-500">Kapat</button>

@@ -18,7 +18,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message }) => {
           {icon}
         </div>
       </div>
-      <h3 className="text-lg font-black text-slate-800">{title}</h3>
+      <h3 className="text-lg font-bold text-slate-800">{title}</h3>
       <p className="max-w-xs leading-relaxed text-slate-600">{message}</p>
       <div className="mt-4 rounded-full bg-white/55 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-primary-500">Veri geldikçe güncellenir</div>
     </div>

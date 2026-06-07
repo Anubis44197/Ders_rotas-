@@ -51,7 +51,7 @@ const CustomReportModal: React.FC<Props> = ({ tasks, courses, performanceData, s
       <div className="dr-compact-modal dr-modal-scroll relative max-h-[min(76dvh,38rem)] w-[min(46rem,calc(100vw-1.5rem))] overflow-y-auto bg-white p-4 shadow-lg">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-900">Durum raporu</h2>
+            <h2 className="text-2xl font-bold text-slate-900">Durum raporu</h2>
             <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{summary}</p>
           </div>
           <button className="rounded-full bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200" onClick={() => window.dispatchEvent(new CustomEvent('closeCustomReport'))} aria-label="Kapat">

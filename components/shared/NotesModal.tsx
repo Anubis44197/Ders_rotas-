@@ -36,7 +36,7 @@ const NotesModal: React.FC<NotesModalProps> = ({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-blue-500" />
-            <h3 id="notes-modal-title" className="text-lg font-black text-white">Not Ekle</h3>
+            <h3 id="notes-modal-title" className="text-lg font-bold text-white">Not Ekle</h3>
           </div>
           <button onClick={handleClose} aria-label="Kapat" title="Kapat" className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition">
             <X className="h-4 w-4" />

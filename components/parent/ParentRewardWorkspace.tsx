@@ -87,11 +87,11 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
       )}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#A08C6C]">
+          <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#A08C6C]">
             🏆 REWARDS SYSTEM / Ebeveyn kontrol merkezi
           </div>
           <div className="mt-1 flex items-center gap-2">
-            <h3 className="text-lg font-black text-slate-900 dark:text-white">Ödül Tanımla</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Ödül Tanımla</h3>
             <ContextHelp title="Ödül Mağazası" tone="blue">
               Çocuğunuz kazandığı Başarı Puanlarını (BP) burada belirlediğiniz ödülleri satın almak için kullanabilir. Ödüller ve puan maliyetleri veli kontrolündedir.
             </ContextHelp>
@@ -115,7 +115,7 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
           <button
             type="submit"
             disabled={isAddingReward}
-            className={`rounded-xl px-5 py-2.5 text-xs font-black transition duration-300 shadow-md ${
+            className={`rounded-xl px-5 py-2.5 text-xs font-bold transition duration-300 shadow-md ${
               isAddingReward
                 ? 'cursor-not-allowed opacity-50 bg-slate-300 text-slate-500'
                 : 'bg-[#FF4F18] text-[#111827] hover:bg-[#ff6c3b] active:scale-95 shadow-[#FF4F18]/15'
@@ -128,7 +128,7 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
       </div>
       {rewards.length > 0 && (
         <div className="mt-6 border-t border-slate-100 dark:border-white/5 pt-5">
-          <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#A08C6C] mb-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#A08C6C] mb-4">
             📐 ACTIVE REWARDS / AKTİF ÖDÜLLER
           </div>
           <div className="flex flex-wrap gap-2.5">
@@ -147,7 +147,7 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
                   <span className="text-slate-900 dark:text-slate-100">{reward.name}</span>
                   <span className="opacity-40">•</span>
                   <span className="font-bold">{reward.cost} BP</span>
-                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
                     isAffordable
                       ? 'bg-[#FF4F18]/15 text-[#FF4F18]'
                       : 'bg-[#A08C6C]/15 text-slate-500 dark:text-[#A08C6C]'
@@ -193,7 +193,7 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setConfirmModal(null)}
-                className="flex-1 ios-button rounded-xl py-2.5 text-xs font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2e2e38] transition active:scale-[0.96] cursor-pointer"
+                className="flex-1 ios-button rounded-xl py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2e2e38] transition active:scale-[0.96] cursor-pointer"
               >
                 Vazgeç
               </button>
@@ -203,7 +203,7 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
                   confirmModal.onConfirm();
                   setConfirmModal(null);
                 }}
-                className="flex-1 dr-destructive-button rounded-xl py-2.5 text-xs font-black text-white transition active:scale-[0.96] cursor-pointer"
+                className="flex-1 dr-destructive-button rounded-xl py-2.5 text-xs font-bold text-white transition active:scale-[0.96] cursor-pointer"
               >
                 Sil
               </button>

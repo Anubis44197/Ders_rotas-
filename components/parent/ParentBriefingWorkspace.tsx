@@ -76,8 +76,8 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
       <div className="p-6 lg:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Genel Bakis</div>
-            <h3 className="mt-2 text-2xl font-black text-slate-950">Bugunku karar ozeti</h3>
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Genel Bakis</div>
+            <h3 className="mt-2 text-2xl font-bold text-slate-950">Bugunku karar ozeti</h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
               {weakTopic
                 ? `${weakTopic.courseName} / ${weakTopic.topicName} bu hafta takip edilmesi gereken konu.`
@@ -88,7 +88,7 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black ${status.tone}`}>
+            <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${status.tone}`}>
               <StatusIcon className="h-4 w-4" />
               {status.label}
             </div>
@@ -119,7 +119,7 @@ const ParentBriefingWorkspace: React.FC<ParentBriefingWorkspaceProps> = ({ analy
                     </ContextHelp>
                   )}
                 </div>
-                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">{item.value}</div>
+                <div className="mt-2 text-3xl font-bold tracking-tight text-slate-950">{item.value}</div>
                 <div className="mt-1 text-xs font-semibold text-slate-400">{item.hint}</div>
               </div>
             );

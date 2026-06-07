@@ -91,16 +91,16 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Tamamlanan</div><div className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">{completedTasks.length}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Kayıtlı oturum</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Toplam süre</div><div className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">{totalDuration}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Dakika</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama skor</div><div className="mt-2 text-2xl font-black text-amber-600">{averageScore}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Başarı ortalaması</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama odak</div><div className="mt-2 text-2xl font-black text-[var(--dr-text-primary)]">{averageFocus}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Odak ortalaması</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Tamamlanan</div><div className="mt-2 text-2xl font-bold text-[var(--dr-text-primary)]">{completedTasks.length}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Kayıtlı oturum</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Toplam süre</div><div className="mt-2 text-2xl font-bold text-[var(--dr-text-primary)]">{totalDuration}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Dakika</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama skor</div><div className="mt-2 text-2xl font-bold text-amber-600">{averageScore}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Başarı ortalaması</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama odak</div><div className="mt-2 text-2xl font-bold text-[var(--dr-text-primary)]">{averageFocus}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Odak ortalaması</div></div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_340px]">
         <div className={card}>
           <div className="mb-4">
-            <h3 className="text-lg font-black text-[var(--dr-text-primary)]">Aylık ilerleme</h3>
+            <h3 className="text-lg font-bold text-[var(--dr-text-primary)]">Aylık ilerleme</h3>
             <p className="mt-1 text-sm text-[var(--dr-text-secondary)]">Tamamlanan görev ve ortalama skor aynı tabloda izlenir.</p>
           </div>
           <SafeResponsiveContainer width="100%" height={260}>
@@ -117,7 +117,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
 
         <div className="space-y-5">
           <div className={card}>
-            <h3 className="text-base font-black text-[var(--dr-text-primary)]">Karar karti</h3>
+            <h3 className="text-base font-bold text-[var(--dr-text-primary)]">Karar karti</h3>
             <div className="mt-4 space-y-3 text-sm text-[var(--dr-text-secondary)]">
               <div className="rounded-2xl bg-emerald-500/10 px-4 py-3">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Güçlü ders</div>
@@ -136,14 +136,14 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
               </div>
               <div className="rounded-2xl bg-[var(--dr-surface)]/70 px-4 py-3">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--dr-text-secondary)]">Plan uyumu</div>
-                <div className="mt-1 text-2xl font-black text-[var(--dr-text-primary)]">{analysis.plan.adherenceScore}</div>
+                <div className="mt-1 text-2xl font-bold text-[var(--dr-text-primary)]">{analysis.plan.adherenceScore}</div>
                 <div className="mt-1 text-xs text-[var(--dr-text-secondary)]">Atanan görev tamamlama seviyesi</div>
               </div>
             </div>
           </div>
 
           <div className={card}>
-            <h3 className="text-base font-black text-[var(--dr-text-primary)]">Müdahale gereken konular</h3>
+            <h3 className="text-base font-bold text-[var(--dr-text-primary)]">Müdahale gereken konular</h3>
             <div className="mt-4 space-y-3">
               {weakestTopics.length === 0 && <div className="rounded-2xl bg-[var(--dr-surface)]/70 px-4 py-4 text-sm text-[var(--dr-text-secondary)]">Tekrar bayrağı olan konu yok.</div>}
               {weakestTopics.map((topic) => (
@@ -160,7 +160,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <div className={card}>
-          <h3 className="mb-4 text-lg font-black text-[var(--dr-text-primary)]">Haftalık performans</h3>
+          <h3 className="mb-4 text-lg font-bold text-[var(--dr-text-primary)]">Haftalık performans</h3>
           <SafeResponsiveContainer width="100%" height={240}>
             <BarChart data={weeklyData}>
               <CartesianGrid {...chartGridProps} />
@@ -174,7 +174,7 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
         </div>
 
         <div className={card}>
-          <h3 className="mb-4 text-lg font-black text-[var(--dr-text-primary)]">Yıllık genel görünüm</h3>
+          <h3 className="mb-4 text-lg font-bold text-[var(--dr-text-primary)]">Yıllık genel görünüm</h3>
           <SafeResponsiveContainer width="100%" height={240}>
             <LineChart data={yearlyData}>
               <CartesianGrid {...chartGridProps} />

@@ -5246,22 +5246,22 @@ const App: React.FC = () => {
             {userType === UserType.Parent && !isParentLocked ? (
               <div className="hidden xl:block">
                 <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">DersRotası</div>
-                <div className="text-lg font-black text-slate-900">Ebeveyn Paneli</div>
+                <div className="text-lg font-bold text-slate-900">Ebeveyn Paneli</div>
               </div>
             ) : (
               <div className="hidden min-w-0 sm:block">
                 <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">DersRotası</div>
-                <div className="text-lg font-black text-slate-900">{userType === UserType.Parent ? 'Ebeveyn Paneli' : 'Çocuk Paneli'}</div>
+                <div className="text-lg font-bold text-slate-900">{userType === UserType.Parent ? 'Ebeveyn Paneli' : 'Çocuk Paneli'}</div>
               </div>
             )}
           </div>
           <div ref={topbarToolbarRef} onKeyDown={handleToolbarKeyDown} className="flex items-center gap-2 sm:gap-4" role="toolbar" aria-label="Uygulama komutlari">
             <div className="dr-toolbar-group dr-velvet-segment relative inline-flex shrink-0 rounded-full p-1" aria-label="Kullanıcı modu">
               <span aria-hidden="true" className={`dr-velvet-segment-indicator ${userType === UserType.Parent ? 'translate-x-0' : 'translate-x-full'}`} />
-              <button data-testid="switch-parent-mode-btn" onClick={() => handleUserTypeChange(UserType.Parent)} aria-pressed={userType === UserType.Parent} title="Ebeveyn modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-black transition-colors duration-200 sm:w-24 sm:text-sm ${userType === UserType.Parent ? 'text-slate-950 dark:text-slate-950' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}>
+              <button data-testid="switch-parent-mode-btn" onClick={() => handleUserTypeChange(UserType.Parent)} aria-pressed={userType === UserType.Parent} title="Ebeveyn modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-bold transition-colors duration-200 sm:w-24 sm:text-sm ${userType === UserType.Parent ? 'text-slate-950 dark:text-slate-950' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}>
                 Ebeveyn
               </button>
-              <button data-testid="switch-child-mode-btn" onClick={() => handleUserTypeChange(UserType.Child)} aria-pressed={userType === UserType.Child} title="Çocuk modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-black transition-colors duration-200 sm:w-24 sm:text-sm ${userType === UserType.Child ? 'text-slate-950 dark:text-slate-950' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}>
+              <button data-testid="switch-child-mode-btn" onClick={() => handleUserTypeChange(UserType.Child)} aria-pressed={userType === UserType.Child} title="Çocuk modu" className={`relative z-10 flex h-8 w-[4.25rem] items-center justify-center rounded-full text-xs font-bold transition-colors duration-200 sm:w-24 sm:text-sm ${userType === UserType.Child ? 'text-slate-950 dark:text-slate-950' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}>
                 Çocuk
               </button>
             </div>
@@ -5522,7 +5522,7 @@ const App: React.FC = () => {
                   <BookOpen className="h-4 w-4" />
                   Müfredat Düzenleme
                 </div>
-                <h3 className="mt-2 text-2xl font-black text-slate-900">Ders / ünite / konu yapısı</h3>
+                <h3 className="mt-2 text-2xl font-bold text-slate-900">Ders / ünite / konu yapısı</h3>
                 <p className="mt-1 text-sm text-slate-500">Kaydedilen iskelet Planlama sayfasında özet olarak kalır.</p>
               </div>
               <button type="button" onClick={() => setCurriculumEditorOpen(false)} className="ios-button flex h-11 w-11 items-center justify-center rounded-full text-slate-600" aria-label="Müfredat düzenlemeyi kapat">
@@ -5542,7 +5542,7 @@ const App: React.FC = () => {
           <div ref={settingsPopoverRef} className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(26rem,calc(100vw-1.5rem))] flex-col overflow-hidden p-3" role="dialog" aria-modal="true" aria-label="Uygulama ayarları">
             <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
               <div>
-                <div className="text-base font-black text-slate-900">Uygulama Ayarları</div>
+                <div className="text-base font-bold text-slate-900">Uygulama Ayarları</div>
                 <div className="mt-1 text-xs text-slate-500">Tercihler bu cihaza kaydedilir.</div>
               </div>
               <button type="button" onClick={() => setSettingsOpen(false)} className="ios-button flex h-10 w-10 items-center justify-center rounded-full text-slate-600" aria-label="Ayarları kapat">
@@ -5615,7 +5615,7 @@ const App: React.FC = () => {
           <div className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-[min(32rem,calc(100vw-1.5rem))] flex-col overflow-hidden p-3" role="dialog" aria-modal="true" aria-label="Veri yönetimi erişimi">
             <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
               <div>
-                <div className="text-base font-black text-slate-900">Veri Yönetimi</div>
+                <div className="text-base font-bold text-slate-900">Veri Yönetimi</div>
                 <div className="mt-1 text-xs text-slate-500">Bu alan şifre korumalıdır.</div>
               </div>
               <button
@@ -5667,7 +5667,7 @@ const App: React.FC = () => {
                   toast.onAction?.();
                   setToasts((prev) => prev.filter((item) => item.id !== toast.id));
                 }}
-                className="ios-button shrink-0 rounded-full px-3 py-1 text-xs font-black text-slate-800"
+                className="ios-button shrink-0 rounded-full px-3 py-1 text-xs font-bold text-slate-800"
               >
                 {toast.actionLabel}
               </button>
