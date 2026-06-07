@@ -204,6 +204,12 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
       )}
 
       <section className="dr-planning-card">
+        {/* Decorative macOS Window Controls (Traffic Lights) */}
+        <div className="flex items-center gap-1.5 mb-5 pl-0.5" aria-hidden="true">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-500/85" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500/85" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FF4F18]/90" />
+        </div>
         <div className="dr-planning-card-head flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="dr-planning-kicker flex items-center gap-2 dr-hig-caption font-bold uppercase">
@@ -337,6 +343,12 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
       )}
 
       <section className="dr-planning-card">
+        {/* Decorative macOS Window Controls (Traffic Lights) */}
+        <div className="flex items-center gap-1.5 mb-5 pl-0.5" aria-hidden="true">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-500/85" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500/85" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FF4F18]/90" />
+        </div>
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-[var(--dr-orange)]" />

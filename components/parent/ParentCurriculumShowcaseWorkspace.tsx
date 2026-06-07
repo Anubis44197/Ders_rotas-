@@ -412,6 +412,12 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
   return (
     <ParentWorkspaceFrame title="Müfredat Paneli" description="Okul ve çocuk konu hizası" spacing="wide">
       <section className="dr-curriculum-showcase-panel" data-testid="curriculum-showcase-panel">
+        {/* Decorative macOS Window Controls (Traffic Lights) */}
+        <div className="flex items-center gap-1.5 mb-5 pl-0.5" aria-hidden="true">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-500/85" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500/85" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FF4F18]/90" />
+        </div>
         <div className="dr-curriculum-showcase-head">
           <div>
             <div className="flex items-center gap-2">

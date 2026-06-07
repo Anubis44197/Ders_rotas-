@@ -24,10 +24,10 @@
   --dr-shadow: 0 20px 54px rgba(160, 140, 108, 0.10);
   --dr-shadow-soft: 0 12px 30px rgba(160, 140, 108, 0.08);
   --dr-shadow-hairline: 0 4px 18px rgba(160, 140, 108, 0.04);
-  --dr-border: rgba(160, 140, 108, 0.16);
+  --dr-border: rgba(105, 119, 150, 0.12);
   --dr-std-bg: rgba(255, 255, 255, 0.65);
   --dr-std-bg-soft: rgba(255, 255, 255, 0.45);
-  --dr-std-border: rgba(160, 140, 108, 0.24);
+  --dr-std-border: rgba(105, 119, 150, 0.18);
   --dr-std-border-strong: #A08C6C;
   --dr-std-kicker: #A08C6C;
   --dr-std-muted: #6b7280;
@@ -362,9 +362,12 @@ textarea:focus-visible {
   --dr-yellow-soft: rgba(245, 158, 11, 0.12);
   --dr-shadow: 0 22px 54px rgba(0, 0, 0, 0.55);
   --dr-shadow-soft: 0 14px 36px rgba(0, 0, 0, 0.42);
-  --dr-border: rgba(160, 140, 108, 0.18);
+  --dr-border: rgba(138, 180, 255, 0.12);
   color: var(--dr-text);
-  background: radial-gradient(circle at top, #14172b 0%, #070911 68%, #030408 100%) !important;
+  background:
+    radial-gradient(circle at 12% 16%, rgba(255, 79, 24, 0.035), transparent 38%),
+    radial-gradient(circle at 88% 28%, rgba(138, 180, 255, 0.02), transparent 32%),
+    radial-gradient(circle at top, #14172b 0%, #070911 68%, #030408 100%) !important;
 }
 
 .dr-topbar {
@@ -507,7 +510,11 @@ textarea:focus-visible {
 }
 
 .dr-title {
-  letter-spacing: 0;
+  letter-spacing: -0.025em;
+}
+
+h1, h2, h3, h4, .dr-title, .dr-planning-title, .dr-planning-section-title {
+  letter-spacing: -0.025em !important;
 }
 
 .dr-chip {
