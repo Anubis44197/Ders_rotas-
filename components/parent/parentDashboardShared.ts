@@ -133,3 +133,15 @@ export const taskWorkspaceTabs: Array<{ id: TaskWorkspaceTab; label: string; des
   { id: 'exams', label: 'Sınav Merkezi', description: 'Ders ve genel sınav girişi' },
   { id: 'data', label: 'Veri', description: 'Ice aktar / disa aktar' },
 ];
+
+export const getCourseColorClass = (courseName: string, isDarkMode?: boolean) => {
+  const dark = isDarkMode !== undefined ? isDarkMode : (typeof document !== 'undefined' && document.querySelector('.dr-theme-dark') !== null);
+  if (dark) return 'text-[var(--dr-text-primary)]';
+  const normalized = normalizeForLookup(courseName || '');
+  if (normalized.includes('matematik')) return 'text-blue-600';
+  if (normalized.includes('turkce')) return 'text-emerald-600';
+  if (normalized.includes('fen')) return 'text-orange-500';
+  if (normalized.includes('inkilap') || normalized.includes('tarih') || normalized.includes('sosyal')) return 'text-purple-600';
+  if (normalized.includes('ingilizce') || normalized.includes('dil')) return 'text-rose-500';
+  return 'text-indigo-600';
+};

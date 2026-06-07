@@ -4,6 +4,7 @@ import { BookOpen, Calendar, CheckCircle, ClipboardList, Clock, PlusCircle, Targ
 import WeeklySchedulePanel from './WeeklySchedulePanel';
 import { getTodayString } from '../../utils/dateUtils';
 import ContextHelp from '../shared/ContextHelp';
+import { getCourseColorClass } from './parentDashboardShared';
 
 interface CurriculumSummary {
   subjects: string[];
@@ -189,10 +190,10 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
       </section>
       {brokenReferenceTotal > 0 && (
         <section className="ios-coral rounded-[24px] p-5 text-rose-950">
-          <div className="text-xs font-black uppercase tracking-[0.16em] opacity-75">Veri bağlantı kontrolü</div>
-          <h3 className="mt-2 text-xl font-black">Ders kaydı bulunamayan {brokenReferenceTotal} bağlantı var</h3>
+          <div className="text-xs font-bold uppercase tracking-[0.16em] opacity-75">Veri bağlantı kontrolü</div>
+          <h3 className="mt-2 text-xl font-bold">Ders kaydı bulunamayan {brokenReferenceTotal} bağlantı var</h3>
           <p className="mt-2 text-sm font-semibold opacity-80">Bu kayıtlar silinmedi; ancak hangi derse ait oldukları netleşmeden yeni plan üretiminde kullanılamayabilir.</p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs font-black">
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold">
             {safeCourseReferenceHealth.taskCount > 0 && <span className="rounded-full bg-white/40 px-3 py-2">Görev {safeCourseReferenceHealth.taskCount}</span>}
             {safeCourseReferenceHealth.examRecordCount > 0 && <span className="rounded-full bg-white/40 px-3 py-2">Okul sınavı {safeCourseReferenceHealth.examRecordCount}</span>}
             {safeCourseReferenceHealth.compositeExamCount > 0 && <span className="rounded-full bg-white/40 px-3 py-2">Deneme satırı {safeCourseReferenceHealth.compositeExamCount}</span>}
@@ -226,7 +227,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
           <button
             type="button"
             onClick={onOpenCurriculumEditor}
-            className="ios-button-active inline-flex items-center justify-center gap-2 rounded-[16px] px-5 py-3 text-sm font-black text-white transition-all active:scale-[0.96] cursor-pointer"
+            className="ios-button-active inline-flex items-center justify-center gap-2 rounded-[16px] px-5 py-3 text-sm font-bold text-white transition-all active:scale-[0.96] cursor-pointer"
           >
             <PlusCircle className="h-4 w-4" />
             Ders Ekle / Kaldır
@@ -259,7 +260,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         ) : (
           <div className="dr-planning-chip-row mt-4 flex flex-wrap gap-2">
             {safeCurriculumSummary.subjects.slice(0, 8).map((subject) => (
-              <span key={subject} className="dr-planning-chip">
+              <span key={subject} className={`dr-planning-chip ${getCourseColorClass(subject)} font-bold`}>
                 {subject}
               </span>
             ))}
@@ -276,7 +277,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--dr-text-secondary)]">Pasif dersler</div>
                 <p className="mt-1 text-sm text-[var(--dr-text-secondary)]">Yeni plan ve veri girişlerinde görünmez; geçmiş kayıtlar korunur.</p>
               </div>
-              <span className="ios-button rounded-full px-3 py-2 text-xs font-black text-[var(--dr-text-primary)]">{inactiveCourses.length} ders</span>
+              <span className="ios-button rounded-full px-3 py-2 text-xs font-bold text-[var(--dr-text-primary)]">{inactiveCourses.length} ders</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {inactiveCourses.map((course) => (
@@ -301,7 +302,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl transition-all">
           <div className="ios-card dr-compact-modal flex max-h-[min(30rem,calc(100dvh-1.5rem))] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl" role="dialog" aria-modal="true" aria-label="Sınav takvimi ekle">
             <div className="flex items-center justify-between border-b border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/20 px-4 py-3">
-              <h2 className="text-lg font-black text-[var(--dr-text-primary)]">Sınav Ekle</h2>
+              <h2 className="text-lg font-bold text-[var(--dr-text-primary)]">Sınav Ekle</h2>
               <button type="button" onClick={() => { setExamFormMessage(null); setIsExamModalOpen(false); }} className="ios-button flex h-9 w-9 items-center justify-center rounded-full text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Sınav formunu kapat">
                 ✕
               </button>
@@ -323,7 +324,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
                 <input value={examDateInput} onChange={(event) => { setExamDateInput(event.target.value); setExamFormMessage(null); }} type="date" className="dr-form-field w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" />
               </div>
               {examFormMessage && (
-                <div className="dr-planning-empty rounded-[16px] px-3 py-2 text-xs font-black text-[var(--dr-orange)]" role="status">
+                <div className="dr-planning-empty rounded-[16px] px-3 py-2 text-xs font-bold text-[var(--dr-orange)]" role="status">
                   {examFormMessage}
                 </div>
               )}
@@ -377,8 +378,8 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
                     return (
                       <div key={exam.id} className="dr-planning-exam-row dr-planning-exam-row-upcoming flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 text-sm font-black text-[var(--dr-text-primary)]"><CheckCircle className="h-4 w-4 shrink-0 text-[var(--dr-plan-mint)]" /><span className="truncate">{exam.examName}</span></div>
-                          <div className="mt-0.5 text-xs font-semibold text-[var(--dr-text-secondary)]">{exam.courseName} · {exam.date}</div>
+                          <div className="flex items-center gap-2 text-sm font-bold text-[var(--dr-text-primary)]"><CheckCircle className="h-4 w-4 shrink-0 text-[var(--dr-plan-mint)]" /><span className="truncate">{exam.examName}</span></div>
+                          <div className="mt-0.5 text-xs font-semibold text-[var(--dr-text-secondary)]"><span className={getCourseColorClass(exam.courseName)}>{exam.courseName}</span> · {exam.date}</div>
                           {exam.note && <div className="mt-1 text-xs text-[var(--dr-text-secondary)]/80">{exam.note}</div>}
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
@@ -413,7 +414,7 @@ const ParentPlanningWorkspace: React.FC<ParentPlanningWorkspaceProps> = ({
                     <div key={exam.id} className="dr-planning-exam-row dr-planning-exam-row-past flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 text-sm font-bold text-[var(--dr-text-primary)]/80"><Clock className="h-4 w-4 shrink-0 text-[var(--dr-text-secondary)]" /><span className="truncate">{exam.examName}</span></div>
-                        <div className="mt-0.5 text-xs font-semibold text-[var(--dr-text-secondary)]">{exam.courseName} · {exam.date}</div>
+                        <div className="mt-0.5 text-xs font-semibold text-[var(--dr-text-secondary)]"><span className={getCourseColorClass(exam.courseName)}>{exam.courseName}</span> · {exam.date}</div>
                       </div>
                       <button
                         type="button"
