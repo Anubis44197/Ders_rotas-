@@ -4913,3 +4913,14 @@ button.ios-coral {
     grid-column: 1 / -1 !important;
   }
 }
+
+/* GPU Hardware Acceleration for Smooth Rendering & Swiping on Mobile/Tablet */
+.dr-planning-card,
+.dr-curriculum-showcase-card,
+.dr-curriculum-cards-slider,
+.dr-panel,
+.dr-parent-workspace-strip {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}

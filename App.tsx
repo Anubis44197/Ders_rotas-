@@ -5106,129 +5106,135 @@ const App: React.FC = () => {
   );
 
   const renderParentWorkspace = () => {
-    if (parentWorkspaceView === 'planning') {
-      return (
-        <Suspense fallback={<WorkspaceLoadingFallback label="Planlama yukleniyor..." />}>
-          <ParentPlanningWorkspace
-            curriculum={curriculum}
-            curriculumSummary={curriculumSummary}
-            weeklySchedule={weeklySchedule}
-            examScheduleEntries={examScheduleEntries}
-            courses={courses}
-            tasks={tasks}
-            addTask={addTask}
-            deleteTask={deleteTask}
-            onChangeSchedule={setWeeklySchedule}
-            onChangeExamSchedules={setExamScheduleEntries}
-            onOpenCurriculumEditor={() => setCurriculumEditorOpen(true)}
-            onReactivateCourse={reactivateCourse}
-            courseReferenceHealth={courseReferenceHealth}
-            onRecordSchoolTopicHistory={recordSchoolTopicHistory}
-          />
-        </Suspense>
-      );
-    }
-
-    if (parentWorkspaceView === 'curriculum-panel') {
-      return (
-        <Suspense fallback={<WorkspaceLoadingFallback label="Mufredat paneli yukleniyor..." />}>
-          <ParentCurriculumShowcaseWorkspace
-            courses={courses}
-            curriculum={curriculum}
-            weeklySchedule={weeklySchedule}
-            tasks={tasks}
-            overviewCourseInsights={overviewCourseInsights}
-            overviewTopicPerformanceRows={overviewTopicPerformanceRows}
-            onOpenOverviewReport={() => setParentWorkspaceView('overview')}
-            onOpenWeeklyAnalysis={() => setParentWorkspaceView('analysis')}
-          />
-        </Suspense>
-      );
-    }
-
-    if (parentWorkspaceView === 'analysis') {
-      if (!parentDecisionV1Enabled) {
-        return (
-          <div className="space-y-4">
-            <div className="ios-card rounded-[24px] p-4 text-sm font-semibold text-slate-700">
-              Yeni karar ekrani kapali. Fallback olarak Genel Bakis gosteriliyor.
-            </div>
-            <Suspense fallback={<WorkspaceLoadingFallback label="Genel bakis yukleniyor..." />}>
-              <ParentOverviewWorkspace
-                parentSummary={parentSummary}
-                overviewSummary={overviewSummary}
-                overviewNextTask={overviewNextTask}
-                weeklySchedule={weeklySchedule}
-                curriculum={curriculum}
-                onWeeklyScheduleChange={setWeeklySchedule}
-                onRecordSchoolTopicHistory={recordSchoolTopicHistory}
-                overviewUpcomingExam={overviewUpcomingExam}
-                overviewTodayName={overviewTodayName}
-                overviewTodaySlots={overviewTodaySlots}
-                overviewTodayCompletedTasks={overviewTodayCompletedTasks}
-                overviewWeakTopicActions={overviewWeakTopicActions}
-                overviewCourseNames={overviewCourseNames}
-                overviewWeeklyStats={overviewWeeklyStatsForView}
-                overviewCourseInsights={overviewCourseInsights}
-                overviewTopicInsights={overviewTopicInsights}
-                overviewTopicMetricsMap={overviewTopicMetricsMap}
-                overviewTopicPerformanceRows={overviewTopicPerformanceRows}
-                overviewReportSeries={overviewReportSeries}
-                overviewStudyPeriod={overviewStudyPeriod}
-                onOverviewStudyPeriodChange={setOverviewStudyPeriod}
-                overviewSignal={overviewSignal}
-                overviewExamDecision={overviewExamDecision}
-                lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
-                onOpenPlanning={(message: string) => handleQuickAction('planning', message)}
-                onOpenAnalysis={() => setParentWorkspaceView('analysis')}
-              />
-            </Suspense>
-          </div>
-        );
-      }
-      return (
-        <Suspense fallback={<WorkspaceLoadingFallback label="Karar ekrani yukleniyor..." />}>
-          <ParentAnalysisShell
-            analyzedSessionCount={analyzedSessionCount}
-            weakTopicCount={parentSummary.weakTopics.length}
-          >
-            {renderParentDashboardMode('analysis')}
-          </ParentAnalysisShell>
-        </Suspense>
-      );
-    }
+    const isPlanning = parentWorkspaceView === 'planning';
+    const isCurriculum = parentWorkspaceView === 'curriculum-panel';
+    const isAnalysis = parentWorkspaceView === 'analysis';
+    const isOverview = !parentWorkspaceView || parentWorkspaceView === 'overview';
 
     return (
-      <Suspense fallback={<WorkspaceLoadingFallback label="Genel bakis yukleniyor..." />}>
-        <ParentOverviewWorkspace
-          parentSummary={parentSummary}
-          overviewSummary={overviewSummary}
-          overviewNextTask={overviewNextTask}
-          weeklySchedule={weeklySchedule}
-          curriculum={curriculum}
-          onWeeklyScheduleChange={setWeeklySchedule}
-          onRecordSchoolTopicHistory={recordSchoolTopicHistory}
-          overviewUpcomingExam={overviewUpcomingExam}
-          overviewTodayName={overviewTodayName}
-          overviewTodaySlots={overviewTodaySlots}
-          overviewTodayCompletedTasks={overviewTodayCompletedTasks}
-          overviewWeakTopicActions={overviewWeakTopicActions}
-          overviewCourseNames={overviewCourseNames}
-          overviewWeeklyStats={overviewWeeklyStatsForView}
-          overviewCourseInsights={overviewCourseInsights}
-          overviewTopicInsights={overviewTopicInsights}
-          overviewTopicMetricsMap={overviewTopicMetricsMap}
-          overviewTopicPerformanceRows={overviewTopicPerformanceRows}
-          overviewReportSeries={overviewReportSeries}
-          overviewStudyPeriod={overviewStudyPeriod}
-          onOverviewStudyPeriodChange={setOverviewStudyPeriod}
-          overviewSignal={overviewSignal}
-          overviewExamDecision={overviewExamDecision}
-          lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
-          onOpenPlanning={(message: string) => handleQuickAction('planning', message)}
-          onOpenAnalysis={() => setParentWorkspaceView('analysis')}
-        />
-      </Suspense>
+      <>
+        {/* Planning Workspace */}
+        <div className={isPlanning ? 'block' : 'hidden'} key="planning-container">
+          <Suspense fallback={<WorkspaceLoadingFallback label="Planlama yukleniyor..." />}>
+            <ParentPlanningWorkspace
+              curriculum={curriculum}
+              curriculumSummary={curriculumSummary}
+              weeklySchedule={weeklySchedule}
+              examScheduleEntries={examScheduleEntries}
+              courses={courses}
+              tasks={tasks}
+              addTask={addTask}
+              deleteTask={deleteTask}
+              onChangeSchedule={setWeeklySchedule}
+              onChangeExamSchedules={setExamScheduleEntries}
+              onOpenCurriculumEditor={() => setCurriculumEditorOpen(true)}
+              onReactivateCourse={reactivateCourse}
+              courseReferenceHealth={courseReferenceHealth}
+              onRecordSchoolTopicHistory={recordSchoolTopicHistory}
+            />
+          </Suspense>
+        </div>
+
+        {/* Curriculum Showcase Workspace */}
+        <div className={isCurriculum ? 'block' : 'hidden'} key="curriculum-container">
+          <Suspense fallback={<WorkspaceLoadingFallback label="Mufredat paneli yukleniyor..." />}>
+            <ParentCurriculumShowcaseWorkspace
+              courses={courses}
+              curriculum={curriculum}
+              weeklySchedule={weeklySchedule}
+              tasks={tasks}
+              overviewCourseInsights={overviewCourseInsights}
+              overviewTopicPerformanceRows={overviewTopicPerformanceRows}
+              onOpenOverviewReport={() => setParentWorkspaceView('overview')}
+              onOpenWeeklyAnalysis={() => setParentWorkspaceView('analysis')}
+            />
+          </Suspense>
+        </div>
+
+        {/* Analysis Workspace */}
+        <div className={isAnalysis ? 'block' : 'hidden'} key="analysis-container">
+          {!parentDecisionV1Enabled ? (
+            <div className="space-y-4">
+              <div className="ios-card rounded-[24px] p-4 text-sm font-semibold text-slate-700">
+                Yeni karar ekrani kapali. Fallback olarak Genel Bakis gosteriliyor.
+              </div>
+              <Suspense fallback={<WorkspaceLoadingFallback label="Genel bakis yukleniyor..." />}>
+                <ParentOverviewWorkspace
+                  parentSummary={parentSummary}
+                  overviewSummary={overviewSummary}
+                  overviewNextTask={overviewNextTask}
+                  weeklySchedule={weeklySchedule}
+                  curriculum={curriculum}
+                  onWeeklyScheduleChange={setWeeklySchedule}
+                  onRecordSchoolTopicHistory={recordSchoolTopicHistory}
+                  overviewUpcomingExam={overviewUpcomingExam}
+                  overviewTodayName={overviewTodayName}
+                  overviewTodaySlots={overviewTodaySlots}
+                  overviewTodayCompletedTasks={overviewTodayCompletedTasks}
+                  overviewWeakTopicActions={overviewWeakTopicActions}
+                  overviewCourseNames={overviewCourseNames}
+                  overviewWeeklyStats={overviewWeeklyStatsForView}
+                  overviewCourseInsights={overviewCourseInsights}
+                  overviewTopicInsights={overviewTopicInsights}
+                  overviewTopicMetricsMap={overviewTopicMetricsMap}
+                  overviewTopicPerformanceRows={overviewTopicPerformanceRows}
+                  overviewReportSeries={overviewReportSeries}
+                  overviewStudyPeriod={overviewStudyPeriod}
+                  onOverviewStudyPeriodChange={setOverviewStudyPeriod}
+                  overviewSignal={overviewSignal}
+                  overviewExamDecision={overviewExamDecision}
+                  lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
+                  onOpenPlanning={(message: string) => handleQuickAction('planning', message)}
+                  onOpenAnalysis={() => setParentWorkspaceView('analysis')}
+                />
+              </Suspense>
+            </div>
+          ) : (
+            <Suspense fallback={<WorkspaceLoadingFallback label="Karar ekrani yukleniyor..." />}>
+              <ParentAnalysisShell
+                analyzedSessionCount={analyzedSessionCount}
+                weakTopicCount={parentSummary.weakTopics.length}
+              >
+                {renderParentDashboardMode('analysis')}
+              </ParentAnalysisShell>
+            </Suspense>
+          )}
+        </div>
+
+        {/* Overview Workspace */}
+        <div className={isOverview ? 'block' : 'hidden'} key="overview-container">
+          <Suspense fallback={<WorkspaceLoadingFallback label="Genel bakis yukleniyor..." />}>
+            <ParentOverviewWorkspace
+              parentSummary={parentSummary}
+              overviewSummary={overviewSummary}
+              overviewNextTask={overviewNextTask}
+              weeklySchedule={weeklySchedule}
+              curriculum={curriculum}
+              onWeeklyScheduleChange={setWeeklySchedule}
+              onRecordSchoolTopicHistory={recordSchoolTopicHistory}
+              overviewUpcomingExam={overviewUpcomingExam}
+              overviewTodayName={overviewTodayName}
+              overviewTodaySlots={overviewTodaySlots}
+              overviewTodayCompletedTasks={overviewTodayCompletedTasks}
+              overviewWeakTopicActions={overviewWeakTopicActions}
+              overviewCourseNames={overviewCourseNames}
+              overviewWeeklyStats={overviewWeeklyStatsForView}
+              overviewCourseInsights={overviewCourseInsights}
+              overviewTopicInsights={overviewTopicInsights}
+              overviewTopicMetricsMap={overviewTopicMetricsMap}
+              overviewTopicPerformanceRows={overviewTopicPerformanceRows}
+              overviewReportSeries={overviewReportSeries}
+              overviewStudyPeriod={overviewStudyPeriod}
+              onOverviewStudyPeriodChange={setOverviewStudyPeriod}
+              overviewSignal={overviewSignal}
+              overviewExamDecision={overviewExamDecision}
+              lastCompletedTaskLabel={overviewSummary.lastCompletedTask ? `${overviewSummary.lastCompletedTask.title} - ${getTaskCompletionLabel(overviewSummary.lastCompletedTask)}` : null}
+              onOpenPlanning={(message: string) => handleQuickAction('planning', message)}
+              onOpenAnalysis={() => setParentWorkspaceView('analysis')}
+            />
+          </Suspense>
+        </div>
+      </>
     );
   };
 
