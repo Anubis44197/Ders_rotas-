@@ -1448,12 +1448,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       <div className="font-bold text-[var(--dr-text-primary)]">%{selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail.currentAccuracy ?? 0}</div>
                     </div>
                     <div>
-                      <span className="text-[var(--dr-text-secondary)] text-xs">Ogrenme hizi</span>
-                      <div className="font-bold text-[var(--dr-text-primary)]">{selectedTopicLearningRow?.learningVelocityLabel || 'Veri yok'}</div>
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Öğrenme Hızı</span>
+                      <div className="font-bold text-[var(--dr-text-primary)]">{selectedTopicLearningRow?.learningVelocityLabel || 'Veri Yok'}</div>
                     </div>
                     <div>
-                      <span className="text-[var(--dr-text-secondary)] text-xs">Konu maliyeti</span>
-                      <div className="font-bold text-[var(--dr-text-primary)]">{selectedTopicLearningRow ? selectedTopicLearningRow.topicCostLabel + ' / ' + selectedTopicLearningRow.topicCostScore : 'Veri yok'}</div>
+                      <span className="text-[var(--dr-text-secondary)] text-xs">Çalışma Çabası / Süre</span>
+                      <div className="font-bold text-[var(--dr-text-primary)]">{selectedTopicLearningRow ? selectedTopicLearningRow.topicCostLabel + ' / ' + selectedTopicLearningRow.topicCostScore : 'Veri Yok'}</div>
                     </div>
                     <div>
                       <span className="text-[var(--dr-text-secondary)] text-xs">Tekrar Ihtiyaci</span>
@@ -1771,7 +1771,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                   </div>
                   <div className="ios-widget rounded-[14px] p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Kaynak tuketen konular</span>
+                      <span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--dr-text-secondary)]">Çok Zaman/Çaba Harcanan Konular</span>
                       <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">{resourceHeavyTopics.length}</span>
                     </div>
                     <div className="space-y-2">
@@ -1785,7 +1785,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                         </div>
                       ))}
                       {resourceHeavyTopics.length === 0 && (
-                        <div className="text-xs text-[var(--dr-text-secondary)]">Kaynak maliyeti icin konu verisi yok.</div>
+                        <div className="text-xs text-[var(--dr-text-secondary)]">Çaba/Zaman harcanan konu verisi yok.</div>
                       )}
                     </div>
                   </div>

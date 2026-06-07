@@ -407,7 +407,7 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
     .filter((row) => Number(row.taskCount || 0) > 0)
     .sort((a, b) => Number(b.topicCostScore || 0) - Number(a.topicCostScore || 0) || Number(a.masteryScore || 0) - Number(b.masteryScore || 0))
     .slice(0, 8), [overviewTopicPerformanceRows]);
-  const hardLearningCount = learningRows.filter((row) => row.learningVelocityLabel === 'Zor ogrenilen').length;
+  const hardLearningCount = learningRows.filter((row) => row.learningVelocityLabel === 'Zor Öğrenilen').length;
   const highCostCount = learningRows.filter((row) => Number(row.topicCostScore || 0) >= 55).length;
 
   return (
@@ -659,24 +659,24 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
           <section className="dr-curriculum-progress-compare" aria-label="Konu ogrenme hizi ve maliyet analizi">
             <div className="dr-curriculum-progress-compare-head">
               <div>
-                <span>Akademik Kaynak Analizi</span>
+                <span>Çalışma Çabası ve Zaman Analizi</span>
                 <div className="flex items-center gap-2">
-                  <h4>Konu Ogrenme Analizi</h4>
-                  <ContextHelp title="Konu Ogrenme Analizi" tone="lilac">
-                    Konulari oturum sayisi, calisma suresi, cozulen soru ve son hakimiyet ile okur. Zor ogrenilen veya yuksek maliyetli konular veli kararinda one cikar.
+                  <h4>Konu Öğrenme ve Çaba Değerlendirmesi</h4>
+                  <ContextHelp title="Konu Öğrenme ve Çaba Değerlendirmesi" tone="lilac">
+                    Çocuğunuzun konuları öğrenirken ne kadar çaba (çalışma süresi, oturum ve soru sayısı) harcadığını ve ne hızda ilerlediğini analiz eder. Yoğun zaman alan veya zorlanılan konular veliye aksiyon önerisi olarak sunulur.
                   </ContextHelp>
                 </div>
               </div>
               <div className="dr-curriculum-progress-compare-score">
                 <strong>{highCostCount}</strong>
-                <span>yuksek maliyet</span>
+                <span>fazla zaman/çaba alan</span>
               </div>
             </div>
             <div className="dr-curriculum-progress-compare-stats" aria-label="Konu ogrenme ozeti">
-              <span><strong>{learningRows.length}</strong> Izlenen konu</span>
-              <span><strong>{hardLearningCount}</strong> Zor ogrenilen</span>
-              <span><strong>{highCostCount}</strong> Yuksek maliyet</span>
-              <span><strong>{learningRows.filter((row) => row.learningVelocityLabel === 'Hizli ogrenilen').length}</strong> Hizli</span>
+              <span><strong>{learningRows.length}</strong> Çalışılan Konu</span>
+              <span><strong>{hardLearningCount}</strong> Zorlanılan</span>
+              <span><strong>{highCostCount}</strong> Çok Zaman Alan</span>
+              <span><strong>{learningRows.filter((row) => row.learningVelocityLabel === 'Hızlı Öğrenilen').length}</strong> Hızlı Öğrenilen</span>
             </div>
             <div className="mt-4 overflow-hidden rounded-[22px] border border-white/20 bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-md dark:bg-white/5">
               <div className="grid grid-cols-[minmax(160px,1.5fr)_80px_90px_80px_100px_120px] gap-3 border-b border-slate-900/5 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 max-lg:hidden">
@@ -694,8 +694,8 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
                     <div className="font-bold text-slate-800 dark:text-slate-100">{row.totalQuestions || 0}</div>
                     <div className="font-bold text-slate-800 dark:text-slate-100">%{row.masteryScore ?? row.accuracyPercent ?? 0}</div>
                     <div className="flex flex-wrap gap-1.5">
-                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${row.learningVelocityLabel === 'Zor ogrenilen' ? 'bg-rose-50 text-rose-700' : row.learningVelocityLabel === 'Hizli ogrenilen' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>{row.learningVelocityLabel || 'Veri yok'}</span>
-                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${Number(row.topicCostScore || 0) >= 75 ? 'bg-rose-50 text-rose-700' : Number(row.topicCostScore || 0) >= 55 ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{row.topicCostLabel || 'Dusuk'}</span>
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${row.learningVelocityLabel === 'Zor Öğrenilen' ? 'bg-rose-50 text-rose-700' : row.learningVelocityLabel === 'Hızlı Öğrenilen' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>{row.learningVelocityLabel || 'Veri Yok'}</span>
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${Number(row.topicCostScore || 0) >= 75 ? 'bg-rose-50 text-rose-700' : Number(row.topicCostScore || 0) >= 55 ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{row.topicCostLabel || 'Düşük Çaba'}</span>
                     </div>
                     <div className="lg:col-span-6 rounded-[14px] bg-white/55 px-3 py-2 text-[11px] font-semibold leading-5 text-slate-600 dark:bg-white/5 dark:text-slate-300">
                       {row.learningDecision}

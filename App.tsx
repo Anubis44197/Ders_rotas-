@@ -4404,10 +4404,10 @@ const App: React.FC = () => {
       ]),
     );
     const getLearningVelocityLabel = (taskCount: number, minutes: number, mastery: number) => {
-      if (taskCount <= 0 && minutes <= 0) return 'Veri yok';
-      if (mastery >= 85 && taskCount <= 3 && minutes <= 240) return 'Hizli ogrenilen';
-      if (taskCount >= 6 || minutes >= 600 || mastery < 70) return 'Zor ogrenilen';
-      return 'Normal ogrenilen';
+      if (taskCount <= 0 && minutes <= 0) return 'Veri Yok';
+      if (mastery >= 85 && taskCount <= 3 && minutes <= 240) return 'Hızlı Öğrenilen';
+      if (taskCount >= 6 || minutes >= 600 || mastery < 70) return 'Zor Öğrenilen';
+      return 'Normal';
     };
     const getTopicCostScore = (taskCount: number, minutes: number, questions: number) => {
       const sessionCost = Math.min(40, taskCount * 5);
@@ -4416,10 +4416,10 @@ const App: React.FC = () => {
       return Math.max(0, Math.min(100, Math.round(sessionCost + timeCost + questionCost)));
     };
     const getTopicCostLabel = (score: number) => {
-      if (score >= 75) return 'Cok yuksek';
-      if (score >= 55) return 'Yuksek';
-      if (score >= 35) return 'Orta';
-      return 'Dusuk';
+      if (score >= 75) return 'Çok Yüksek Çaba';
+      if (score >= 55) return 'Yüksek Çaba';
+      if (score >= 35) return 'Orta Çaba';
+      return 'Düşük Çaba';
     };
 
     Object.entries(curriculum).forEach(([rawCourseName, units]) => {
@@ -4498,12 +4498,12 @@ const App: React.FC = () => {
         const velocityLabel = getLearningVelocityLabel(item.taskCount, item.minutes, masteryScore);
         const costLabel = getTopicCostLabel(costScore);
         const decisionText = item.taskCount <= 0
-          ? 'Bu konu icin henuz olcumlu calisma yok.'
+          ? 'Bu konu için henüz ölçümlü çalışma yok.'
           : costScore >= 75 && masteryScore < 82
-            ? 'Bu konu fazla kaynak tuketiyor; ayni yontem yerine kisa tekrar ve karma test denenmeli.'
-            : velocityLabel === 'Zor ogrenilen'
-              ? 'Bu konu ogrenme hizi dusuk gorunuyor; daha kucuk calisma donguleriyle takip edilmeli.'
-              : 'Kaynak kullanimi normal sinirda gorunuyor.';
+            ? 'Bu konu için fazla süre/çaba harcanıyor; aynı yöntem yerine kısa tekrar ve karma test denenmeli.'
+            : velocityLabel === 'Zor Öğrenilen'
+              ? 'Bu konunun öğrenilme hızı yavaş görünüyor; daha küçük çalışma döngüleriyle takip edilmeli.'
+              : 'Harcanan süre ve çaba dengeli seviyede.';
         return {
           ...item,
           accuracyPercent,
