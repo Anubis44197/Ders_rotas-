@@ -792,11 +792,12 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   }, [latestPerformanceRow, performanceTopicFilter, rowsByUnit]);
   const selectedTopicDetail = useMemo(() => {
     if (effectiveTopicFilter && effectiveTopicFilter !== 'ALL' && effectiveTopicFilter !== 'AUTO') {
-      const found = selectedCourseTopics.find((t) => t.key === effectiveTopicFilter);
+      const found = overviewTopicInsights.find((t) => t.key === effectiveTopicFilter);
       if (found) return found;
     }
-    return selectedCourseTopics.find((topic) => topic.key === selectedOverviewTopic) || selectedCourseTopics[0] || null;
-  }, [selectedCourseTopics, selectedOverviewTopic, effectiveTopicFilter]);
+    const activeCourseTopics = overviewTopicInsights.filter((t) => t.courseName === effectiveCourseFilter);
+    return activeCourseTopics.find((topic) => topic.key === selectedOverviewTopic) || activeCourseTopics[0] || null;
+  }, [overviewTopicInsights, effectiveCourseFilter, selectedOverviewTopic, effectiveTopicFilter]);
   const selectedTopicAction = useMemo(
     () => (selectedTopicDetail
       ? overviewWeakTopicActions.find((item) => item.key === selectedTopicDetail.key) || null
@@ -1661,7 +1662,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       Bu grafik, çocuğunuzun şu anki aktif derslerdeki genel konu hakimiyeti ve ilerleme yüzdelerini karşılaştırmalı olarak gösterir.
                     </ContextHelp>
                   </div>
-                  <svg viewBox="0 0 620 220" className="h-52 w-full max-w-full" aria-label="Ders durumu cizgi grafigi">
+                  <svg viewBox="0 0 620 220" className="h-52 w-full max-w-full" aria-label="Ders durumu sutun grafigi">
                     <line x1="30" y1="182" x2="600" y2="182" stroke="#CBD5E1" strokeWidth="1" />
                     {[0, 25, 50, 75, 100].map((tick, i) => (
                       <g key={`status-tick-${tick}`}>
@@ -1674,23 +1675,31 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       const points = items.map((course, idx) => {
                         const x = 70 + (idx * (520 / Math.max(1, items.length - 1)));
                         const y = 182 - Math.max(0, Math.min(100, course.progress)) * 1.52;
-                        return { x, y, course };
+                        const color = normalizedReportSeries.find((series) => series.courseName === course.courseName)?.color || '#0EA5E9';
+                        return { x, y, course, color };
                       });
                       if (!points.length) return null;
-                      const path = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                      const barWidth = 24;
                       return (
                         <>
-                          <path d={path} fill="none" stroke="#0EA5E9" strokeWidth="2.8" strokeLinecap="round" />
-                          {points.map((p, idx) => (
-                            <g key={`status-point-${p.course.courseName}`}>
-                              <circle cx={p.x} cy={p.y} r="3.5" fill="#0EA5E9" />
-                              <text x={p.x - 13} y={p.y - 10} className="fill-[var(--dr-text-primary)] text-[11px] font-bold">%{p.course.progress}</text>
-                              <text x={Math.max(34, p.x - 36)} y="206" className="fill-[var(--dr-text-secondary)] text-[10px]">
-                                {(p.course.courseName.length > 12 ? `${p.course.courseName.slice(0, 12)}…` : p.course.courseName)}
-                              </text>
-                              <title>{`${p.course.courseName}: ${p.course.progress}% (${p.course.status})`}</title>
-                            </g>
-                          ))}
+                          {points.map((p) => {
+                            const barHeight = 182 - p.y;
+                            return (
+                              <g key={`status-bar-${p.course.courseName}`}>
+                                {/* Sutun arka plan izi */}
+                                <rect x={p.x - barWidth / 2} y={30} width={barWidth} height={152} rx="6" className="fill-[var(--dr-std-border-strong)]/5" />
+                                {/* Sutun bari */}
+                                <rect x={p.x - barWidth / 2} y={p.y} width={barWidth} height={Math.max(4, barHeight)} rx="6" fill={p.color} />
+                                {/* Deger yazisi */}
+                                <text x={p.x} y={p.y - 8} textAnchor="middle" className="fill-[var(--dr-text-primary)] text-[10px] font-bold">%{p.course.progress}</text>
+                                {/* Ders etiketi */}
+                                <text x={p.x} y="206" textAnchor="middle" className="fill-[var(--dr-text-secondary)] text-[10px]">
+                                  {(p.course.courseName.length > 8 ? `${p.course.courseName.slice(0, 7)}…` : p.course.courseName)}
+                                </text>
+                                <title>{`${p.course.courseName}: %${p.course.progress}`}</title>
+                              </g>
+                            );
+                          })}
                         </>
                       );
                     })()}
