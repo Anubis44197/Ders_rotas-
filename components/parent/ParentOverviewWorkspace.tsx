@@ -790,33 +790,6 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     if (performanceTopicFilter !== 'ALL' && !validTopics.has(performanceTopicFilter)) return 'ALL';
     return performanceTopicFilter;
   }, [latestPerformanceRow, performanceTopicFilter, rowsByUnit]);
-  const selectedTopicDetail = useMemo(() => {
-    if (effectiveTopicFilter && effectiveTopicFilter !== 'ALL' && effectiveTopicFilter !== 'AUTO') {
-      const found = overviewTopicInsights.find((t) => t.key === effectiveTopicFilter);
-      if (found) return found;
-    }
-    const activeCourseTopics = overviewTopicInsights.filter((t) => t.courseName === effectiveCourseFilter);
-    return activeCourseTopics.find((topic) => topic.key === selectedOverviewTopic) || activeCourseTopics[0] || null;
-  }, [overviewTopicInsights, effectiveCourseFilter, selectedOverviewTopic, effectiveTopicFilter]);
-  const selectedTopicAction = useMemo(
-    () => (selectedTopicDetail
-      ? overviewWeakTopicActions.find((item) => item.key === selectedTopicDetail.key) || null
-      : null),
-    [overviewWeakTopicActions, selectedTopicDetail],
-  );
-  const selectedTopicDelta = selectedTopicDetail && selectedTopicDetail.delta !== null
-    ? getDeltaDisplay(selectedTopicDetail?.delta || 0)
-    : null;
-  const selectedTopicTaskMetrics = selectedTopicDetail
-    ? overviewTopicMetricsMap[selectedTopicDetail.key] || null
-    : null;
-  const selectedTopicLearningRow = selectedTopicDetail
-    ? overviewTopicPerformanceRows.find((row) => row.key === selectedTopicDetail.key) || null
-    : null;
-  const topicOptionsForPerformance = useMemo(
-    () => rowsByUnit.map((row) => ({ key: row.key, label: row.topicName })),
-    [rowsByUnit],
-  );
   const rowsForPerformanceMetrics = useMemo(
     () => rowsByUnit.filter((row) => effectiveTopicFilter === 'ALL' || row.key === effectiveTopicFilter),
     [effectiveTopicFilter, rowsByUnit],
@@ -845,6 +818,71 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       : 0;
     return { ...totals, accuracyPercent };
   }, [rowsForPerformanceMetrics]);
+  const selectedTopicDetail = useMemo(() => {
+    if (effectiveTopicFilter && effectiveTopicFilter !== 'ALL' && effectiveTopicFilter !== 'AUTO') {
+      const found = overviewTopicInsights.find((t) => t.key === effectiveTopicFilter);
+      if (found) return found;
+    }
+    if (effectiveTopicFilter === 'ALL') {
+      const courseLabel = effectiveCourseFilter === 'ALL' ? 'Tüm Dersler' : effectiveCourseFilter;
+      const unitLabel = effectiveUnitFilter === 'ALL' ? 'Tüm Üniteler' : effectiveUnitFilter;
+      const topicNameLabel = `${courseLabel} - ${unitLabel} (Genel Performans)`;
+      return {
+        key: 'ALL',
+        topicName: topicNameLabel,
+        courseName: courseLabel,
+        unitName: unitLabel,
+        currentAccuracy: aggregatedPerformanceMetrics.accuracyPercent,
+        previousAccuracy: null,
+        delta: null,
+        riskScore: null,
+      };
+    }
+    const activeCourseTopics = overviewTopicInsights.filter((t) => t.courseName === effectiveCourseFilter);
+    return activeCourseTopics.find((topic) => topic.key === selectedOverviewTopic) || activeCourseTopics[0] || null;
+  }, [overviewTopicInsights, effectiveCourseFilter, selectedOverviewTopic, effectiveTopicFilter, effectiveUnitFilter, aggregatedPerformanceMetrics.accuracyPercent]);
+  const selectedTopicAction = useMemo(
+    () => (selectedTopicDetail
+      ? overviewWeakTopicActions.find((item) => item.key === selectedTopicDetail.key) || null
+      : null),
+    [overviewWeakTopicActions, selectedTopicDetail],
+  );
+  const selectedTopicDelta = selectedTopicDetail && selectedTopicDetail.delta !== null
+    ? getDeltaDisplay(selectedTopicDetail?.delta || 0)
+    : null;
+  const selectedTopicTaskMetrics = useMemo(() => {
+    if (!selectedTopicDetail) return null;
+    if (selectedTopicDetail.key === 'ALL') {
+      const risk = 100 - aggregatedPerformanceMetrics.accuracyPercent;
+      return {
+        minutes: aggregatedPerformanceMetrics.minutes,
+        solved: aggregatedPerformanceMetrics.totalQuestions,
+        accuracy: aggregatedPerformanceMetrics.accuracyPercent,
+        retryNeed: risk >= 65 ? 'Yuksek' : risk >= 45 ? 'Orta' : 'Dusuk',
+        practicePerf: aggregatedPerformanceMetrics.accuracyPercent,
+        testPerf: aggregatedPerformanceMetrics.accuracyPercent,
+        dailyPerf: aggregatedPerformanceMetrics.accuracyPercent,
+        errors: [],
+      };
+    }
+    return overviewTopicMetricsMap[selectedTopicDetail.key] || null;
+  }, [selectedTopicDetail, overviewTopicMetricsMap, aggregatedPerformanceMetrics]);
+  const selectedTopicLearningRow = useMemo(() => {
+    if (!selectedTopicDetail) return null;
+    if (selectedTopicDetail.key === 'ALL') {
+      return {
+        learningVelocityLabel: aggregatedPerformanceMetrics.taskCount > 0 ? 'Normal' : 'Veri Yok',
+        topicCostLabel: aggregatedPerformanceMetrics.taskCount > 0 ? 'Orta Çaba' : 'Veri Yok',
+        topicCostScore: aggregatedPerformanceMetrics.taskCount > 0 ? 50 : 0,
+        learningDecision: 'Filtreler "Tüm" seçimindeyken seçili ünite/ders altındaki tüm konuların genel ortalaması gösterilir.',
+      };
+    }
+    return overviewTopicPerformanceRows.find((row) => row.key === selectedTopicDetail.key) || null;
+  }, [selectedTopicDetail, overviewTopicPerformanceRows, aggregatedPerformanceMetrics]);
+  const topicOptionsForPerformance = useMemo(
+    () => rowsByUnit.map((row) => ({ key: row.key, label: row.topicName })),
+    [rowsByUnit],
+  );
   const courseGrowthRanking = useMemo(
     () => [...overviewCourseInsights]
       .filter((item) => item.change !== null)
