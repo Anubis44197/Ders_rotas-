@@ -667,6 +667,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   );
   const topicHard = useMemo(
     () => [...overviewTopicInsights]
+      .filter((item) => item.riskScore !== null && item.riskScore > 0)
       .sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0))
       .slice(0, 3),
     [overviewTopicInsights],

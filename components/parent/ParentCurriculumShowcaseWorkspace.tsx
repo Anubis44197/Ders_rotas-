@@ -256,13 +256,14 @@ const ParentCurriculumShowcaseWorkspace: React.FC<Props> = ({
     }>();
 
     safeTasks.forEach((task) => {
+      if (!isCompleted(task)) return;
       const unitName = task.curriculumUnitName?.trim();
       const topicName = task.curriculumTopicName?.trim();
       if (!unitName || !topicName) return;
       const courseName = courseNameById.get(task.courseId);
       if (!courseName) return;
       const key = normalize(courseName);
-      const statusWeight = isCompleted(task) ? 2 : 1;
+      const statusWeight = 2;
       const sortValue = getTaskSortValue(task);
       const current = childByCourse.get(key);
       if (!current || sortValue > current.sortValue || (sortValue === current.sortValue && statusWeight > current.statusWeight)) {
