@@ -148,7 +148,7 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
   const points = pointCount(period);
   const totalRangeDays = Math.max(1, Math.floor((currentEnd.getTime() - currentStart.getTime()) / dayMs) + 1);
   const bucketSize = Math.max(1, Math.ceil(totalRangeDays / points));
-  const dailyAccuracyPoints = Array.from({ length: points }, (_, i) => {
+  const dailyAccuracyPointsRaw = Array.from({ length: points }, (_, i) => {
     const bucketStart = new Date(currentStart);
     bucketStart.setDate(bucketStart.getDate() + (i * bucketSize));
     const bucketEnd = new Date(bucketStart);
@@ -163,8 +163,17 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
     });
     const answered = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
     const correct = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
-    return answered > 0 ? Math.round((correct / answered) * 100) : 0;
+    return answered > 0 ? Math.round((correct / answered) * 100) : null;
   });
+
+  const dailyAccuracyPoints: number[] = [];
+  let lastValAccuracy = 0;
+  for (const val of dailyAccuracyPointsRaw) {
+    if (val !== null) {
+      lastValAccuracy = val;
+    }
+    dailyAccuracyPoints.push(lastValAccuracy);
+  }
 
   const output: WorkerOutput = {
     completedCount: currentTasks.length,

@@ -1628,7 +1628,18 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                           return (
                             <g key={`cseries-${series.courseName}-${sIdx}`}>
                               <path d={path} fill="none" stroke={series.color} strokeWidth="2.5" strokeLinecap="round" />
-                              {xs.map((x, idx) => <circle key={`cdot-${series.courseName}-${idx}`} cx={x} cy={ys[idx]} r="2.7" fill={series.color} />)}
+                              {xs.map((x, idx) => (
+                                <circle
+                                  key={`cdot-${series.courseName}-${idx}`}
+                                  cx={x}
+                                  cy={ys[idx]}
+                                  r="4.5"
+                                  fill={series.color}
+                                  className="cursor-pointer transition-all hover:scale-150"
+                                >
+                                  <title>{`${series.courseName}: %${series.points[idx]}`}</title>
+                                </circle>
+                              ))}
                             </g>
                           );
                         })}
@@ -1729,7 +1740,18 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                       return (
                         <g key={`gseries-${series.courseName}-${sIdx}`}>
                           <path d={path} fill="none" stroke={series.color} strokeWidth="2.5" strokeLinecap="round" />
-                          {xs.map((x, idx) => <circle key={`gdot-${series.courseName}-${idx}`} cx={x} cy={ys[idx]} r="2.7" fill={series.color} />)}
+                          {xs.map((x, idx) => (
+                            <circle
+                              key={`gdot-${series.courseName}-${idx}`}
+                              cx={x}
+                              cy={ys[idx]}
+                              r="4.5"
+                              fill={series.color}
+                              className="cursor-pointer transition-all hover:scale-150"
+                            >
+                              <title>{`${series.courseName}: %${series.points[idx]}`}</title>
+                            </circle>
+                          ))}
                         </g>
                       );
                     })}

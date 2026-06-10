@@ -4202,7 +4202,7 @@ const App: React.FC = () => {
     const pointCount = getOverviewSparklinePointCount(overviewStudyPeriod);
     const totalRangeDays = Math.max(1, Math.floor((currentEnd.getTime() - currentStart.getTime()) / dayMs) + 1);
     const bucketSize = Math.max(1, Math.ceil(totalRangeDays / pointCount));
-    const dailyAccuracyPoints = Array.from({ length: pointCount }, (_, bucketIndex) => {
+    const dailyAccuracyPointsRaw = Array.from({ length: pointCount }, (_, bucketIndex) => {
       const bucketStart = new Date(currentStart);
       bucketStart.setDate(bucketStart.getDate() + (bucketIndex * bucketSize));
       const bucketEnd = new Date(bucketStart);
@@ -4217,8 +4217,17 @@ const App: React.FC = () => {
       });
       const answered = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
       const correct = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
-      return answered > 0 ? Math.round((correct / answered) * 100) : 0;
+      return answered > 0 ? Math.round((correct / answered) * 100) : null;
     });
+
+    const dailyAccuracyPoints: number[] = [];
+    let lastValAccuracy = 0;
+    for (const val of dailyAccuracyPointsRaw) {
+      if (val !== null) {
+        lastValAccuracy = val;
+      }
+      dailyAccuracyPoints.push(lastValAccuracy);
+    }
 
     return {
       completedCount: completedCurrentWeek.length,
@@ -4266,6 +4275,7 @@ const App: React.FC = () => {
     const previousEnd = new Date(currentStart);
     previousEnd.setDate(previousEnd.getDate() - 1);
     const previousStart = new Date(previousEnd);
+    previousStart.setDate(previousStart.getDate() - 6);
     previousEnd.setHours(0, 0, 0, 0);
     previousStart.setHours(0, 0, 0, 0);
     const toDate = (value?: string) => (value ? new Date(`${value}T00:00:00`) : null);
@@ -4309,6 +4319,7 @@ const App: React.FC = () => {
     const previousEnd = new Date(currentStart);
     previousEnd.setDate(previousEnd.getDate() - 1);
     const previousStart = new Date(previousEnd);
+    previousStart.setDate(previousStart.getDate() - 6);
     previousEnd.setHours(0, 0, 0, 0);
     previousStart.setHours(0, 0, 0, 0);
     const toDate = (value?: string) => (value ? new Date(`${value}T00:00:00`) : null);
@@ -4321,6 +4332,7 @@ const App: React.FC = () => {
       key: string;
       topicName: string;
       courseName: string;
+      unitName: string;
       currentAnswered: number;
       currentCorrect: number;
       previousAnswered: number;
@@ -4331,16 +4343,18 @@ const App: React.FC = () => {
       const courseName = repairedText(rawCourseName).trim();
       if (!courseName || !Array.isArray(units)) return;
       units.forEach((unit) => {
+        const unitName = repairedText(unit?.name || 'Unite belirtilmedi').trim() || 'Unite belirtilmedi';
         if (!unit || !Array.isArray(unit.topics)) return;
         unit.topics.forEach((topic) => {
           const topicName = repairedText(topic?.name || '').trim();
           if (!topicName) return;
-          const key = `${normalizeForLookup(courseName)}::${normalizeForLookup(topicName)}`;
+          const key = `${normalizeForLookup(courseName)}::${normalizeForLookup(unitName)}::${normalizeForLookup(topicName)}`;
           if (!topicMap.has(key)) {
             topicMap.set(key, {
               key,
               topicName,
               courseName,
+              unitName,
               currentAnswered: 0,
               currentCorrect: 0,
               previousAnswered: 0,
@@ -4355,9 +4369,10 @@ const App: React.FC = () => {
       if (!isCompletedTask(task) || !isQuestionTask(task)) return;
       const topicName = repairedText(task.curriculumTopicName || '').trim();
       if (!topicName) return;
+      const unitName = repairedText(task.curriculumUnitName || 'Unite belirtilmedi').trim() || 'Unite belirtilmedi';
       const courseName = repairedText(courseNameById.get(task.courseId) || task.courseId).trim();
       if (!courseName) return;
-      const key = `${normalizeForLookup(courseName)}::${normalizeForLookup(topicName)}`;
+      const key = `${normalizeForLookup(courseName)}::${normalizeForLookup(unitName)}::${normalizeForLookup(topicName)}`;
       const metrics = getQuestionMetrics(task);
       const answered = metrics.answeredCount;
       if (answered <= 0) return;
@@ -4367,6 +4382,7 @@ const App: React.FC = () => {
         key,
         topicName,
         courseName,
+        unitName,
         currentAnswered: 0,
         currentCorrect: 0,
         previousAnswered: 0,
@@ -4383,18 +4399,22 @@ const App: React.FC = () => {
     });
 
     const riskMap = new Map(
-      overviewAnalysis.topics.map((topic) => [normalizeForLookup(`${topic.courseName}::${topic.topicName}`), topic.riskScore]),
+      overviewAnalysis.topics.map((topic) => [
+        normalizeForLookup(`${topic.courseName}::${topic.unitName}::${topic.topicName}`),
+        topic.riskScore
+      ]),
     );
 
     return Array.from(topicMap.values()).map((item) => {
       const currentAccuracy = item.currentAnswered > 0 ? Math.round((item.currentCorrect / item.currentAnswered) * 100) : null;
       const previousAccuracy = item.previousAnswered > 0 ? Math.round((item.previousCorrect / item.previousAnswered) * 100) : null;
       const delta = currentAccuracy !== null && previousAccuracy !== null ? currentAccuracy - previousAccuracy : null;
-      const riskScore = riskMap.get(normalizeForLookup(`${item.courseName}::${item.topicName}`)) ?? null;
+      const riskScore = riskMap.get(normalizeForLookup(`${item.courseName}::${item.unitName}::${item.topicName}`)) ?? null;
       return {
         key: item.key,
         topicName: item.topicName,
         courseName: item.courseName,
+        unitName: item.unitName,
         currentAccuracy,
         previousAccuracy,
         delta,
@@ -4409,18 +4429,19 @@ const App: React.FC = () => {
     );
     const analysisTopicByKey = new Map(
       overviewAnalysis.topics.map((topic) => [
-        normalizeForLookup(`${topic.courseName}::${topic.topicName}`),
+        normalizeForLookup(`${topic.courseName}::${topic.unitName}::${topic.topicName}`),
         topic,
       ]),
     );
 
     const entries = overviewTopicInsights.map((topic) => {
-      const normalizedKey = normalizeForLookup(`${topic.courseName}::${topic.topicName}`);
+      const normalizedKey = normalizeForLookup(`${topic.courseName}::${topic.unitName}::${topic.topicName}`);
       const topicTasks = completedTasks.filter((task) => {
         const topicName = repairedText(task.curriculumTopicName || '');
         if (!topicName) return false;
+        const unitName = repairedText(task.curriculumUnitName || 'Unite belirtilmedi');
         const courseName = repairedText(courseNameById.get(task.courseId) || task.courseId);
-        return normalizeForLookup(`${courseName}::${topicName}`) === normalizedKey;
+        return normalizeForLookup(`${courseName}::${unitName}::${topicName}`) === normalizedKey;
       });
       const solved = topicTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
       const correct = topicTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
@@ -4697,14 +4718,28 @@ const App: React.FC = () => {
     const coursePalette = ['#2563EB', '#16A34A', '#7C3AED', '#F59E0B', '#06B6D4', '#EC4899', '#64748B'];
     const activeCourses = courses.filter((course) => course.active !== false);
     return activeCourses.slice(0, 6).map((course, idx) => {
-      const points = buckets.map((bucket) => {
+      const courseAnalysis = overviewAnalysis.courses.find((item) => item.courseId === course.id);
+      const baseline = courseAnalysis ? Math.max(0, Math.min(100, Math.round(courseAnalysis.averageMastery ?? 0))) : 0;
+
+      const rawPoints = buckets.map((bucket) => {
         const bucketTasks = completedQuestionTasks
           .filter(({ task, date }) => task.courseId === course.id && date >= bucket.start && date <= bucket.end)
           .map(({ task }) => task);
         const answered = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).answeredCount, 0);
         const correct = bucketTasks.reduce((sum, task) => sum + getQuestionMetrics(task).correctCount, 0);
-        return answered > 0 ? Math.round((correct / answered) * 100) : 0;
+        return answered > 0 ? Math.round((correct / answered) * 100) : null;
       });
+
+      const points: number[] = [];
+      let lastVal = baseline;
+
+      for (const val of rawPoints) {
+        if (val !== null) {
+          lastVal = val;
+        }
+        points.push(lastVal);
+      }
+
       return {
         courseName: repairedText(course.name),
         color: coursePalette[idx % coursePalette.length],
@@ -4712,7 +4747,7 @@ const App: React.FC = () => {
         points,
       };
     });
-  }, [courses, overviewStudyPeriod, tasks, today]);
+  }, [courses, overviewAnalysis.courses, overviewStudyPeriod, tasks, today]);
   const overviewUpcomingExam = useMemo(() => {
     return [...examScheduleEntries]
       .filter((exam) => exam.date >= today)
