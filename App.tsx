@@ -4413,6 +4413,10 @@ const App: React.FC = () => {
       const avgFocus = analysisTopic?.averageFocus ?? accuracyFallback;
       const masteryScore = analysisTopic?.masteryScore ?? accuracyFallback;
 
+      const hasQuestionTask = topicTasks.some((task) => isQuestionTask(task) && task.status === 'tamamlandı');
+      const hasExamTask = topicTasks.some((task) => (task.taskGoalType === 'sinav-hazirlik' || task.taskGoalType === 'olcme-degerlendirme') && task.status === 'tamamlandı');
+      const hasRevisionTask = topicTasks.some((task) => task.taskGoalType === 'konu-tekrari' && task.status === 'tamamlandı');
+
       return [
         topic.key,
         {
@@ -4420,9 +4424,9 @@ const App: React.FC = () => {
           solved,
           accuracy,
           retryNeed: riskScore >= 65 ? 'Yuksek' : riskScore >= 45 ? 'Orta' : 'Dusuk',
-          practicePerf: Math.max(0, Math.min(100, Math.round((avgEfficiency * 0.45) + (accuracy * 0.55)))),
-          testPerf: Math.max(0, Math.min(100, Math.round((masteryScore * 0.7) + (avgFocus * 0.3)))),
-          dailyPerf: Math.max(0, Math.min(100, Math.round((avgFocus * 0.5) + (avgEfficiency * 0.5)))),
+          practicePerf: (solved > 0 || hasQuestionTask) ? Math.max(0, Math.min(100, Math.round((avgEfficiency * 0.45) + (accuracy * 0.55)))) : 0,
+          testPerf: hasExamTask ? Math.max(0, Math.min(100, Math.round((masteryScore * 0.7) + (avgFocus * 0.3)))) : 0,
+          dailyPerf: hasRevisionTask ? Math.max(0, Math.min(100, Math.round((avgFocus * 0.5) + (avgEfficiency * 0.5)))) : 0,
           errors: [
             { label: 'Islem Hatasi', value: conceptError },
             { label: 'Kavram Hatasi', value: processError },

@@ -1555,7 +1555,18 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                 </div>
               </div>
               <div className="mt-4 rounded-[18px] border border-[var(--dr-std-border-strong)]/15 bg-[var(--dr-surface)]/80 px-4 py-3 text-xs font-semibold text-[var(--dr-text-primary)] shadow-sm">
-                <span className="text-[var(--dr-orange)] font-bold">Öneri:</span> Bu konuda düzenli tekrar ve bol soru çözümü ile %70+ seviyeye ulaşılabilir.
+                {(() => {
+                  const accuracy = selectedTopicTaskMetrics?.accuracy ?? selectedTopicDetail?.currentAccuracy ?? 0;
+                  return accuracy >= 70 ? (
+                    <>
+                      <span className="text-emerald-600 font-bold">Öneri:</span> Çocuğunuz bu konuda %70+ hedefini aşmış durumda (%{accuracy}). Mevcut başarısını korumak için düzenli pratik ve genel tekrarlara devam etmesi önerilir.
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[var(--dr-orange)] font-bold">Öneri:</span> Bu konuda düzenli tekrar ve bol soru çözümü ile %70+ seviyeye ulaşılabilir.
+                    </>
+                  );
+                })()}
               </div>
               {selectedTopicLearningRow && (
                 <div className="mt-4 rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/70 px-4 py-3 text-xs font-semibold leading-5 text-[var(--dr-text-secondary)]">
