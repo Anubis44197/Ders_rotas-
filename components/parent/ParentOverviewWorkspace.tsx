@@ -707,10 +707,6 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       : []),
     [overviewTopicInsights, selectedCourseDetail],
   );
-  const selectedTopicDetail = useMemo(
-    () => selectedCourseTopics.find((topic) => topic.key === selectedOverviewTopic) || selectedCourseTopics[0] || null,
-    [selectedCourseTopics, selectedOverviewTopic],
-  );
   const selectedCourseTrend = useMemo(() => {
     const series = selectedCourseDetail
       ? normalizedReportSeries.find((item) => item.courseName === selectedCourseDetail.courseName)
@@ -721,23 +717,8 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       : points.map((_, index) => `${index + 1}`);
     return { points, labels };
   }, [normalizedReportSeries, selectedCourseDetail]);
-  const selectedTopicAction = useMemo(
-    () => (selectedTopicDetail
-      ? overviewWeakTopicActions.find((item) => item.key === selectedTopicDetail.key) || null
-      : null),
-    [overviewWeakTopicActions, selectedTopicDetail],
-  );
   const selectedCourseDelta = selectedCourseDetail && selectedCourseDetail.change !== null
     ? getDeltaDisplay(selectedCourseDetail?.change || 0)
-    : null;
-  const selectedTopicDelta = selectedTopicDetail && selectedTopicDetail.delta !== null
-    ? getDeltaDisplay(selectedTopicDetail?.delta || 0)
-    : null;
-  const selectedTopicTaskMetrics = selectedTopicDetail
-    ? overviewTopicMetricsMap[selectedTopicDetail.key] || null
-    : null;
-  const selectedTopicLearningRow = selectedTopicDetail
-    ? overviewTopicPerformanceRows.find((row) => row.key === selectedTopicDetail.key) || null
     : null;
   const performanceStorageKey = 'overviewPerformanceNavigatorV1';
   React.useEffect(() => {
@@ -809,6 +790,28 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     if (performanceTopicFilter !== 'ALL' && !validTopics.has(performanceTopicFilter)) return 'ALL';
     return performanceTopicFilter;
   }, [latestPerformanceRow, performanceTopicFilter, rowsByUnit]);
+  const selectedTopicDetail = useMemo(() => {
+    if (effectiveTopicFilter && effectiveTopicFilter !== 'ALL' && effectiveTopicFilter !== 'AUTO') {
+      const found = selectedCourseTopics.find((t) => t.key === effectiveTopicFilter);
+      if (found) return found;
+    }
+    return selectedCourseTopics.find((topic) => topic.key === selectedOverviewTopic) || selectedCourseTopics[0] || null;
+  }, [selectedCourseTopics, selectedOverviewTopic, effectiveTopicFilter]);
+  const selectedTopicAction = useMemo(
+    () => (selectedTopicDetail
+      ? overviewWeakTopicActions.find((item) => item.key === selectedTopicDetail.key) || null
+      : null),
+    [overviewWeakTopicActions, selectedTopicDetail],
+  );
+  const selectedTopicDelta = selectedTopicDetail && selectedTopicDetail.delta !== null
+    ? getDeltaDisplay(selectedTopicDetail?.delta || 0)
+    : null;
+  const selectedTopicTaskMetrics = selectedTopicDetail
+    ? overviewTopicMetricsMap[selectedTopicDetail.key] || null
+    : null;
+  const selectedTopicLearningRow = selectedTopicDetail
+    ? overviewTopicPerformanceRows.find((row) => row.key === selectedTopicDetail.key) || null
+    : null;
   const topicOptionsForPerformance = useMemo(
     () => rowsByUnit.map((row) => ({ key: row.key, label: row.topicName })),
     [rowsByUnit],
