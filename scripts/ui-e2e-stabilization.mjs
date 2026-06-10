@@ -495,6 +495,7 @@ const main = async () => {
       },
       async () => {
         await go(client, { qaRecords: 'manual', analysisTab: 'overview', e2e: true });
+        await waitForSelector(client, '[data-testid^="decision-signal-"]', 15000);
         const signalCount = await evalValue(client, `(() => document.querySelectorAll('[data-testid^="decision-signal-"]').length)()`, 0);
         const workspaceReady = await evalValue(client, `(() => Boolean(document.querySelector('[data-testid="parent-analysis-workspace"]')) )()`, false);
         const shot = await capture(1, 'main-signals');

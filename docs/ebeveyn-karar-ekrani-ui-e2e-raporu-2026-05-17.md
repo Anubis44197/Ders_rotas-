@@ -31,7 +31,7 @@
     "workspaceReady": true
   },
   "pass": true,
-  "elapsedMs": 1639,
+  "elapsedMs": 4831,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\01-main-signals.png"
   ]
@@ -66,7 +66,7 @@
     "detailCourseId": "course_fen_bilgisi"
   },
   "pass": true,
-  "elapsedMs": 1858,
+  "elapsedMs": 2149,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\02-course-detail-flow.png"
   ]
@@ -131,7 +131,7 @@
     }
   ],
   "pass": true,
-  "elapsedMs": 2687,
+  "elapsedMs": 3165,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\03-time-filters.png"
   ]
@@ -165,7 +165,7 @@
     "cardCount": 2
   },
   "pass": true,
-  "elapsedMs": 1368,
+  "elapsedMs": 1778,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\04-long-name-overflow.png"
   ]
@@ -198,7 +198,7 @@
     "lowText": "Ilk analiz icin en az 3 tamamlanan calisma gerekli. Bu hafta veri olustukca karar onerileri netlesecek."
   },
   "pass": true,
-  "elapsedMs": 2803,
+  "elapsedMs": 3022,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\05-empty-state.png",
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\05-low-state.png"
@@ -237,7 +237,7 @@
     }
   },
   "pass": true,
-  "elapsedMs": 1638,
+  "elapsedMs": 1624,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\06-error-guard.png"
   ]
@@ -268,7 +268,7 @@
     "topLevel": "Stabil"
   },
   "pass": true,
-  "elapsedMs": 1594,
+  "elapsedMs": 1587,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\07-goal-panel.png"
   ]
@@ -301,7 +301,7 @@
     "trend": true
   },
   "pass": true,
-  "elapsedMs": 1639,
+  "elapsedMs": 1540,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\08-exam-cards.png"
   ]
@@ -338,7 +338,7 @@
     ]
   },
   "pass": true,
-  "elapsedMs": 1553,
+  "elapsedMs": 1546,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\09-alert-levels.png"
   ]
@@ -375,7 +375,7 @@
     }
   },
   "pass": true,
-  "elapsedMs": 5519,
+  "elapsedMs": 3866,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\10-parent-to-child-task.png"
   ]
@@ -413,7 +413,7 @@
     "afterDone": 1
   },
   "pass": true,
-  "elapsedMs": 6621,
+  "elapsedMs": 5345,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\11-child-complete-parent.png"
   ]
@@ -425,7 +425,7 @@
 - kullanilan veri: `npm run test:heavy`
 - kullanilan selector/test-id: `scripts/heavy-real-data-tests.ts`
 - beklenen sonuc: Ağir veri analizi hata vermeden tamamlanmali.
-- gercek sonuc: heavyPassed=true, analysisElapsedMs=505
+- gercek sonuc: heavyPassed=true, analysisElapsedMs=527
 - PASS/FAIL: `PASS`
 - ilgili dosya: scripts/heavy-real-data-tests.ts
 - screenshot/log: [12-performance-context.png](C:/Users/90535/Desktop/Ders_rotas-/docs/e2e-artifacts-2026-05-17-stabilization/12-performance-context.png), [test-heavy.log](C:/Users/90535/Desktop/Ders_rotas-/docs/e2e-artifacts-2026-05-17-stabilization/test-heavy.log)
@@ -440,11 +440,11 @@
   "expected": "Ağir veri analizi hata vermeden tamamlanmali.",
   "actual": {
     "heavyPassed": true,
-    "analysisElapsedMs": 505,
+    "analysisElapsedMs": 527,
     "logPath": "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\test-heavy.log"
   },
   "pass": true,
-  "elapsedMs": 4172,
+  "elapsedMs": 4560,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\12-performance-context.png",
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\test-heavy.log"
@@ -481,7 +481,7 @@
     "atLeastOneCreated": true
   },
   "pass": true,
-  "elapsedMs": 6839,
+  "elapsedMs": 5271,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\13-idempotency.png"
   ]
@@ -493,7 +493,7 @@
 - kullanilan veri: `qaRecords=low, notifications interaction, e2e=1`
 - kullanilan selector/test-id: `[data-testid="topbar-notifications-toggle"]`, `[data-testid^="notification-item-"]`, `[data-cooldown-group]`
 - beklenen sonuc: Ayni cooldown grubundaki bildirim aksiyon sonrasi tekrar listelenmemeli.
-- gercek sonuc: group=parent:notasktoday, remaining=0, cooldown=1780579511541
+- gercek sonuc: group=parent:notasktoday, remaining=0, cooldown=1781105198189
 - PASS/FAIL: `PASS`
 - ilgili dosya: App.tsx
 - screenshot/log: [14-notification-cooldown.png](C:/Users/90535/Desktop/Ders_rotas-/docs/e2e-artifacts-2026-05-17-stabilization/14-notification-cooldown.png)
@@ -510,14 +510,14 @@
   "expected": "Ayni cooldown grubundaki bildirim aksiyon sonrasi tekrar listelenmemeli.",
   "actual": {
     "firstItem": {
-      "key": "parent:notasktoday:2026-06-04:0",
+      "key": "parent:notasktoday:2026-06-10:0",
       "group": "parent:notasktoday"
     },
     "remainingCount": 0,
-    "cooldownValue": 1780579511541
+    "cooldownValue": 1781105198189
   },
   "pass": true,
-  "elapsedMs": 3475,
+  "elapsedMs": 3574,
   "evidence": [
     "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\14-notification-cooldown.png"
   ]

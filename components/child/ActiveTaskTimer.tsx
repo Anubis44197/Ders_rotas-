@@ -90,25 +90,32 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
   const lastLiveNoteRef = useRef(taskNote);
 
   const plannedSeconds = task.plannedDuration * 60;
-  const isOvertime = mainTime > plannedSeconds;
+  const actualStudyDuration = mainTime > plannedSeconds
+    ? (mainTime > plannedSeconds + 5 ? mainTime - 5 : plannedSeconds)
+    : mainTime;
+  const isOvertime = mainTime > plannedSeconds + 5;
   const remainingTime = plannedSeconds - mainTime;
-  const displayTime = isOvertime ? mainTime : remainingTime;
+  const displayTime = isOvertime ? (mainTime - 5) : Math.max(0, remainingTime);
   const progress = Math.min(mainTime / plannedSeconds, 1);
   const radius = 96;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - progress * circumference;
   const totalQuestions = (Number(correctCount) || 0) + (Number(incorrectCount) || 0) + (Number(emptyCount) || 0);
 
+  const isWarningZone = !isOvertime && remainingTime <= 300 && remainingTime > 0;
+  const isGracePeriod = !isOvertime && mainTime >= plannedSeconds;
+  const useWarningStyle = isWarningZone || isGracePeriod;
+
   useEffect(() => {
     if (showCompleteModal) {
-      setEditedDuration(String(Math.round(mainTime / 60)));
+      setEditedDuration(String(Math.round(actualStudyDuration / 60)));
       setEditedTotalQuestions(String(totalQuestions || task.questionCount || 20));
       const computedCorrectness = totalQuestions > 0
         ? Math.round(((Number(correctCount) || 0) / totalQuestions) * 100)
         : 100;
       setEditedCorrectness(String(computedCorrectness));
     }
-  }, [showCompleteModal, mainTime, totalQuestions, correctCount, task]);
+  }, [showCompleteModal, actualStudyDuration, totalQuestions, correctCount, task]);
 
   useEffect(() => {
     const exists = tasks.some((item) => item.id === task.id);
@@ -240,7 +247,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
     window.localStorage.removeItem(`timerState_${task.id}`);
     onLiveSessionChange?.(task.id, undefined);
 
-    const finalDuration = editedDuration ? Number(editedDuration) * 60 : mainTime;
+    const finalDuration = editedDuration ? Number(editedDuration) * 60 : actualStudyDuration;
 
     let finalCorrect = Number(correctCount) || 0;
     let finalIncorrect = Number(incorrectCount) || 0;
@@ -288,7 +295,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
             <p className="mt-0.5 text-xs text-[var(--dr-text-secondary)]">Süre özetini kontrol et ve kaydet.</p>
             
             <div className="mt-3 flex justify-between gap-2 bg-[var(--dr-surface)]/60 border border-[var(--dr-std-border-strong)]/20 rounded-[12px] p-2.5 text-[11px] text-[var(--dr-text-secondary)]">
-              <div>Çalışma: <strong className="text-[var(--dr-text-primary)]">{formatTime(mainTime)}</strong></div>
+              <div>Çalışma: <strong className="text-[var(--dr-text-primary)]">{formatTime(actualStudyDuration)}</strong></div>
               <div>Mola: <strong className="text-[var(--dr-text-primary)]">{formatTime(breakTime)}</strong></div>
               <div>Duraklat: <strong className="text-[var(--dr-text-primary)]">{formatTime(pauseTime)}</strong></div>
             </div>
@@ -410,7 +417,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
                 {task.taskGoalType ? <span className="rounded-full bg-violet-500/8 border border-violet-500/20 px-3 py-1 text-violet-600 dark:text-violet-400">Hedef: {task.taskGoalType}</span> : null}
               </div>
               <div className="mt-6 grid grid-cols-3 gap-3">
-                <div className="ios-widget ios-blue rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-blue-800 dark:text-blue-300">Çalışma</div><div className="mt-2 text-xl font-bold text-blue-900 dark:text-blue-100">{formatTime(mainTime)}</div></div>
+                <div className="ios-widget ios-blue rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-blue-800 dark:text-blue-300">Çalışma</div><div className="mt-2 text-xl font-bold text-blue-900 dark:text-blue-100">{formatTime(actualStudyDuration)}</div></div>
                 <div className="ios-widget ios-yellow rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">Mola</div><div className="mt-2 text-xl font-bold text-amber-950 dark:text-amber-100">{formatTime(breakTime)}</div></div>
                 <div className="ios-widget rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-[var(--dr-text-secondary)]">Duraklat</div><div className="mt-2 text-xl font-bold text-[var(--dr-text-primary)]">{formatTime(pauseTime)}</div></div>
               </div>
@@ -431,13 +438,23 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
                 <div className="relative flex h-[320px] w-[320px] items-center justify-center">
                   <svg className="absolute h-full w-full -rotate-90 transform" viewBox="0 0 220 220">
                     <circle cx="110" cy="110" r={radius} strokeWidth="15" className="stroke-[var(--dr-std-border-strong)]/10" fill="none" />
-                    <circle cx="110" cy="110" r={radius} strokeWidth="15" className={`transition-all duration-500 ${isOvertime ? 'stroke-rose-500' : 'stroke-[var(--dr-orange)]'}`} fill="none" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={isOvertime ? 0 : strokeDashoffset} />
+                    <circle cx="110" cy="110" r={radius} strokeWidth="15" className={`transition-all duration-500 ${isOvertime ? 'stroke-rose-500' : useWarningStyle ? 'stroke-amber-500 animate-pulse' : 'stroke-[var(--dr-orange)]'}`} fill="none" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={isOvertime ? 0 : strokeDashoffset} />
                   </svg>
                   <div className="z-10 text-center">
-                    <p className={`tabular-nums text-7xl font-bold ${isOvertime ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--dr-orange)]'}`}>{formatTime(displayTime < 0 ? 0 : displayTime)}</p>
+                    <p className={`tabular-nums text-7xl font-bold ${isOvertime ? 'text-rose-600 dark:text-rose-400' : useWarningStyle ? 'text-amber-500 animate-pulse' : 'text-[var(--dr-orange)]'}`}>{formatTime(displayTime < 0 ? 0 : displayTime)}</p>
                     <p className={`mt-2 text-sm font-bold uppercase tracking-[0.18em] ${isOvertime ? 'text-rose-500' : 'text-[var(--dr-text-secondary)]'}`}>{isOvertime ? 'Ekstra süre' : 'Kalan süre'}</p>
                   </div>
                 </div>
+                {isWarningZone && (
+                  <div className="mt-4 text-sm font-bold text-amber-500 animate-pulse flex items-center justify-center gap-1.5" role="alert">
+                    <span>⚠️</span> Son 5 Dakika! Süre bitmek üzere.
+                  </div>
+                )}
+                {isGracePeriod && (
+                  <div className="mt-4 text-sm font-bold text-amber-500 animate-pulse flex items-center justify-center gap-1.5" role="alert">
+                    <span>⚠️</span> Süre doldu! Seansı tamamlayabilirsiniz.
+                  </div>
+                )}
               </div>
             </section>
           </div>

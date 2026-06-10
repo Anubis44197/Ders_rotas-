@@ -854,19 +854,56 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
     if (!selectedTopicDetail) return null;
     if (selectedTopicDetail.key === 'ALL') {
       const risk = 100 - aggregatedPerformanceMetrics.accuracyPercent;
+      
+      let totalPracticePerf = 0, countPractice = 0;
+      let totalTestPerf = 0, countTest = 0;
+      let totalDailyPerf = 0, countDaily = 0;
+      const aggregatedErrorsMap: Record<string, number> = {};
+
+      rowsForPerformanceMetrics.forEach((row) => {
+        const metric = overviewTopicMetricsMap[row.key];
+        if (metric) {
+          if (metric.practicePerf > 0) {
+            totalPracticePerf += metric.practicePerf;
+            countPractice++;
+          }
+          if (metric.testPerf > 0) {
+            totalTestPerf += metric.testPerf;
+            countTest++;
+          }
+          if (metric.dailyPerf > 0) {
+            totalDailyPerf += metric.dailyPerf;
+            countDaily++;
+          }
+          if (metric.errors) {
+            metric.errors.forEach((err) => {
+              aggregatedErrorsMap[err.label] = (aggregatedErrorsMap[err.label] || 0) + err.value;
+            });
+          }
+        }
+      });
+
+      const practicePerf = countPractice > 0 ? Math.round(totalPracticePerf / countPractice) : 0;
+      const testPerf = countTest > 0 ? Math.round(totalTestPerf / countTest) : 0;
+      const dailyPerf = countDaily > 0 ? Math.round(totalDailyPerf / countDaily) : 0;
+      const errors = Object.entries(aggregatedErrorsMap).map(([label, value]) => ({
+        label,
+        value,
+      }));
+
       return {
         minutes: aggregatedPerformanceMetrics.minutes,
         solved: aggregatedPerformanceMetrics.totalQuestions,
         accuracy: aggregatedPerformanceMetrics.accuracyPercent,
         retryNeed: risk >= 65 ? 'Yuksek' : risk >= 45 ? 'Orta' : 'Dusuk',
-        practicePerf: aggregatedPerformanceMetrics.accuracyPercent,
-        testPerf: aggregatedPerformanceMetrics.accuracyPercent,
-        dailyPerf: aggregatedPerformanceMetrics.accuracyPercent,
-        errors: [],
+        practicePerf,
+        testPerf,
+        dailyPerf,
+        errors,
       };
     }
     return overviewTopicMetricsMap[selectedTopicDetail.key] || null;
-  }, [selectedTopicDetail, overviewTopicMetricsMap, aggregatedPerformanceMetrics]);
+  }, [selectedTopicDetail, overviewTopicMetricsMap, aggregatedPerformanceMetrics, rowsForPerformanceMetrics]);
   const selectedTopicLearningRow = useMemo(() => {
     if (!selectedTopicDetail) return null;
     if (selectedTopicDetail.key === 'ALL') {

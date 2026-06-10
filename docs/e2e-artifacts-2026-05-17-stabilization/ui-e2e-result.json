@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-04T13:25:20.532Z",
+  "generatedAt": "2026-06-10T15:26:47.593Z",
   "appUrl": "http://127.0.0.1:3000/?quick=analysis&qaRecords=manual&analysisTab=goals&e2e=1",
   "passCount": 14,
   "failCount": 0,
@@ -25,7 +25,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\01-main-signals.png"
       ],
-      "elapsedMs": 1639
+      "elapsedMs": 4831
     },
     {
       "id": 2,
@@ -50,7 +50,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\02-course-detail-flow.png"
       ],
-      "elapsedMs": 1858
+      "elapsedMs": 2149
     },
     {
       "id": 3,
@@ -105,7 +105,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\03-time-filters.png"
       ],
-      "elapsedMs": 2687
+      "elapsedMs": 3165
     },
     {
       "id": 4,
@@ -129,7 +129,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\04-long-name-overflow.png"
       ],
-      "elapsedMs": 1368
+      "elapsedMs": 1778
     },
     {
       "id": 5,
@@ -153,7 +153,7 @@
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\05-empty-state.png",
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\05-low-state.png"
       ],
-      "elapsedMs": 2803
+      "elapsedMs": 3022
     },
     {
       "id": 6,
@@ -181,7 +181,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\06-error-guard.png"
       ],
-      "elapsedMs": 1638
+      "elapsedMs": 1624
     },
     {
       "id": 7,
@@ -202,7 +202,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\07-goal-panel.png"
       ],
-      "elapsedMs": 1594
+      "elapsedMs": 1587
     },
     {
       "id": 8,
@@ -225,7 +225,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\08-exam-cards.png"
       ],
-      "elapsedMs": 1639
+      "elapsedMs": 1540
     },
     {
       "id": 9,
@@ -252,7 +252,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\09-alert-levels.png"
       ],
-      "elapsedMs": 1553
+      "elapsedMs": 1546
     },
     {
       "id": 10,
@@ -279,7 +279,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\10-parent-to-child-task.png"
       ],
-      "elapsedMs": 5519
+      "elapsedMs": 3866
     },
     {
       "id": 11,
@@ -307,7 +307,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\11-child-complete-parent.png"
       ],
-      "elapsedMs": 6621
+      "elapsedMs": 5345
     },
     {
       "id": 12,
@@ -321,15 +321,15 @@
       "pass": true,
       "actual": {
         "heavyPassed": true,
-        "analysisElapsedMs": 505,
+        "analysisElapsedMs": 527,
         "logPath": "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\test-heavy.log"
       },
-      "actualSummary": "heavyPassed=true, analysisElapsedMs=505",
+      "actualSummary": "heavyPassed=true, analysisElapsedMs=527",
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\12-performance-context.png",
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\test-heavy.log"
       ],
-      "elapsedMs": 4172
+      "elapsedMs": 4560
     },
     {
       "id": 13,
@@ -355,7 +355,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\13-idempotency.png"
       ],
-      "elapsedMs": 6839
+      "elapsedMs": 5271
     },
     {
       "id": 14,
@@ -371,17 +371,17 @@
       "pass": true,
       "actual": {
         "firstItem": {
-          "key": "parent:notasktoday:2026-06-04:0",
+          "key": "parent:notasktoday:2026-06-10:0",
           "group": "parent:notasktoday"
         },
         "remainingCount": 0,
-        "cooldownValue": 1780579511541
+        "cooldownValue": 1781105198189
       },
-      "actualSummary": "group=parent:notasktoday, remaining=0, cooldown=1780579511541",
+      "actualSummary": "group=parent:notasktoday, remaining=0, cooldown=1781105198189",
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\14-notification-cooldown.png"
       ],
-      "elapsedMs": 3475
+      "elapsedMs": 3574
     }
   ],
   "isolationChecks": [
@@ -403,7 +403,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\e1-no-e2e-quick-complete.png"
       ],
-      "elapsedMs": 3008
+      "elapsedMs": 3188
     },
     {
       "id": "E2",
@@ -423,7 +423,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\e2-no-e2e-seed.png"
       ],
-      "elapsedMs": 1563
+      "elapsedMs": 1595
     },
     {
       "id": "E3",
@@ -445,7 +445,7 @@
       "evidence": [
         "C:\\Users\\90535\\Desktop\\Ders_rotas-\\docs\\e2e-artifacts-2026-05-17-stabilization\\e3-no-e2e-parent-child.png"
       ],
-      "elapsedMs": 3415
+      "elapsedMs": 3471
     }
   ],
   "logs": {

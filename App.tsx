@@ -351,6 +351,10 @@ function useStickyState<T>(defaultValue: T, key: string, normalize?: (value: unk
 
   useEffect(() => {
     if (!persistInIndexedDb) return;
+    if (isE2ESeedLockActive()) {
+      setIdbHydrated(true);
+      return;
+    }
     let active = true;
     (async () => {
       try {
@@ -628,7 +632,7 @@ const isRetainedRealSubject = (value: unknown) => retainedRealSubjectKeys.has(no
 
 const pruneLegacyDemoSubjects = () => {
   if (typeof window === 'undefined') return;
-  if (isE2EBulkSeedMode()) return;
+  if (isE2EBulkSeedMode() || isE2EQaSeedingActive()) return;
   const migrationKey = 'drLegacyDemoSubjectsPrunedV1';
   if (window.localStorage.getItem(migrationKey) === 'true') return;
 
@@ -719,7 +723,7 @@ const pruneLegacyDemoSubjects = () => {
 
 const purgeLegacyDemoData = () => {
   if (typeof window === 'undefined') return;
-  if (isE2EBulkSeedMode()) return;
+  if (isE2EBulkSeedMode() || isE2EQaSeedingActive()) return;
   const coursesPayload = parseStorageJson('courses');
   const curriculumPayload = parseStorageJson('curriculum');
   const schedulePayload = parseStorageJson('weeklySchedule');
@@ -738,7 +742,7 @@ const purgeLegacyDemoData = () => {
 
 const runCleanLiveTestDataMigration = () => {
   if (typeof window === 'undefined') return;
-  if (isE2EBulkSeedMode()) return;
+  if (isE2EBulkSeedMode() || isE2EQaSeedingActive()) return;
   if (window.localStorage.getItem('drCleanLiveTestDataV3') === 'true') return;
   if (window.localStorage.getItem('drCleanLiveTestDataV3') === 'pending') return;
 
@@ -1340,6 +1344,15 @@ const isE2EBulkSeedMode = () => {
   return hasBulkSeedMarker && (!qaRecordsMode || qaRecordsMode === 'none');
 };
 
+const isE2EQaSeedingActive = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const isE2E = params.get('e2e') === '1';
+  if (!isE2E) return false;
+  const qaRecordsMode = params.get('qaRecords');
+  return qaRecordsMode && qaRecordsMode !== 'none';
+};
+
 const isE2ESeedLockActive = () => {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
@@ -1370,6 +1383,8 @@ const seedManualQaRecords = () => {
   const qaRecordsMode = params.get('qaRecords');
   if (!qaRecordsMode || qaRecordsMode === 'none') return;
 
+  window.localStorage.setItem('__qa_seed_lock', '1');
+
   const syncQaSeedToIndexedDb = (next: {
     tasks: Task[];
     performanceData: PerformanceData[];
@@ -1381,8 +1396,11 @@ const seedManualQaRecords = () => {
       writeIndexedDbValue('performanceData', next.performanceData),
       writeIndexedDbValue('examRecords', next.examRecords),
       writeIndexedDbValue('compositeExamResults', next.compositeExamResults),
-    ]).catch((error) => {
+    ]).then(() => {
+      window.localStorage.setItem('__qa_seed_lock', '0');
+    }).catch((error) => {
       console.error('QA IndexedDB seed sync failed:', error);
+      window.localStorage.setItem('__qa_seed_lock', '0');
     });
   };
 
@@ -2529,6 +2547,7 @@ const App: React.FC = () => {
   const remoteLastSerializedRef = useRef<string | null>(null);
   const remotePublishTimerRef = useRef<number | null>(null);
   const remoteLocalDirtySerializedRef = useRef<string | null>(null);
+  const remoteLocalDirtyRef = useRef(false);
   const remotePublishInFlightRef = useRef(false);
   const topbarNotificationsRef = useRef<HTMLDivElement | null>(null);
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
@@ -2823,21 +2842,45 @@ const App: React.FC = () => {
       }
     }
 
-    // 2. Aktif seansı veli güncellemelerinden koruma
+    // 2. Aktif seansı ve tamamlanmış yerel görevleri veli güncellemelerinden koruma (Smart Merge)
     const mergedTasks = incomingTasks.map((inTask) => {
       const localTask = tasksRef.current.find((t) => t.id === inTask.id);
-      if (localTask && localTask.liveSession) {
+      if (localTask) {
+        const status = localTask.status === 'tamamlandı' ? 'tamamlandı' : inTask.status;
         return {
           ...inTask,
-          liveSession: localTask.liveSession,
+          status,
+          ...(localTask.status === 'tamamlandı' ? {
+            actualDuration: localTask.actualDuration,
+            breakTime: localTask.breakTime,
+            pauseTime: localTask.pauseTime,
+            correctCount: localTask.correctCount,
+            incorrectCount: localTask.incorrectCount,
+            emptyCount: localTask.emptyCount,
+            successScore: localTask.successScore,
+            focusScore: localTask.focusScore,
+            pointsAwarded: localTask.pointsAwarded,
+            completionDate: localTask.completionDate,
+            completionTimestamp: localTask.completionTimestamp,
+            selfAssessmentScore: localTask.selfAssessmentScore,
+          } : {}),
+          liveSession: localTask.liveSession || inTask.liveSession,
           startTimestamp: localTask.startTimestamp || inTask.startTimestamp,
         };
       }
       return inTask;
     });
 
+    // Yerel olarak oluşturulan ve henüz Firebase'e yansımamış serbest çalışmaları koru
+    const remoteTaskIds = new Set(incomingTasks.map((t) => t.id));
+    const localOnlyTasks = tasksRef.current.filter(
+      (t) => !remoteTaskIds.has(t.id) && t.isSelfAssigned && t.status === 'bekliyor'
+    );
+
+    const finalTasks = [...localOnlyTasks, ...mergedTasks];
+
     setCourses(normalizeSafeCourses(payload.courses));
-    setTasks(mergedTasks);
+    setTasks(finalTasks);
     setPerformanceData(normalizeSafeArray<PerformanceData>(payload.performanceData));
     setRewards(normalizeSafeRewards(payload.rewards));
     setBadges(normalizeSafeBadges(payload.badges));
@@ -2900,14 +2943,8 @@ const App: React.FC = () => {
           return;
         }
         const serialized = JSON.stringify(appData);
-        const localDirtySerialized = remoteLocalDirtySerializedRef.current;
-        if (localDirtySerialized) {
+        if (remoteLocalDirtyRef.current) {
           remoteHydratedRef.current = true;
-          if (serialized === localDirtySerialized) {
-            remoteLastSerializedRef.current = serialized;
-            remoteLocalDirtySerializedRef.current = null;
-            remotePublishInFlightRef.current = false;
-          }
           return;
         }
         if (serialized === remoteLastSerializedRef.current) {
@@ -2945,16 +2982,13 @@ const App: React.FC = () => {
     const serialized = JSON.stringify(remoteAppData);
     if (serialized === remoteLastSerializedRef.current) return;
 
-    remoteLocalDirtySerializedRef.current = serialized;
     if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
     remotePublishTimerRef.current = window.setTimeout(() => {
       remotePublishInFlightRef.current = true;
       void publishRemoteAppData(remoteAppData)
         .then(() => {
           remoteLastSerializedRef.current = serialized;
-          if (remoteLocalDirtySerializedRef.current === serialized) {
-            remoteLocalDirtySerializedRef.current = null;
-          }
+          remoteLocalDirtyRef.current = false;
         })
         .catch((error) => {
           console.error('Firebase live publish error:', error);
@@ -3246,6 +3280,7 @@ const App: React.FC = () => {
           ? prev
           : [...prev, { courseId: existingCourse.id, courseName: existingCourse.name, correct: 0, incorrect: 0, timeSpent: 0 }]
       ));
+      remoteLocalDirtyRef.current = true;
       return;
     }
 
@@ -3260,6 +3295,7 @@ const App: React.FC = () => {
     };
     setCourses((prev) => sortCourses([newCourse, ...prev]));
     setPerformanceData((prev) => [...prev, { courseId: newCourse.id, courseName: normalizedCourseName, correct: 0, incorrect: 0, timeSpent: 0 }]);
+    remoteLocalDirtyRef.current = true;
   };
 
   const handleDeleteCourseRequest = (courseId: string) => {
@@ -3277,6 +3313,7 @@ const App: React.FC = () => {
     )));
     setCourseToDelete(null);
     setShowDeleteCourseModal(false);
+    remoteLocalDirtyRef.current = true;
     addToast("'" + inactiveCourse.name + "' dersi pasifleştirildi. Geçmiş görev, sınav ve analiz kayıtları korundu.", 'success');
   };
 
@@ -3286,6 +3323,7 @@ const App: React.FC = () => {
     setCourses((prev) => sortCourses(prev.map((item) => (
       item.id === courseId ? { ...item, active: true } : item
     ))));
+    remoteLocalDirtyRef.current = true;
     addToast("'" + course.name + "' dersi tekrar aktif edildi.", 'success');
   };
 
@@ -3346,10 +3384,7 @@ const App: React.FC = () => {
       createdAt: new Date().toISOString(),
     };
     const nextTasks = [newTask, ...tasksRef.current];
-    remoteLocalDirtySerializedRef.current = JSON.stringify({
-      ...remoteAppData,
-      tasks: nextTasks,
-    });
+    remoteLocalDirtyRef.current = true;
     setTasks((prev) => {
       if (normalizedTask.planTaskId) {
         const duplicate = prev.find((item) => item.planTaskId === normalizedTask.planTaskId);
@@ -3429,6 +3464,7 @@ const App: React.FC = () => {
     const nextTasks = tasksRef.current.filter((task) => task.id !== taskId);
     setTasks((prev) => prev.filter((task) => task.id !== taskId));
     tasksRef.current = nextTasks;
+    remoteLocalDirtyRef.current = true;
     void writeIndexedDbValue('tasks', nextTasks).catch((error) => {
       console.error('Error immediately persisting deleted task:', error);
     });
@@ -3463,6 +3499,7 @@ const App: React.FC = () => {
         });
         setStudyPlans(previousPlans);
         tasksRef.current = [taskToDelete, ...tasksRef.current.filter((task) => task.id !== taskToDelete.id)];
+        remoteLocalDirtyRef.current = true;
         playHaptic('success');
       },
     });
@@ -3579,6 +3616,7 @@ const App: React.FC = () => {
 
     setTasks((prevTasks) => prevTasks.map((item) => (item.id === taskId ? completedTask : item)));
     setSuccessPoints((prev) => prev + scoringResult.pointsAwarded);
+    remoteLocalDirtyRef.current = true;
 
     if (task.taskType !== 'kitap okuma') {
       setPerformanceData((prevData) => prevData.map((item) => {
@@ -3602,6 +3640,7 @@ const App: React.FC = () => {
 
   const updateTaskStatus = (taskId: string, status: 'bekliyor' | 'tamamland\u0131') => {
     setTasks((prevTasks) => prevTasks.map((task) => (task.id === taskId ? { ...task, status } : task)));
+    remoteLocalDirtyRef.current = true;
   };
 
   const updateTaskFromPlan = (planTaskId: string, updates: Partial<Pick<Task, 'plannedDuration' | 'questionCount' | 'planLabel'>>) => {
@@ -3614,15 +3653,18 @@ const App: React.FC = () => {
         ...(typeof updates.planLabel === 'string' ? { planLabel: updates.planLabel } : {}),
       };
     }));
+    remoteLocalDirtyRef.current = true;
   };
 
   const addReward = (reward: Omit<Reward, 'id'>) => {
     const newReward: Reward = { ...reward, id: createId('reward') };
     setRewards((prev) => [newReward, ...prev]);
+    remoteLocalDirtyRef.current = true;
   };
 
   const deleteReward = (rewardId: string) => {
     setRewards((prev) => prev.filter((reward) => reward.id !== rewardId));
+    remoteLocalDirtyRef.current = true;
   };
 
   const claimReward = (rewardId: string) => {
@@ -3640,6 +3682,7 @@ const App: React.FC = () => {
     }
 
     setSuccessPoints((prev) => prev - reward.cost);
+    remoteLocalDirtyRef.current = true;
     addToast(`'${reward.name}' ödülü talep edildi.`, 'success');
     window.setTimeout(() => rewardClaimLockRef.current.delete(rewardId), 350);
   };
