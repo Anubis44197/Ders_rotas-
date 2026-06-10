@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth';
-import { collection, deleteDoc, doc, getFirestore, onSnapshot, serverTimestamp, setDoc, type Unsubscribe } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getFirestore, onSnapshot, serverTimestamp, setDoc, type Unsubscribe, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
 
 export interface RemoteAppData {
   courses: unknown[];
@@ -41,6 +41,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+enableMultiTabIndexedDbPersistence(db).catch((err) => {
+  console.error('Firestore offline persistence initialization failed:', err);
+});
 const familyId = 'ders-tak-main';
 const legacyStateRef = doc(db, 'families', familyId, 'state', 'current');
 const legacyTasksRef = doc(db, 'families', familyId, 'state', 'tasks');

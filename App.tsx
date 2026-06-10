@@ -2809,8 +2809,35 @@ const App: React.FC = () => {
 
   const applyRemoteAppData = useCallback((payload: RemoteAppData) => {
     remoteApplyingRef.current = true;
+
+    const incomingTasks = normalizeSafeTasks(payload.tasks);
+
+    // 1. Yeni görev atama uyarısı (çocuk tarafında)
+    if (userType === UserType.Child && remoteHydratedRef.current && tasksRef.current.length > 0) {
+      const existingIds = new Set(tasksRef.current.map((t) => t.id));
+      const newAssignedTasks = incomingTasks.filter((t) => !existingIds.has(t.id) && t.status === 'bekliyor');
+      if (newAssignedTasks.length > 0) {
+        newAssignedTasks.forEach((t) => {
+          addToast(`Yeni görev atandı: ${t.title}`, 'success');
+        });
+      }
+    }
+
+    // 2. Aktif seansı veli güncellemelerinden koruma
+    const mergedTasks = incomingTasks.map((inTask) => {
+      const localTask = tasksRef.current.find((t) => t.id === inTask.id);
+      if (localTask && localTask.liveSession) {
+        return {
+          ...inTask,
+          liveSession: localTask.liveSession,
+          startTimestamp: localTask.startTimestamp || inTask.startTimestamp,
+        };
+      }
+      return inTask;
+    });
+
     setCourses(normalizeSafeCourses(payload.courses));
-    setTasks(normalizeSafeTasks(payload.tasks));
+    setTasks(mergedTasks);
     setPerformanceData(normalizeSafeArray<PerformanceData>(payload.performanceData));
     setRewards(normalizeSafeRewards(payload.rewards));
     setBadges(normalizeSafeBadges(payload.badges));
@@ -2826,7 +2853,7 @@ const App: React.FC = () => {
     window.setTimeout(() => {
       remoteApplyingRef.current = false;
     }, 0);
-  }, [setBadges, setCompositeExamResults, setCourses, setCurriculum, setExamRecords, setExamScheduleEntries, setPerformanceData, setPlanningEngineSnapshot, setRewards, setSchoolTopicHistory, setStudyPlans, setSuccessPoints, setTasks, setWeeklySchedule]);
+  }, [setBadges, setCompositeExamResults, setCourses, setCurriculum, setExamRecords, setExamScheduleEntries, setPerformanceData, setPlanningEngineSnapshot, setRewards, setSchoolTopicHistory, setStudyPlans, setSuccessPoints, setTasks, setWeeklySchedule, userType, addToast]);
 
   useEffect(() => {
     if (isE2EMode) return;
