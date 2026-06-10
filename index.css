@@ -670,6 +670,17 @@ button svg,
   background-repeat: no-repeat;
 }
 
+select option {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+}
+
+.dr-theme-dark select option,
+.dr-theme-dark select option * {
+  color: #f1f5f9 !important;
+  background-color: #161b2b !important;
+}
+
 .ios-button-active {
   color: #ffffff !important;
   border-color: rgba(255, 79, 24, 0.45) !important;
