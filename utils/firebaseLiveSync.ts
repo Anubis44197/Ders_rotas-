@@ -293,7 +293,20 @@ export const startRemoteAppDataSync = async ({
   let hasTaskChunks = false;
   let hasEmittedMissing = false;
 
-  const getActiveTasks = () => (hasTaskChunks ? chunkTasks : legacyTasks);
+  const mergeTaskSources = (primaryTasks: unknown[], fallbackTasks: unknown[]) => {
+    if (fallbackTasks.length === 0) return primaryTasks;
+    const seen = new Set(primaryTasks.map((task, index) => getTaskStableKey(task, index)));
+    const merged = [...primaryTasks];
+    fallbackTasks.forEach((task, index) => {
+      const key = getTaskStableKey(task, index);
+      if (seen.has(key)) return;
+      seen.add(key);
+      merged.push(task);
+    });
+    return merged;
+  };
+
+  const getActiveTasks = () => (hasTaskChunks ? mergeTaskSources(chunkTasks, legacyTasks) : legacyTasks);
 
   const maybeRemoteMissing = () => {
     if (hasEmittedMissing || hasSplitState || hasTaskChunks) return;
@@ -425,7 +438,10 @@ export const publishRemoteAppData = async (appData: RemoteAppData) => {
 
   const nextTaskChunks = splitTaskChunks(asArray(plainAppData.tasks));
   const nextTaskChunkIds = new Set(nextTaskChunks.map((chunk) => chunk.id));
-  const taskChunkWrites = nextTaskChunks.flatMap((chunk) => {
+  const taskOrderChunk = nextTaskChunks.find((chunk) => chunk.id === TASK_ORDER_CHUNK_ID);
+  const dataTaskChunks = nextTaskChunks.filter((chunk) => chunk.id !== TASK_ORDER_CHUNK_ID);
+  const dataTaskChunkIds = new Set(dataTaskChunks.map((chunk) => chunk.id));
+  const createTaskChunkWrite = (chunk: { id: string; index: number; tasks: unknown[]; serialized: string }) => {
     if (chunk.serialized === lastPublishedTaskChunks.get(chunk.id)) return [];
     return {
       chunkId: chunk.id,
@@ -441,9 +457,11 @@ export const publishRemoteAppData = async (appData: RemoteAppData) => {
         updatedBy: user.uid,
       }, { merge: true }),
     };
-  });
+  };
+  const taskChunkWrites = dataTaskChunks.flatMap(createTaskChunkWrite);
+  const taskOrderWrites = taskOrderChunk ? [createTaskChunkWrite(taskOrderChunk)].flat() : [];
   const staleTaskChunkDeletes = [...knownTaskChunkIds]
-    .filter((chunkId) => !nextTaskChunkIds.has(chunkId))
+    .filter((chunkId) => chunkId !== TASK_ORDER_CHUNK_ID && !dataTaskChunkIds.has(chunkId))
     .map((chunkId) => ({ chunkId, write: deleteDoc(taskChunkDocRef(chunkId)) }));
 
   await Promise.all(sectionWrites.map(async ({ sectionId, serialized, write }) => {
@@ -459,6 +477,11 @@ export const publishRemoteAppData = async (appData: RemoteAppData) => {
   await Promise.all(staleTaskChunkDeletes.map(async ({ chunkId, write }) => {
     await write;
     lastPublishedTaskChunks.delete(chunkId);
+  }));
+
+  await Promise.all(taskOrderWrites.map(async ({ chunkId, serialized, write }) => {
+    await write;
+    lastPublishedTaskChunks.set(chunkId, serialized);
   }));
 
   knownTaskChunkIds = nextTaskChunkIds;

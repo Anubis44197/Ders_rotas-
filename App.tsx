@@ -742,39 +742,8 @@ const purgeLegacyDemoData = () => {
 
 const runCleanLiveTestDataMigration = () => {
   if (typeof window === 'undefined') return;
-  if (isE2EBulkSeedMode() || isE2EQaSeedingActive()) return;
-  if (window.localStorage.getItem('drCleanLiveTestDataV3') === 'true') return;
-  if (window.localStorage.getItem('drCleanLiveTestDataV3') === 'pending') return;
-
-  const keysToClean = [
-    'tasks',
-    'performanceData',
-    'examRecords',
-    'compositeExamResults',
-    'studyPlans',
-    'successPoints',
-    'weeklySchedule',
-    'schoolTopicHistory',
-  ];
-
-  keysToClean.forEach((key) => window.localStorage.removeItem(key));
-  void clearIndexedDbKeys(keysToClean);
-  Object.keys(window.localStorage)
-    .filter((key) => key.startsWith('timerState_'))
-    .forEach((key) => window.localStorage.removeItem(key));
-
-  window.localStorage.setItem('tasks', JSON.stringify([]));
-  window.localStorage.setItem('weeklySchedule', JSON.stringify(defaultWeeklySchedule));
-  window.localStorage.setItem('performanceData', JSON.stringify(INITIAL_REAL_PERFORMANCE));
-  window.localStorage.setItem('successPoints', '0');
-  window.localStorage.setItem('examRecords', JSON.stringify([]));
-  window.localStorage.setItem('compositeExamResults', JSON.stringify([]));
-  window.localStorage.setItem('studyPlans', JSON.stringify([]));
-  window.localStorage.setItem('schoolTopicHistory', JSON.stringify([]));
-
-  window.localStorage.setItem('drCleanLiveTestDataV3', 'pending');
+  window.localStorage.setItem('drCleanLiveTestDataV3', 'disabled');
 };
-
 
 const normalizeSafeBoolean = (value: unknown): boolean => value === true;
 
@@ -2916,31 +2885,7 @@ const App: React.FC = () => {
         if (cancelled) return;
         const migrationState = window.localStorage.getItem('drCleanLiveTestDataV3');
         if (migrationState === 'pending') {
-          window.localStorage.setItem('drCleanLiveTestDataV3', 'true');
-          const cleanAppData: RemoteAppData = {
-            courses: INITIAL_REAL_COURSES,
-            tasks: [],
-            performanceData: INITIAL_REAL_PERFORMANCE,
-            rewards: [],
-            badges: [
-              { id: 'b1', name: 'İlk Adım', description: 'İlk görevini tamamladın!', icon: 'BadgeCheck' as any }
-            ],
-            successPoints: 0,
-            curriculum: INITIAL_REAL_CURRICULUM,
-            weeklySchedule: defaultWeeklySchedule,
-            schoolTopicHistory: [],
-            examRecords: [],
-            compositeExamResults: [],
-            examScheduleEntries: [],
-            studyPlans: [],
-            planningEngineSnapshot: defaultPlanningEngineSnapshot,
-          };
-          remoteLastSerializedRef.current = JSON.stringify(cleanAppData);
-          void publishRemoteAppData(cleanAppData).catch((error) => {
-            console.error('Migration Firestore publish failed:', error);
-          });
-          remoteHydratedRef.current = true;
-          return;
+          window.localStorage.setItem('drCleanLiveTestDataV3', 'disabled');
         }
         const serialized = JSON.stringify(appData);
         if (remoteLocalDirtyRef.current) {
