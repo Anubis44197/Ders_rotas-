@@ -4791,6 +4791,89 @@ const App: React.FC = () => {
       };
     });
   }, [courses, overviewAnalysis.courses, overviewStudyPeriod, tasks, today]);
+  const overviewTimeReportSeries = useMemo(() => {
+    const todayDate = new Date(`${today}T00:00:00`);
+    const dayMs = 86400000;
+    const toTaskDate = (value?: string) => (value ? new Date(`${value}T00:00:00`) : null);
+    const formatBucketLabel = (start: Date, end: Date, index: number) => {
+      if (overviewStudyPeriod === 'week1') {
+        const diff = Math.round((todayDate.getTime() - start.getTime()) / dayMs);
+        return diff === 0 ? 'Bugun' : `G-${diff}`;
+      }
+      if (overviewStudyPeriod === 'week3') return `${index + 1}. Hafta`;
+      if (overviewStudyPeriod === 'total') return `${index + 1}. Aralik`;
+      return `${index + 1}. Bolum`;
+    };
+    const completedTasksWithDate = tasks
+      .filter((task) => isCompletedTask(task) && task.completionDate)
+      .map((task) => ({ task, date: toTaskDate(task.completionDate) }))
+      .filter((item): item is { task: Task; date: Date } => Boolean(item.date && item.date <= todayDate));
+
+    const makeBuckets = () => {
+      if (overviewStudyPeriod === 'week1') {
+        return Array.from({ length: 7 }, (_, index) => {
+          const start = new Date(todayDate);
+          start.setDate(start.getDate() - (6 - index));
+          const end = new Date(start);
+          return { start, end, label: formatBucketLabel(start, end, index) };
+        });
+      }
+
+      const fixedRange = overviewStudyPeriod === 'week3'
+        ? { days: 21, points: 3 }
+        : overviewStudyPeriod === 'month'
+          ? { days: 30, points: 10 }
+          : overviewStudyPeriod === 'quarter'
+            ? { days: 90, points: 12 }
+            : null;
+
+      if (fixedRange) {
+        const rangeStart = new Date(todayDate);
+        rangeStart.setDate(rangeStart.getDate() - (fixedRange.days - 1));
+        const bucketSize = Math.max(1, Math.ceil(fixedRange.days / fixedRange.points));
+        return Array.from({ length: fixedRange.points }, (_, index) => {
+          const start = new Date(rangeStart);
+          start.setDate(start.getDate() + index * bucketSize);
+          const end = new Date(start);
+          end.setDate(end.getDate() + bucketSize - 1);
+          if (end > todayDate) end.setTime(todayDate.getTime());
+          return { start, end, label: formatBucketLabel(start, end, index) };
+        });
+      }
+
+      const firstDate = completedTasksWithDate.length > 0
+        ? new Date(Math.min(...completedTasksWithDate.map((item) => item.date.getTime())))
+        : new Date(todayDate);
+      const totalDays = Math.max(1, Math.floor((todayDate.getTime() - firstDate.getTime()) / dayMs) + 1);
+      const pointCount = Math.max(1, Math.min(12, Math.ceil(totalDays / 30)));
+      const bucketSize = Math.max(1, Math.ceil(totalDays / pointCount));
+      return Array.from({ length: pointCount }, (_, index) => {
+        const start = new Date(firstDate);
+        start.setDate(start.getDate() + index * bucketSize);
+        const end = new Date(start);
+        end.setDate(end.getDate() + bucketSize - 1);
+        if (end > todayDate) end.setTime(todayDate.getTime());
+        return { start, end, label: formatBucketLabel(start, end, index) };
+      });
+    };
+
+    const buckets = makeBuckets();
+    const coursePalette = ['#2563EB', '#16A34A', '#7C3AED', '#F59E0B', '#06B6D4', '#EC4899', '#64748B'];
+    const activeCourses = courses.filter((course) => course.active !== false);
+
+    return activeCourses.slice(0, 6).map((course, idx) => ({
+      courseName: repairedText(course.name),
+      color: coursePalette[idx % coursePalette.length],
+      labels: buckets.map((bucket) => bucket.label),
+      points: buckets.map((bucket) => {
+        const minutes = completedTasksWithDate
+          .filter(({ task, date }) => task.courseId === course.id && date >= bucket.start && date <= bucket.end)
+          .reduce((sum, { task }) => sum + (task.actualDuration ? Math.round(task.actualDuration / 60) : Math.round(task.plannedDuration || 0)), 0);
+        return minutes;
+      }),
+    }));
+  }, [courses, overviewStudyPeriod, tasks, today]);
+
   const overviewUpcomingExam = useMemo(() => {
     return [...examScheduleEntries]
       .filter((exam) => exam.date >= today)
@@ -5352,6 +5435,7 @@ const App: React.FC = () => {
                   overviewTopicMetricsMap={overviewTopicMetricsMap}
                   overviewTopicPerformanceRows={overviewTopicPerformanceRows}
                   overviewReportSeries={overviewReportSeries}
+                  overviewTimeReportSeries={overviewTimeReportSeries}
                   overviewStudyPeriod={overviewStudyPeriod}
                   onOverviewStudyPeriodChange={setOverviewStudyPeriod}
                   overviewSignal={overviewSignal}
@@ -5397,6 +5481,7 @@ const App: React.FC = () => {
               overviewTopicMetricsMap={overviewTopicMetricsMap}
               overviewTopicPerformanceRows={overviewTopicPerformanceRows}
               overviewReportSeries={overviewReportSeries}
+              overviewTimeReportSeries={overviewTimeReportSeries}
               overviewStudyPeriod={overviewStudyPeriod}
               onOverviewStudyPeriodChange={setOverviewStudyPeriod}
               overviewSignal={overviewSignal}

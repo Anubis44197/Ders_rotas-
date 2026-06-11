@@ -211,10 +211,12 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
             </aside>
 
             <section className="ios-card rounded-[36px] p-6">
-              <div className="mb-5 flex items-center justify-between">
-                <div><div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Canlı akış</div><h2 className="mt-1 text-2xl font-bold text-slate-900">Okuma göstergesi</h2></div>
-                <div className={`rounded-full px-4 py-2 text-sm font-bold ${status === 'break' ? 'bg-amber-100 text-amber-700' : status === 'paused' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>{status === 'break' ? 'Molada' : status === 'paused' ? 'Durakladı' : 'Okuyor'}</div>
-              </div>
+              {status !== 'running' && (
+                <div className="mb-5 flex items-center justify-between">
+                  <div><div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Canlı akış</div><h2 className="mt-1 text-2xl font-bold text-slate-900">Okuma göstergesi</h2></div>
+                  <div className={`rounded-full px-4 py-2 text-sm font-bold ${status === 'break' ? 'bg-amber-100 text-amber-700' : status === 'paused' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>{status === 'break' ? 'Molada' : status === 'paused' ? 'Durakladı' : 'Okuyor'}</div>
+                </div>
+              )}
               <div className="flex min-h-[420px] flex-col items-center justify-center">
                 <div className="rounded-full bg-teal-100 px-10 py-10 shadow-inner"><p className="tabular-nums text-8xl font-bold text-teal-600">{formatTime(mainTime)}</p></div>
                 <p className="mt-5 text-sm font-bold uppercase tracking-[0.18em] text-slate-400">Toplam okuma süresi</p>

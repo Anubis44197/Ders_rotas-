@@ -753,37 +753,6 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     >
       {viewMode === 'analysis' && (
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold text-[var(--dr-text-primary)]">Karar ve Analiz Merkezi</h2>
-                <ContextHelp title="Karar ve Analiz Merkezi" tone="blue">
-                  Çocuğunuzun günlük çalışma verileri ve sınav performansları analiz edilerek akademik risk durumlarının ve ders çalışma rotası kararlarının izlendiği yönetim merkezidir.
-                </ContextHelp>
-              </div>
-              <p className="text-sm text-[var(--dr-text-secondary)]">Mevcut ders durumu, akademik risk sinyalleri ve planlama.</p>
-            </div>
-          </div>
-          <div className="dr-hig-secondary-card rounded-[24px] p-4" data-testid="parent-action-summary">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="ios-widget rounded-[18px] px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Bekleyen veli görevi</div>
-                <div className="mt-1 text-2xl font-bold text-[var(--dr-text-primary)]" data-testid="parent-action-pending-count">{parentActionPendingCount}</div>
-              </div>
-              <div className="ios-widget rounded-[18px] px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Tamamlanan</div>
-                <div className="mt-1 text-2xl font-bold text-[var(--dr-text-primary)]" data-testid="parent-action-completed-count">{parentActionCompletedCount}</div>
-              </div>
-              <div className="ios-widget rounded-[18px] px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--dr-text-secondary)]">Bugün tamamlanan</div>
-                <div className="mt-1 text-2xl font-bold text-[var(--dr-text-primary)]" data-testid="parent-action-completed-today-count">{parentActionCompletedTodayCount}</div>
-              </div>
-            </div>
-            <div className="mt-3 rounded-[16px] bg-[var(--dr-surface)]/50 px-3 py-2 text-xs font-semibold text-[var(--dr-text-secondary)]">
-              {parentActionAuditLine}
-            </div>
-          </div>
-
           <div className="ios-panel rounded-[24px] p-2 border border-[var(--dr-std-border-strong)]/20 shadow-md overflow-hidden">
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {analysisWorkspaceTabs.map((tab) => {
@@ -898,33 +867,62 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                     const totalCount = totalTopics.length;
                     const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
+                    const hasWeakTopics = course.weakTopicCount > 0;
+                    
                     return (
-                      <div key={course.courseId} className="space-y-2 ios-card rounded-[20px] p-3.5 border border-[var(--dr-std-border-strong)]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none bg-[var(--dr-surface)]/60 backdrop-blur-md">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedCourseDetailId(course.courseId)}
-                          data-testid={`course-summary-btn-${course.courseId}`}
-                          data-selected={selectedCourseDetailId === course.courseId ? '1' : '0'}
-                          className={`flex w-full items-center justify-between gap-3 rounded-[12px] px-2.5 py-1.5 text-left text-xs font-bold transition-all active:scale-[0.97] ${selectedCourseDetailId === course.courseId ? 'ios-button-active text-white' : 'ios-button text-[var(--dr-text-secondary)] hover:text-[var(--dr-text-primary)]'}`}
-                        >
-                          <span className="break-words font-extrabold">{course.courseName}</span>
-                          <span className="font-semibold text-xs">{completedCount} / {totalCount} Konu</span>
-                        </button>
-                        <ProgressBar value={completionPercent} tone={course.weakTopicCount > 0 ? 'bg-[#FFE08A]' : 'bg-[#7EE7C7]'} />
+                      <div 
+                        key={course.courseId} 
+                        className={`p-4 ios-card rounded-[22px] flex flex-col justify-between space-y-3.5 transition-all duration-300 hover:scale-[1.01] ${
+                          hasWeakTopics 
+                            ? 'border-amber-500/20 dark:border-amber-500/15 shadow-[0_0_15px_rgba(255,157,47,0.03)] bg-[var(--dr-surface)]/70' 
+                            : 'border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60'
+                        }`}
+                      >
+                        {/* Başlık ve Tamamlama Yüzdesi */}
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="font-extrabold text-sm text-[var(--dr-text-primary)] break-words leading-tight tracking-tight">{course.courseName}</span>
+                          <span className="font-extrabold text-[10px] text-[var(--dr-text-secondary)] bg-[var(--dr-surface)]/70 px-2.5 py-0.5 rounded-full border border-[var(--dr-std-border-strong)]/10 shrink-0 tracking-wide">
+                            {completedCount}/{totalCount} Konu (%{completionPercent})
+                          </span>
+                        </div>
+
+                        {/* İnce ve Şık Degrade İlerleme Çubuğu */}
+                        <div className="ios-progress-track h-1.5 overflow-hidden rounded-full bg-slate-200/20 dark:bg-slate-800/40">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              hasWeakTopics 
+                                ? 'bg-gradient-to-r from-[#FF9D2F] to-[#FF4F18]' 
+                                : 'bg-gradient-to-r from-[#7EE7C7] to-[#2fc775]'
+                            }`} 
+                            style={{ width: `${Math.max(4, Math.min(100, completionPercent))}%` }} 
+                          />
+                        </div>
+
+                        {/* Alt Alan: 3 Mini Gösterge Sütunu */}
+                        <div className="grid grid-cols-3 gap-1 pt-2.5 border-t border-[var(--dr-std-border-strong)]/5 text-center">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)]">Hakimiyet</span>
+                            <span className="text-xs font-black text-indigo-500 dark:text-indigo-400">%{course.averageMastery}</span>
+                          </div>
+                          <div className="flex flex-col gap-0.5 border-x border-[var(--dr-std-border-strong)]/10">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)]">Verimlilik</span>
+                            <span className="text-xs font-black text-emerald-500 dark:text-emerald-400">%{course.averageEfficiency}</span>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)]">Zayıf Konu</span>
+                            <span className={`text-xs font-black ${
+                              hasWeakTopics 
+                                ? 'text-[#FF4F18] dark:text-[#FF6A46] font-extrabold' 
+                                : 'text-[var(--dr-text-secondary)]'
+                            }`}>
+                              {course.weakTopicCount}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-                {selectedCourseDetail && (
-                  <div
-                    className="ios-widget mt-4 rounded-[20px] p-4 text-xs border border-[var(--dr-std-border-strong)]/20 bg-[var(--dr-surface)]/50 text-[var(--dr-text-primary)] shadow-sm"
-                    data-testid="course-detail-panel"
-                    data-course-id={selectedCourseDetail.courseId}
-                  >
-                    <div className="break-words font-extrabold text-sm text-[var(--dr-text-primary)]">Ders detayı: {selectedCourseDetail.courseName}</div>
-                    <div className="mt-1.5 font-medium text-[var(--dr-text-secondary)]">Konuyu Anlama Seviyesi: %{selectedCourseDetail.averageMastery} | Çalışma Verimliliği: %{selectedCourseDetail.averageEfficiency} | Destek isteyen konu sayısı: {selectedCourseDetail.weakTopicCount}</div>
-                  </div>
-                )}
               </div>
             </div>
           )}

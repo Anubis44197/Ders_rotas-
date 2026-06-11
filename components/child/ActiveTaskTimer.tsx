@@ -102,9 +102,20 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
   const strokeDashoffset = circumference - progress * circumference;
   const totalQuestions = (Number(correctCount) || 0) + (Number(incorrectCount) || 0) + (Number(emptyCount) || 0);
 
-  const isWarningZone = !isOvertime && remainingTime <= 300 && remainingTime > 0;
   const isGracePeriod = !isOvertime && mainTime >= plannedSeconds;
-  const useWarningStyle = isWarningZone || isGracePeriod;
+  const useWarningStyle = isGracePeriod;
+
+  let clockOpacity = 1;
+  if (remainingTime > 0 && remainingTime <= 60) {
+    clockOpacity = remainingTime <= 1 ? 0 : remainingTime / 60;
+  } else if (remainingTime <= 0) {
+    const secondsSinceFinish = mainTime - plannedSeconds;
+    if (secondsSinceFinish < 3) {
+      clockOpacity = 0;
+    } else {
+      clockOpacity = 1;
+    }
+  }
 
   useEffect(() => {
     if (showCompleteModal) {
@@ -430,12 +441,14 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
             </aside>
 
             <section className="ios-card rounded-[36px] p-6 shadow-2xl text-[var(--dr-text-primary)]">
-              <div className="mb-5 flex items-center justify-between">
-                <div><div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--dr-orange)]">Canlı takip</div><h2 className="mt-1 text-2xl font-bold text-[var(--dr-text-primary)]">Seans göstergesi</h2></div>
-                <div className={`rounded-full px-4 py-2 text-sm font-bold ${isOvertime ? 'bg-rose-500/8 border border-rose-500/20 text-rose-600 dark:text-rose-400' : status === 'break' ? 'bg-amber-500/8 border border-amber-500/20 text-amber-600 dark:text-amber-400' : status === 'paused' ? 'bg-[var(--dr-surface)] text-[var(--dr-text-secondary)] border border-[var(--dr-std-border-strong)]/15' : 'bg-emerald-500/8 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400'}`}>{isOvertime ? 'Ekstra süre' : status === 'break' ? 'Molada' : status === 'paused' ? 'Durakladı' : 'Çalışıyor'}</div>
-              </div>
+              {status !== 'running' && (
+                <div className="mb-5 flex items-center justify-between">
+                  <div><div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--dr-orange)]">Canlı takip</div><h2 className="mt-1 text-2xl font-bold text-[var(--dr-text-primary)]">Seans göstergesi</h2></div>
+                  <div className={`rounded-full px-4 py-2 text-sm font-bold ${isOvertime ? 'bg-rose-500/8 border border-rose-500/20 text-rose-600 dark:text-rose-400' : status === 'break' ? 'bg-amber-500/8 border border-amber-500/20 text-amber-600 dark:text-amber-400' : status === 'paused' ? 'bg-[var(--dr-surface)] text-[var(--dr-text-secondary)] border border-[var(--dr-std-border-strong)]/15' : 'bg-emerald-500/8 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400'}`}>{isOvertime ? 'Ekstra süre' : status === 'break' ? 'Molada' : status === 'paused' ? 'Durakladı' : 'Çalışıyor'}</div>
+                </div>
+              )}
               <div className="flex min-h-[420px] flex-col items-center justify-center">
-                <div className="relative flex h-[320px] w-[320px] items-center justify-center">
+                <div className="relative flex h-[320px] w-[320px] items-center justify-center" style={{ opacity: clockOpacity, transition: 'opacity 1s linear' }}>
                   <svg className="absolute h-full w-full -rotate-90 transform" viewBox="0 0 220 220">
                     <circle cx="110" cy="110" r={radius} strokeWidth="15" className="stroke-[var(--dr-std-border-strong)]/10" fill="none" />
                     <circle cx="110" cy="110" r={radius} strokeWidth="15" className={`transition-all duration-500 ${isOvertime ? 'stroke-rose-500' : useWarningStyle ? 'stroke-amber-500 animate-pulse' : 'stroke-[var(--dr-orange)]'}`} fill="none" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={isOvertime ? 0 : strokeDashoffset} />
@@ -445,11 +458,6 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
                     <p className={`mt-2 text-sm font-bold uppercase tracking-[0.18em] ${isOvertime ? 'text-rose-500' : 'text-[var(--dr-text-secondary)]'}`}>{isOvertime ? 'Ekstra süre' : 'Kalan süre'}</p>
                   </div>
                 </div>
-                {isWarningZone && (
-                  <div className="mt-4 text-sm font-bold text-amber-500 animate-pulse flex items-center justify-center gap-1.5" role="alert">
-                    <span>⚠️</span> Son 5 Dakika! Süre bitmek üzere.
-                  </div>
-                )}
                 {isGracePeriod && (
                   <div className="mt-4 text-sm font-bold text-amber-500 animate-pulse flex items-center justify-center gap-1.5" role="alert">
                     <span>⚠️</span> Süre doldu! Seansı tamamlayabilirsiniz.

@@ -141,6 +141,12 @@ interface ParentOverviewWorkspaceProps {
     points: number[];
     labels?: string[];
   }>;
+  overviewTimeReportSeries: Array<{
+    courseName: string;
+    color: string;
+    points: number[];
+    labels?: string[];
+  }>;
   overviewStudyPeriod: 'week1' | 'week3' | 'month' | 'quarter' | 'total';
   onOverviewStudyPeriodChange: (period: 'week1' | 'week3' | 'month' | 'quarter' | 'total') => void;
   overviewSignal: {
@@ -260,6 +266,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
   overviewTopicMetricsMap,
   overviewTopicPerformanceRows,
   overviewReportSeries,
+  overviewTimeReportSeries,
   overviewStudyPeriod,
   onOverviewStudyPeriodChange,
   overviewSignal,
@@ -595,29 +602,48 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       overviewCourseInsights.reduce((sum, item) => sum + item.progress, 0) / overviewCourseInsights.length,
     );
   }, [overviewCourseInsights]);
+  const topicReportSeriesForChart = useMemo(() => {
+    const palette = ['#2563EB', '#16A34A', '#7C3AED', '#F59E0B', '#06B6D4', '#EC4899'];
+    return [...overviewTopicInsights]
+      .filter((topic) => topic.currentAccuracy !== null || topic.previousAccuracy !== null)
+      .sort((a, b) => {
+        const aDelta = Math.abs(a.delta ?? 0);
+        const bDelta = Math.abs(b.delta ?? 0);
+        if (bDelta !== aDelta) return bDelta - aDelta;
+        return (b.riskScore ?? 0) - (a.riskScore ?? 0);
+      })
+      .slice(0, 3)
+      .map((topic, index) => {
+        const current = topic.currentAccuracy ?? topic.previousAccuracy ?? 0;
+        const previous = topic.previousAccuracy ?? current;
+        return {
+          courseName: `${topic.courseName} - ${topic.topicName}`,
+          color: palette[index % palette.length],
+          labels: ['Onceki hafta', 'Bu hafta'],
+          points: [previous, current],
+        };
+      });
+  }, [overviewTopicInsights]);
   const reportSeriesForChart = useMemo(() => {
     if (reportCardTab === 'topic') {
-      return normalizedReportSeries.slice(0, 3);
+      return topicReportSeriesForChart;
     }
     if (reportCardTab === 'time') {
-      if (normalizedReportSeries.length === 0) return [];
-      const pointCount = Math.max(...normalizedReportSeries.map((series) => series.points.length), 1);
-      const points = Array.from({ length: pointCount }, (_, idx) => {
-        const valid = normalizedReportSeries.map((series) => series.points[idx]).filter((value) => typeof value === 'number');
-        if (!valid.length) return 0;
-        return Math.round(valid.reduce((sum, value) => sum + value, 0) / valid.length);
-      });
-      return [{ courseName: 'Toplam', color: '#0EA5E9', labels: normalizedReportSeries[0]?.labels || [], points }];
+      return overviewTimeReportSeries;
     }
     return normalizedReportSeries;
-  }, [normalizedReportSeries, reportCardTab]);
+  }, [normalizedReportSeries, overviewTimeReportSeries, reportCardTab, topicReportSeriesForChart]);
   const safeReportSeriesForChart = useMemo(
     () => reportSeriesForChart
       .filter((series) => series && typeof series.courseName === 'string')
       .map((series, index) => {
         const rawPoints = Array.isArray(series.points) ? series.points : [];
         const points = rawPoints.length > 0
-          ? rawPoints.map((value) => (Number.isFinite(value) ? Math.max(0, Math.min(100, Number(value))) : 0))
+          ? rawPoints.map((value) => {
+            if (!Number.isFinite(value)) return 0;
+            const numberValue = Number(value);
+            return reportCardTab === 'time' ? Math.max(0, numberValue) : Math.max(0, Math.min(100, numberValue));
+          })
           : [0];
         const labels = Array.isArray(series.labels) && series.labels.length === points.length
           ? series.labels
@@ -629,7 +655,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           points,
         };
       }),
-    [reportSeriesForChart],
+    [reportCardTab, reportSeriesForChart],
   );
   const reportPointLabels = useMemo(
     () => safeReportSeriesForChart[0]?.labels?.length
@@ -637,6 +663,15 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
       : safeReportSeriesForChart[0]?.points.map((_, index) => `${index + 1}`) || [],
     [safeReportSeriesForChart],
   );
+  const reportChartIsTime = reportCardTab === 'time';
+  const reportChartMax = useMemo(() => {
+    if (!reportChartIsTime) return 100;
+    const maxValue = Math.max(0, ...safeReportSeriesForChart.flatMap((series) => series.points));
+    if (maxValue <= 30) return 30;
+    return Math.ceil(maxValue / 30) * 30;
+  }, [reportChartIsTime, safeReportSeriesForChart]);
+  const getReportY = (value: number, maxValue = 100) => 182 - (Math.max(0, Math.min(maxValue, value)) / Math.max(1, maxValue)) * 152;
+  const formatReportValue = (value: number) => reportChartIsTime ? `${value} dk` : `%${value}`;
   const reportPeriodWindowLabel = overviewStudyPeriod === 'week1'
     ? 'Son 7 gun'
     : overviewStudyPeriod === 'week3'
@@ -1698,7 +1733,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                         ))}
                         {courseReportSeriesForChart.map((series, sIdx) => {
                           const xs = getReportXs(series.points.length);
-                          const ys = series.points.map((p) => 182 - Math.max(0, Math.min(100, p)) * 1.52);
+                          const ys = series.points.map((p) => getReportY(p, reportChartMax));
                           const path = buildReportPath(xs, ys);
                           return (
                             <g key={`cseries-${series.courseName}-${sIdx}`}>
@@ -1712,7 +1747,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                                   fill={series.color}
                                   className="cursor-pointer transition-all hover:scale-150"
                                 >
-                                  <title>{`${series.courseName}: %${series.points[idx]}`}</title>
+                                  <title>{`${series.courseName}: ${formatReportValue(series.points[idx])}`}</title>
                                 </circle>
                               ))}
                             </g>
@@ -1796,21 +1831,25 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
               <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_300px] w-full min-w-0 overflow-hidden">
                 <div className="ios-widget rounded-[14px] p-3 min-w-0 overflow-hidden">
                   <div className="mb-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                    {reportCardTab === 'general' && 'Derslere Gore Hakimiyet Trendi'}
-                    {reportCardTab === 'topic' && 'Konu Raporu Trendi'}
-                    {reportCardTab === 'time' && 'Zaman Raporu Trendi'}
+                    {reportCardTab === 'general' && 'Derslere Gore Dogruluk Trendi'}
+                    {reportCardTab === 'topic' && 'Konu Dogruluk Degisimi'}
+                    {reportCardTab === 'time' && 'Calisma Suresi Trendi'}
                   </div>
                   <svg viewBox="0 0 620 220" className="h-52 w-full max-w-full" aria-label="Derslere gore hakimiyet trendi">
                     <line x1="30" y1="182" x2="600" y2="182" stroke="#CBD5E1" strokeWidth="1" />
-                    {[0, 25, 50, 75, 100].map((tick, i) => (
-                      <g key={`gtick-${tick}`}>
-                        <line x1="30" y1={182 - i * 38} x2="600" y2={182 - i * 38} stroke="#E2E8F0" strokeWidth="1" />
-                        <text x="4" y={186 - i * 38} className="fill-[var(--dr-text-secondary)] text-[10px]">%{tick}</text>
-                      </g>
-                    ))}
+                    {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                      const tick = Math.round(reportChartMax * ratio);
+                      const y = getReportY(tick, reportChartMax);
+                      return (
+                        <g key={`gtick-${tick}`}>
+                          <line x1="30" y1={y} x2="600" y2={y} stroke="#E2E8F0" strokeWidth="1" />
+                          <text x="4" y={y + 4} className="fill-[var(--dr-text-secondary)] text-[10px]">{formatReportValue(tick)}</text>
+                        </g>
+                      );
+                    })}
                     {safeReportSeriesForChart.map((series, sIdx) => {
                       const xs = getReportXs(series.points.length);
-                      const ys = series.points.map((p) => 182 - Math.max(0, Math.min(100, p)) * 1.52);
+                      const ys = series.points.map((p) => getReportY(p, reportChartMax));
                       const path = buildReportPath(xs, ys);
                       return (
                         <g key={`gseries-${series.courseName}-${sIdx}`}>
@@ -1824,7 +1863,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                               fill={series.color}
                               className="cursor-pointer transition-all hover:scale-150"
                             >
-                              <title>{`${series.courseName}: %${series.points[idx]}`}</title>
+                              <title>{`${series.courseName}: ${formatReportValue(series.points[idx])}`}</title>
                             </circle>
                           ))}
                         </g>
