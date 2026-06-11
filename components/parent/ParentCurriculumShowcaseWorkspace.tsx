@@ -94,10 +94,10 @@ const getQuestionTotal = (task: Task) => Math.max(
 const isQuestionBearingTask = (task: Task) => (
   String(task.taskType) === 'soru çözme'
   || String(task.taskType) === 'soru \u00e7\u00f6zme'
-  || String(task.taskType) === 'soru Ã§Ã¶zme'
+  || String(task.taskType) === 'soru çözme'
   || String(task.taskType) === 'branş deneme'
   || String(task.taskType) === 'bran\u015f deneme'
-  || String(task.taskType) === 'branÅŸ deneme'
+  || String(task.taskType) === 'branş deneme'
   || String(task.taskType) === 'genel deneme'
 );
 

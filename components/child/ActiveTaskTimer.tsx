@@ -414,11 +414,11 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
           {isFocusMode ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           <span className="hidden sm:inline">{isFocusMode ? 'Odaktan çık' : 'Odak modu'}</span>
         </button>
-        <div className="mx-auto flex min-h-full w-full max-w-6xl items-start py-8 md:py-12 px-4">
+        <div className="mx-auto flex min-h-full w-full max-w-6xl items-start px-3 pb-28 pt-6 sm:px-4 md:py-12">
           <div className="grid w-full gap-6 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
-            <aside className="dr-session-context-card ios-card rounded-[32px] p-6 shadow-2xl text-[var(--dr-text-primary)]">
+            <aside className="dr-session-context-card ios-card rounded-[28px] p-4 shadow-2xl sm:rounded-[32px] sm:p-6 text-[var(--dr-text-primary)]">
               <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--dr-orange)]">Aktif seans</div>
-              <h1 className="mt-2 text-3xl font-bold leading-tight text-[var(--dr-text-primary)]">{task.title}</h1>
+              <h1 className="mt-2 text-2xl font-bold sm:text-3xl leading-tight text-[var(--dr-text-primary)]">{task.title}</h1>
               <p className="mt-3 text-sm leading-6 text-[var(--dr-text-secondary)]">{task.description || 'Bu görev için odaklı çalışma seansı açık.'}</p>
               <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold">
                 <span className="rounded-full bg-[var(--dr-surface)]/60 text-[var(--dr-text-secondary)] border border-[var(--dr-std-border-strong)]/15 px-3 py-1">Plan: {task.plannedDuration} dk</span>
@@ -427,10 +427,10 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
                 {task.curriculumTopicName ? <span className="rounded-full bg-emerald-500/8 border border-emerald-500/20 px-3 py-1 text-emerald-600 dark:text-emerald-400">Konu: {task.curriculumTopicName}</span> : null}
                 {task.taskGoalType ? <span className="rounded-full bg-violet-500/8 border border-violet-500/20 px-3 py-1 text-violet-600 dark:text-violet-400">Hedef: {task.taskGoalType}</span> : null}
               </div>
-              <div className="mt-6 grid grid-cols-3 gap-3">
-                <div className="ios-widget ios-blue rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-blue-800 dark:text-blue-300">Çalışma</div><div className="mt-2 text-xl font-bold text-blue-900 dark:text-blue-100">{formatTime(actualStudyDuration)}</div></div>
-                <div className="ios-widget ios-yellow rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">Mola</div><div className="mt-2 text-xl font-bold text-amber-950 dark:text-amber-100">{formatTime(breakTime)}</div></div>
-                <div className="ios-widget rounded-[22px] p-4"><div className="text-xs font-bold uppercase tracking-wide text-[var(--dr-text-secondary)]">Duraklat</div><div className="mt-2 text-xl font-bold text-[var(--dr-text-primary)]">{formatTime(pauseTime)}</div></div>
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
+                <div className="ios-widget ios-blue rounded-[18px] p-3 sm:rounded-[22px] sm:p-4"><div className="text-xs font-bold uppercase tracking-wide text-blue-800 dark:text-blue-300">Çalışma</div><div className="mt-2 text-xl font-bold text-blue-900 dark:text-blue-100">{formatTime(actualStudyDuration)}</div></div>
+                <div className="ios-widget ios-yellow rounded-[18px] p-3 sm:rounded-[22px] sm:p-4"><div className="text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">Mola</div><div className="mt-2 text-xl font-bold text-amber-950 dark:text-amber-100">{formatTime(breakTime)}</div></div>
+                <div className="ios-widget rounded-[18px] p-3 sm:rounded-[22px] sm:p-4"><div className="text-xs font-bold uppercase tracking-wide text-[var(--dr-text-secondary)]">Duraklat</div><div className="mt-2 text-xl font-bold text-[var(--dr-text-primary)]">{formatTime(pauseTime)}</div></div>
               </div>
               <div className="mt-6 hidden grid-cols-2 gap-3 xl:grid">
                 {status === 'running' ? <button onClick={() => setStatus('paused')} className="ios-button flex items-center justify-center rounded-[18px] border-white/15 bg-white/10 px-4 py-4 text-sm font-bold text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] active:scale-[0.96] transition-transform hover:bg-white/15"><Pause className="mr-2 h-5 w-5" />Durdur</button> : <button onClick={() => setStatus('running')} className="ios-button-active flex items-center justify-center rounded-[18px] px-4 py-4 text-sm font-bold active:scale-[0.96] transition-transform"><Play className="mr-2 h-5 w-5" />Devam et</button>}
@@ -440,21 +440,21 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
               </div>
             </aside>
 
-            <section className="ios-card rounded-[36px] p-6 shadow-2xl text-[var(--dr-text-primary)]">
+            <section className="ios-card rounded-[28px] p-4 shadow-2xl sm:rounded-[36px] sm:p-6 text-[var(--dr-text-primary)]">
               {status !== 'running' && (
                 <div className="mb-5 flex items-center justify-between">
                   <div><div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--dr-orange)]">Canlı takip</div><h2 className="mt-1 text-2xl font-bold text-[var(--dr-text-primary)]">Seans göstergesi</h2></div>
                   <div className={`rounded-full px-4 py-2 text-sm font-bold ${isOvertime ? 'bg-rose-500/8 border border-rose-500/20 text-rose-600 dark:text-rose-400' : status === 'break' ? 'bg-amber-500/8 border border-amber-500/20 text-amber-600 dark:text-amber-400' : status === 'paused' ? 'bg-[var(--dr-surface)] text-[var(--dr-text-secondary)] border border-[var(--dr-std-border-strong)]/15' : 'bg-emerald-500/8 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400'}`}>{isOvertime ? 'Ekstra süre' : status === 'break' ? 'Molada' : status === 'paused' ? 'Durakladı' : 'Çalışıyor'}</div>
                 </div>
               )}
-              <div className="flex min-h-[420px] flex-col items-center justify-center">
-                <div className="relative flex h-[320px] w-[320px] items-center justify-center" style={{ opacity: clockOpacity, transition: 'opacity 1s linear' }}>
+              <div className="flex min-h-[min(58dvh,420px)] flex-col items-center justify-center">
+                <div className="relative flex h-[min(72vw,320px)] w-[min(72vw,320px)] items-center justify-center" style={{ opacity: clockOpacity, transition: 'opacity 1s linear' }}>
                   <svg className="absolute h-full w-full -rotate-90 transform" viewBox="0 0 220 220">
                     <circle cx="110" cy="110" r={radius} strokeWidth="15" className="stroke-[var(--dr-std-border-strong)]/10" fill="none" />
                     <circle cx="110" cy="110" r={radius} strokeWidth="15" className={`transition-all duration-500 ${isOvertime ? 'stroke-rose-500' : useWarningStyle ? 'stroke-amber-500 animate-pulse' : 'stroke-[var(--dr-orange)]'}`} fill="none" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={isOvertime ? 0 : strokeDashoffset} />
                   </svg>
                   <div className="z-10 text-center">
-                    <p className={`tabular-nums text-7xl font-bold ${isOvertime ? 'text-rose-600 dark:text-rose-400' : useWarningStyle ? 'text-amber-500 animate-pulse' : 'text-[var(--dr-orange)]'}`}>{formatTime(displayTime < 0 ? 0 : displayTime)}</p>
+                    <p className={`tabular-nums text-5xl font-bold sm:text-7xl ${isOvertime ? 'text-rose-600 dark:text-rose-400' : useWarningStyle ? 'text-amber-500 animate-pulse' : 'text-[var(--dr-orange)]'}`}>{formatTime(displayTime < 0 ? 0 : displayTime)}</p>
                     <p className={`mt-2 text-sm font-bold uppercase tracking-[0.18em] ${isOvertime ? 'text-rose-500' : 'text-[var(--dr-text-secondary)]'}`}>{isOvertime ? 'Ekstra süre' : 'Kalan süre'}</p>
                   </div>
                 </div>

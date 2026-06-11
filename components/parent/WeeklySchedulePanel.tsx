@@ -887,7 +887,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       {isEditorOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl" onClick={handleCloseEditor}>
           <div className="ios-card dr-compact-modal flex max-h-[min(76dvh,36rem)] w-[min(38rem,calc(100vw-1.5rem))] flex-col overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Haftalık program düzenleme">
-            <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-[var(--dr-std-border-strong)]/15 p-4 bg-[var(--dr-surface)]/20">
+            <div className="dr-compact-modal-header flex items-start justify-between gap-3 border-b border-[var(--dr-std-border-strong)]/15 p-4 bg-[var(--dr-surface)]/20">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">
                   <PlusCircle className="h-4 w-4" />
@@ -910,7 +910,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 <button
                   type="button"
                   onClick={handleCloseEditor}
-                  className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer"
+                  className="ios-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer"
                   aria-label="Program düzenlemeyi kapat"
                 >
                   <X className="h-4 w-4" />
@@ -938,7 +938,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                     <button
                       type="button"
                       onClick={() => setShowEditorPreview(false)}
-                      className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer"
+                      className="ios-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer"
                       aria-label="Haftalık ön izlemeyi kapat"
                     >
                       <X className="h-4 w-4" />
@@ -1203,13 +1203,13 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
             aria-label="Okul müfredatı işleme"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-white/10">
+            <div className="dr-compact-modal-header flex items-start justify-between gap-3 border-b border-white/10">
               <div>
                 <div className="dr-planning-kicker text-xs font-bold uppercase tracking-[0.18em]">Okulda işlenen konu</div>
                 <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">{activeSchoolCurriculumSlot.courseName}</h3>
                 <p className="mt-0.5 text-[11px] text-slate-500">{schoolCurriculumSlot.day} · {activeSchoolCurriculumSlot.startTime} - {activeSchoolCurriculumSlot.endTime}</p>
               </div>
-              <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-slate-600" aria-label="Okul müfredatı penceresini kapat">
+              <button type="button" onClick={closeSchoolCurriculumEditor} className="ios-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-0 text-slate-600" aria-label="Okul müfredatı penceresini kapat">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1288,9 +1288,9 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
       )}
 
       {isTaskAssignmentOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-xl" onClick={closeTaskAssignment}>
-          <form className="ios-card dr-compact-modal flex max-h-[min(76dvh,34rem)] w-full max-w-[34rem] min-w-0 flex-col overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl" onSubmit={handleAssignTask} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Çocuğa görev ata">
-            <div className="dr-compact-modal-header flex items-start justify-between gap-4 border-b border-[var(--dr-std-border-strong)]/15 p-4 bg-[var(--dr-surface)]/20">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-2 sm:p-3 backdrop-blur-xl" onClick={closeTaskAssignment}>
+          <form className="ios-card dr-compact-modal flex max-h-[min(92dvh,34rem)] w-full max-w-[34rem] min-w-0 flex-col overflow-hidden border border-[var(--dr-std-border-strong)]/20 shadow-2xl" onSubmit={handleAssignTask} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Çocuğa görev ata">
+            <div className="dr-compact-modal-header flex items-start justify-between gap-3 border-b border-[var(--dr-std-border-strong)]/15 p-4 bg-[var(--dr-surface)]/20">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[var(--dr-orange)]">
                   <ClipboardList className="h-4 w-4" />
@@ -1299,7 +1299,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 <h3 className="mt-1 text-base font-bold text-[var(--dr-text-primary)]">Plan içinden hızlı görev</h3>
                 <p className="mt-0.5 text-[11px] text-[var(--dr-text-secondary)]">Ders, ünite ve konu seçerek görevi gönder.</p>
               </div>
-              <button type="button" onClick={closeTaskAssignment} className="ios-button flex h-9 w-9 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Görev atama penceresini kapat">
+              <button type="button" onClick={closeTaskAssignment} className="ios-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-0 text-[var(--dr-text-secondary)] transition-all active:scale-[0.96] cursor-pointer" aria-label="Görev atama penceresini kapat">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1311,7 +1311,7 @@ const WeeklySchedulePanel: React.FC<WeeklySchedulePanelProps> = ({ schedule, cou
                 <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Ünite<select value={assignmentUnitName} onChange={(event) => { setAssignmentUnitName(event.target.value); setAssignmentTopicName(''); setAssignmentMessage(null); }} disabled={!assignmentUnits.length} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Ünite seç</option>{assignmentUnits.map((unit) => <option key={unit.name} value={unit.name}>{unit.name}</option>)}</select></label>
                 <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Konu<select value={assignmentTopicName} onChange={(event) => { setAssignmentTopicName(event.target.value); setAssignmentMessage(null); }} disabled={!assignmentTopics.length} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none disabled:opacity-50"><option value="">Konu seç</option>{assignmentTopics.map((topic) => <option key={topic.name} value={topic.name}>{topic.name}</option>)}</select></label>
                 <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Teslim tarihi<input type="date" value={assignmentDueDate} onChange={(event) => setAssignmentDueDate(event.target.value)} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
-                <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Süre (dk)<input type="number" min="5" step="5" value={assignmentDuration} onChange={(event) => setAssignmentDuration(event.target.value)} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
+                <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300">Süre (dk)<input type="number" min="1" step="1" value={assignmentDuration} onChange={(event) => setAssignmentDuration(event.target.value)} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>
                 {(assignmentTaskTypeKey === 'question' || assignmentTaskTypeKey === 'branch-exam') && <label className="min-w-0 text-xs font-bold text-[var(--dr-text-primary)] dark:text-slate-300 sm:col-span-2">Soru sayısı<input type="number" min="1" value={assignmentQuestionCount} onChange={(event) => setAssignmentQuestionCount(event.target.value)} className="dr-form-field mt-1.5 w-full max-w-full rounded-xl px-2.5 py-2 text-xs font-semibold outline-none" /></label>}
               </div>
 
