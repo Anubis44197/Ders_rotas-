@@ -15,13 +15,14 @@ const card = 'dr-hig-secondary-card rounded-[28px] p-5';
 const subtleCard = 'dr-hig-secondary-card rounded-[26px] p-5';
 const CHILD_TASK_PREVIEW_LIMIT = 6;
 const CHILD_COMPLETED_PREVIEW_LIMIT = 4;
-const isMojibakeCodePoint = (codePoint: number, nextCodePoint?: number) =>
-  codePoint === 0x00c3 ||
-  codePoint === 0x00c2 ||
-  codePoint === 0x00c4 ||
-  codePoint === 0x00c5 ||
-  codePoint === 0xfffd ||
-  (codePoint === 0x00e2 && (nextCodePoint === 0x20ac || nextCodePoint === 0x0080 || nextCodePoint === 0x0099));
+const isMojibakeCodePoint = (codePoint: number, nextCodePoint?: number) => {
+  if (codePoint === 0xfffd) return true;
+  const isLeadByte = codePoint === 0x00c2 || codePoint === 0x00c3 || codePoint === 0x00c4 || codePoint === 0x00c5;
+  if (isLeadByte && nextCodePoint !== undefined) {
+    return nextCodePoint >= 0x0080 && nextCodePoint <= 0x00bf;
+  }
+  return codePoint === 0x00e2 && (nextCodePoint === 0x20ac || nextCodePoint === 0x0080 || nextCodePoint === 0x0099);
+};
 
 const looksCorrupted = (value?: string) => {
   if (typeof value !== 'string') return false;

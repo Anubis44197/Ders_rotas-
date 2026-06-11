@@ -293,20 +293,7 @@ export const startRemoteAppDataSync = async ({
   let hasTaskChunks = false;
   let hasEmittedMissing = false;
 
-  const mergeTaskSources = (primaryTasks: unknown[], fallbackTasks: unknown[]) => {
-    if (fallbackTasks.length === 0) return primaryTasks;
-    const seen = new Set(primaryTasks.map((task, index) => getTaskStableKey(task, index)));
-    const merged = [...primaryTasks];
-    fallbackTasks.forEach((task, index) => {
-      const key = getTaskStableKey(task, index);
-      if (seen.has(key)) return;
-      seen.add(key);
-      merged.push(task);
-    });
-    return merged;
-  };
-
-  const getActiveTasks = () => (hasTaskChunks ? mergeTaskSources(chunkTasks, legacyTasks) : legacyTasks);
+  const getActiveTasks = () => (hasTaskChunks ? chunkTasks : legacyTasks);
 
   const maybeRemoteMissing = () => {
     if (hasEmittedMissing || hasSplitState || hasTaskChunks) return;

@@ -325,7 +325,7 @@ const clearIndexedDbKeys = async (keys: string[]) => {
   await Promise.all(targets.map((key) => deleteIndexedDbValue(key)));
 };
 
-function useStickyState<T>(defaultValue: T, key: string, normalize?: (value: unknown) => T): [T, React.Dispatch<React.SetStateAction<T>>] {
+function useStickyState<T>(defaultValue: T, key: string, normalize?: (value: unknown) => T): [T, React.Dispatch<React.SetStateAction<T>>, boolean] {
   const sanitize = useCallback((input: unknown): T => {
     if (normalize) return normalize(input);
     return input as T;
@@ -389,7 +389,6 @@ function useStickyState<T>(defaultValue: T, key: string, normalize?: (value: unk
 
   useEffect(() => {
     if (persistInIndexedDb && !idbHydrated) return;
-    if (persistInIndexedDb && isIdbHydrationPending(key, value)) return;
     if (isE2ESeedLockActive()) return;
     try {
       if (persistInIndexedDb) {
@@ -408,7 +407,7 @@ function useStickyState<T>(defaultValue: T, key: string, normalize?: (value: unk
     }
   }, [idbHydrated, key, persistInIndexedDb, value]);
 
-  return [value, setSafeValue];
+  return [value, setSafeValue, idbHydrated];
 }
 
 const normalizeCourseRecord = (course: unknown, index: number): Course | null => {
@@ -441,9 +440,27 @@ const normalizeSafeTasks = (value: unknown): Task[] => {
     .filter((task): task is Task => {
       if (!task || typeof task !== 'object') return false;
       const candidate = task as Task;
-      return typeof candidate.id === 'string'
-        && typeof candidate.title === 'string'
-        && typeof candidate.courseId === 'string'
+      if (typeof candidate.id !== 'string' || typeof candidate.title !== 'string') return false;
+
+      const idLower = candidate.id.toLowerCase();
+      const titleLower = candidate.title.toLowerCase();
+
+      // Hortlayan test görevlerini engelle ve temizle
+      if (
+        idLower.startsWith('live_mini_') ||
+        idLower.startsWith('qa_manual_') ||
+        idLower.includes('live_mini') ||
+        titleLower.includes('canl? test') ||
+        titleLower.includes('soru ??zme') ||
+        titleLower.includes('canli test') ||
+        titleLower.includes('soru cozme') ||
+        titleLower.includes('canlı test') ||
+        titleLower.includes('soru çözme')
+      ) {
+        return false;
+      }
+
+      return typeof candidate.courseId === 'string'
         && typeof candidate.dueDate === 'string';
     })
     .map(normalizeTask);
@@ -763,13 +780,14 @@ const normalizePlanningEngineSnapshot = (value: unknown): PlanningEngineSnapshot
   };
 };
 
-const isMojibakeCodePoint = (codePoint: number, nextCodePoint?: number) =>
-  codePoint === 0x00c3 ||
-  codePoint === 0x00c2 ||
-  codePoint === 0x00c4 ||
-  codePoint === 0x00c5 ||
-  codePoint === 0xfffd ||
-  (codePoint === 0x00e2 && (nextCodePoint === 0x20ac || nextCodePoint === 0x0080 || nextCodePoint === 0x0099));
+const isMojibakeCodePoint = (codePoint: number, nextCodePoint?: number) => {
+  if (codePoint === 0xfffd) return true;
+  const isLeadByte = codePoint === 0x00c2 || codePoint === 0x00c3 || codePoint === 0x00c4 || codePoint === 0x00c5;
+  if (isLeadByte && nextCodePoint !== undefined) {
+    return nextCodePoint >= 0x0080 && nextCodePoint <= 0x00bf;
+  }
+  return codePoint === 0x00e2 && (nextCodePoint === 0x20ac || nextCodePoint === 0x0080 || nextCodePoint === 0x0099);
+};
 
 const hasMojibake = (value: string) => {
   const codePoints = Array.from(value).map((char) => char.codePointAt(0) ?? 0);
@@ -1329,20 +1347,6 @@ const isE2ESeedLockActive = () => {
   return window.localStorage.getItem('__qa_seed_lock') === '1';
 };
 
-const isIdbHydrationPending = (key: string, currentValue: unknown) => {
-  if (typeof window === 'undefined') return false;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    if (!isIdbStorageMarker(parsed)) return false;
-    if (Array.isArray(currentValue)) return currentValue.length === 0;
-    if (currentValue && typeof currentValue === 'object') return Object.keys(currentValue as Record<string, unknown>).length === 0;
-    return currentValue === null || currentValue === undefined;
-  } catch {
-    return false;
-  }
-};
 
 const seedManualQaRecords = () => {
   if (typeof window === 'undefined') return;
@@ -2486,20 +2490,30 @@ const App: React.FC = () => {
   const isE2EMode = getQueryParam('e2e') === '1';
   const [userType, setUserType] = useStickyState<UserType>(UserType.Parent, 'userType');
   const [courses, setCourses] = useStickyState<Course[]>([], 'courses', normalizeSafeCourses);
-  const [tasks, setTasks] = useStickyState<Task[]>([], 'tasks', normalizeSafeTasks);
-  const [curriculum, setCurriculum] = useStickyState<SubjectCurriculum>({}, 'curriculum', normalizeSafeCurriculum);
+  const [tasks, setTasks, tasksHydrated] = useStickyState<Task[]>([], 'tasks', normalizeSafeTasks);
+  const [curriculum, setCurriculum, curriculumHydrated] = useStickyState<SubjectCurriculum>({}, 'curriculum', normalizeSafeCurriculum);
   const [weeklySchedule, setWeeklySchedule] = useStickyState<WeeklySchedule>(defaultWeeklySchedule, 'weeklySchedule', normalizeWeeklySchedule);
   const [schoolTopicHistory, setSchoolTopicHistory] = useStickyState<SchoolTopicHistoryEntry[]>([], 'schoolTopicHistory', normalizeSchoolTopicHistory);
-  const [examScheduleEntries, setExamScheduleEntries] = useStickyState<ExamScheduleEntry[]>([], 'examScheduleEntries', normalizeSafeArray<ExamScheduleEntry>);
-  const [examRecords, setExamRecords] = useStickyState<ExamRecord[]>([], 'examRecords', normalizeSafeArray<ExamRecord>);
-  const [compositeExamResults, setCompositeExamResults] = useStickyState<CompositeExamResult[]>([], 'compositeExamResults', normalizeSafeArray<CompositeExamResult>);
-  const [studyPlans, setStudyPlans] = useStickyState<StoredStudyPlan[]>([], 'studyPlans', normalizeStudyPlans);
-  const [planningEngineSnapshot, setPlanningEngineSnapshot] = useStickyState<PlanningEngineSnapshot>(defaultPlanningEngineSnapshot, 'planningEngineSnapshot', normalizePlanningEngineSnapshot);
-  const [performanceData, setPerformanceData] = useStickyState<PerformanceData[]>([], 'performanceData', normalizeSafeArray<PerformanceData>);
+  const [examScheduleEntries, setExamScheduleEntries, examScheduleEntriesHydrated] = useStickyState<ExamScheduleEntry[]>([], 'examScheduleEntries', normalizeSafeArray<ExamScheduleEntry>);
+  const [examRecords, setExamRecords, examRecordsHydrated] = useStickyState<ExamRecord[]>([], 'examRecords', normalizeSafeArray<ExamRecord>);
+  const [compositeExamResults, setCompositeExamResults, compositeExamResultsHydrated] = useStickyState<CompositeExamResult[]>([], 'compositeExamResults', normalizeSafeArray<CompositeExamResult>);
+  const [studyPlans, setStudyPlans, studyPlansHydrated] = useStickyState<StoredStudyPlan[]>([], 'studyPlans', normalizeStudyPlans);
+  const [planningEngineSnapshot, setPlanningEngineSnapshot, planningEngineSnapshotHydrated] = useStickyState<PlanningEngineSnapshot>(defaultPlanningEngineSnapshot, 'planningEngineSnapshot', normalizePlanningEngineSnapshot);
+  const [performanceData, setPerformanceData, performanceDataHydrated] = useStickyState<PerformanceData[]>([], 'performanceData', normalizeSafeArray<PerformanceData>);
   const [rewards, setRewards] = useStickyState<Reward[]>([], 'rewards', normalizeSafeRewards);
   const [successPoints, setSuccessPoints] = useStickyState<number>(0, 'successPoints', normalizeSafeNumber);
   const [badges, setBadges] = useStickyState<Badge[]>([{ id: 'b1', name: 'İlk Adım', description: 'İlk görevini tamamladın!', icon: BadgeCheck }], 'badges', normalizeSafeBadges);
   const [isParentLocked, setIsParentLocked] = useStickyState<boolean>(true, 'isParentLocked', normalizeSafeBoolean);
+
+  const allIdbStatesHydrated =
+    tasksHydrated &&
+    curriculumHydrated &&
+    examScheduleEntriesHydrated &&
+    examRecordsHydrated &&
+    compositeExamResultsHydrated &&
+    studyPlansHydrated &&
+    planningEngineSnapshotHydrated &&
+    performanceDataHydrated;
   const [loginError, setLoginError] = useState<string | null>(null);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [showDeleteCourseModal, setShowDeleteCourseModal] = useState(false);
@@ -2682,8 +2696,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (isIdbHydrationPending('curriculum', curriculum)) return;
-    if (isIdbHydrationPending('tasks', tasks)) return;
+    if (!curriculumHydrated || !tasksHydrated) return;
     const subjectNames = Object.keys(curriculum || {});
 
     const nextCurriculumCourses = subjectNames.map((subjectName, index) => {
@@ -2740,7 +2753,7 @@ const App: React.FC = () => {
 
       return JSON.stringify(nextPlans) === JSON.stringify(prevPlans) ? prevPlans : nextPlans;
     });
-  }, [curriculum, courses, setCourses, setPerformanceData, setStudyPlans, setTasks]);
+  }, [curriculum, courses, setCourses, setPerformanceData, setStudyPlans, setTasks, curriculumHydrated, tasksHydrated]);
 
   useEffect(() => {
     const nextPlanningSnapshot = derivePlanningEngineSnapshot(curriculum, weeklySchedule, studyPlans, tasks, courses, examScheduleEntries);
@@ -2868,7 +2881,7 @@ const App: React.FC = () => {
   }, [setBadges, setCompositeExamResults, setCourses, setCurriculum, setExamRecords, setExamScheduleEntries, setPerformanceData, setPlanningEngineSnapshot, setRewards, setSchoolTopicHistory, setStudyPlans, setSuccessPoints, setTasks, setWeeklySchedule, userType, addToast]);
 
   useEffect(() => {
-    if (isE2EMode) return;
+    if (isE2EMode || !allIdbStatesHydrated) return;
     let unsubscribe: (() => void) | null = null;
     let cancelled = false;
 
@@ -2920,10 +2933,10 @@ const App: React.FC = () => {
       if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
       unsubscribe?.();
     };
-  }, [addToast, applyRemoteAppData, isE2EMode]);
+  }, [addToast, applyRemoteAppData, isE2EMode, allIdbStatesHydrated]);
 
   useEffect(() => {
-    if (isE2EMode || !remoteSyncReadyRef.current || !remoteHydratedRef.current || remoteApplyingRef.current) return;
+    if (isE2EMode || !remoteSyncReadyRef.current || !remoteHydratedRef.current || remoteApplyingRef.current || !allIdbStatesHydrated) return;
     const serialized = JSON.stringify(remoteAppData);
     if (serialized === remoteLastSerializedRef.current) return;
 
@@ -2943,7 +2956,7 @@ const App: React.FC = () => {
           remotePublishInFlightRef.current = false;
         });
     }, 1000);
-  }, [addToast, isE2EMode, remoteAppData]);
+  }, [addToast, isE2EMode, remoteAppData, allIdbStatesHydrated]);
 
   const handleContinueTask = (taskId: string) => {
     const task = tasks.find((item) => item.id === taskId);

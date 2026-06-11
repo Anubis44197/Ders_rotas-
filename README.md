@@ -228,18 +228,14 @@ npm run dev:stable
 
 ## Son Çalışma Durumu
 
-2026-06-03 itibarıyla:
+2026-06-11 itibarıyla:
+- IndexedDB yükleme hızı ile Firebase canlı senkron dinleyicisi arasındaki çakışma (yarış durumu) çözüldü.
+- `useStickyState` hook'u `idbHydrated` durumunu döndürecek şekilde güncellendi ve tüm IndexedDB durumları hazır olana kadar Firebase dinleme ve yükleme işlemleri ertelendi.
+- Bölümlenmiş yeni görev yapısı devredeyken silinen eski görevlerin sürekli geri gelmesine sebep olan eski `legacyTasks` birleştirme mantığı düzeltildi.
+- Hatalı çalışan ve boş dizileri yazmayı engelleyen `isIdbHydrationPending` yardımcı fonksiyonu kaldırıldı.
+- Son doğrulamalar: `typecheck`, `build` başarıyla geçti.
 
-- Görev atama yenileme sonrası kaybolma sorunu düzeltildi.
-- Görev ekleme/silme işlemleri IndexedDB'ye anında yazılıyor.
-- Firebase eski snapshot'ın yeni yerel görevi ezmesini engelleyen local-dirty guard eklendi.
-- Atanan görevler veli panelinde listeleniyor.
-- Atanan görevler en yeni en üstte olacak şekilde sıralanıyor.
-- Veli görev satırında `Sil` ve `Tekrarla` aksiyonları var.
-- Görev atandıktan sonra modal kapanıyor ve görünür onay mesajı çıkıyor.
-- Arama alanı kaldırıldı; bildirim paneli üst barda doğru konuma alındı.
-- Firebase Hosting deploy edildi: https://ders-tak.web.app
-- Son doğrulamalar: `typecheck`, `smoke`, `build` geçti.
+[2026-06-11]: Firebase Canlı Senkronizasyon (Hydration Yarış Durumu ve Miras Görev Birleştirme) Hatalarının Düzeltilmesi - [Durum: Tamamlandı]
 
 ## Tasarım Notu
 
