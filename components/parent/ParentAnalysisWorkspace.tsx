@@ -747,6 +747,8 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     <section
       className="space-y-6"
       data-testid="parent-analysis-workspace"
+      data-parent-action-pending={parentActionPendingCount}
+      data-parent-action-completed={parentActionCompletedCount}
       data-analysis-state={analysisState}
       data-analysis-tab={analysisWorkspaceTab}
       data-e2e-mode={isE2EMode ? '1' : '0'}

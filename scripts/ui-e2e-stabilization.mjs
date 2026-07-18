@@ -201,7 +201,11 @@ const startViteIfNeeded = async () => {
   const vite = spawn(
     NODE_BIN,
     ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '3000', '--strictPort'],
-    { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] },
+    {
+      cwd: ROOT,
+      env: { ...process.env, VITE_DISABLE_FIREBASE_SYNC: 'true' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
   );
   vite.stdout.on('data', (chunk) => appendFile(VITE_LOG, chunk.toString(), 'utf8'));
   vite.stderr.on('data', (chunk) => appendFile(VITE_LOG, chunk.toString(), 'utf8'));
@@ -288,9 +292,9 @@ const waitForAnalysisSurface = async (client, timeoutMs = 12000) => {
   return { workspace: false, heading: false, loading: false, stateCard: false, fatal: false, timeout: true };
 };
 
-const go = async (client, { qaRecords = 'manual', analysisTab = 'overview', e2e = true } = {}) => {
+const go = async (client, { qaRecords = 'manual', analysisTab = 'overview', quick = 'analysis', e2e = true } = {}) => {
   const query = new URLSearchParams({
-    quick: 'analysis',
+    quick,
     qaRecords,
     analysisTab,
     t: String(Date.now()),
@@ -514,20 +518,20 @@ const main = async () => {
         id: 2,
         name: 'Ders karti -> ders detay akisi',
         data: 'qaRecords=manual, analysisTab=overview, e2e=1',
-        selectors: ['[data-testid^="course-summary-btn-"]', '[data-testid="course-detail-panel"]'],
+        selectors: ['[data-testid^="overview-course-detail-btn-"]', '[data-testid="course-detail-panel"]'],
         expected: 'Ders kartina tiklaninca ilgili ders detayi acilmali.',
         related: 'components/parent/ParentAnalysisWorkspace.tsx',
       },
       async () => {
         await go(client, { qaRecords: 'manual', analysisTab: 'overview', e2e: true });
         const firstButton = await evalValue(client, `(() => {
-          const node = document.querySelector('[data-testid^="course-summary-btn-"]');
+          const node = document.querySelector('[data-testid^="overview-course-detail-btn-"]');
           return node?.getAttribute('data-testid') || '';
         })()`, '');
-        const clicked = await clickSelector(client, '[data-testid^="course-summary-btn-"]');
+        const clicked = await clickSelector(client, '[data-testid^="overview-course-detail-btn-"]');
         await wait(300);
-        const detailCourseId = await evalValue(client, `(() => document.querySelector('[data-testid="course-detail-panel"]')?.getAttribute('data-course-id') || '')()`, '');
-        const selectedCourseId = String(firstButton).replace('course-summary-btn-', '');
+        const detailCourseId = await evalValue(client, `(() => document.querySelector('[data-testid="overview-course-deep-dive-panel"]')?.getAttribute('data-course-name') || '')()`, '');
+        const selectedCourseId = await evalValue(client, `(() => document.querySelector('[data-testid^="overview-course-detail-btn-"]')?.getAttribute('data-course-name') || '')()`, '');
         const shot = await capture(2, 'course-detail-flow');
         const pass = clicked.clicked && Boolean(selectedCourseId) && selectedCourseId === detailCourseId;
         return {
@@ -762,10 +766,10 @@ const main = async () => {
           return true;
         })()`, false);
         await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
-        const beforePending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
+        const beforePending = numberFromText(await evalValue(client, `(() => document.querySelector('[data-testid="parent-analysis-workspace"]')?.getAttribute('data-parent-action-pending') || '0')()`, '0'));
         const clicked = await clickSelector(client, '[data-testid="create-revision-task-btn"]');
         await wait(350);
-        const afterPending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
+        const afterPending = numberFromText(await evalValue(client, `(() => document.querySelector('[data-testid="parent-analysis-workspace"]')?.getAttribute('data-parent-action-pending') || '0')()`, '0'));
         await clickSelector(client, '[data-testid="switch-child-mode-btn"]');
         const childReady = await waitForSelector(client, '[data-testid="child-dashboard-root"]', 15000);
         await wait(350);
@@ -802,8 +806,8 @@ const main = async () => {
         await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
         await clickSelector(client, '[data-testid="create-revision-task-btn"]');
         await wait(350);
-        const beforePending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
-        const beforeDone = numberFromText(await textOf(client, '[data-testid="parent-action-completed-count"]'));
+        const beforePending = numberFromText(await evalValue(client, `(() => document.querySelector('[data-testid="parent-analysis-workspace"]')?.getAttribute('data-parent-action-pending') || '0')()`, '0'));
+        const beforeDone = numberFromText(await evalValue(client, `(() => document.querySelector('[data-testid="parent-analysis-workspace"]')?.getAttribute('data-parent-action-completed') || '0')()`, '0'));
         await clickSelector(client, '[data-testid="switch-child-mode-btn"]');
         const childReady = await waitForSelector(client, '[data-testid="child-dashboard-root"]', 15000);
         await wait(350);
@@ -814,8 +818,8 @@ const main = async () => {
         await wait(500);
         await clickSelector(client, '[data-testid="analysis-tab-goals"]');
         await wait(250);
-        const afterPending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
-        const afterDone = numberFromText(await textOf(client, '[data-testid="parent-action-completed-count"]'));
+        const afterPending = numberFromText(await evalValue(client, `(() => document.querySelector('[data-testid="parent-analysis-workspace"]')?.getAttribute('data-parent-action-pending') || '0')()`, '0'));
+        const afterDone = numberFromText(await evalValue(client, `(() => document.querySelector('[data-testid="parent-analysis-workspace"]')?.getAttribute('data-parent-action-completed') || '0')()`, '0'));
         const shot = await capture(11, 'child-complete-parent');
         const pass = childReady && quickDone.clicked && afterPending <= Math.max(0, beforePending - 1) && afterDone >= beforeDone + 1;
         return {
@@ -869,12 +873,12 @@ const main = async () => {
         await resetAppStorageDeterministic(client);
         await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
         await go(client, { qaRecords: 'manual', analysisTab: 'insights', e2e: true });
-        const beforePending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
+        const beforePending = numberFromText(await evalValue(client, `(() => document.querySelector('[data-testid="parent-analysis-workspace"]')?.getAttribute('data-parent-action-pending') || '0')()`, '0'));
         await clickSelector(client, '[data-testid="create-revision-task-btn"]');
         await wait(400);
         await clickSelector(client, '[data-testid="create-revision-task-btn"]');
         await wait(500);
-        const afterPending = numberFromText(await textOf(client, '[data-testid="parent-action-pending-count"]'));
+        const afterPending = numberFromText(await evalValue(client, `(() => document.querySelector('[data-testid="parent-analysis-workspace"]')?.getAttribute('data-parent-action-pending') || '0')()`, '0'));
         await clickSelector(client, '[data-testid="switch-child-mode-btn"]');
         await waitForSelector(client, '[data-testid="child-dashboard-root"]', 12000);
         await wait(350);

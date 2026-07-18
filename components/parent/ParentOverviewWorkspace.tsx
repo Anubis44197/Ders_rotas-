@@ -1366,7 +1366,7 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
           )}
 
           {selectedCourseDetail && (
-            <div className="dr-hig-secondary-card rounded-[28px] p-6" data-testid="overview-course-deep-dive-panel">
+            <div className="dr-hig-secondary-card rounded-[28px] p-6" data-testid="overview-course-deep-dive-panel" data-course-name={selectedCourseDetail.courseName}>
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h4 className="dr-hig-headline text-[var(--dr-text-primary)]">Ders Detay Sayfası (<span className={getCourseColorClass(selectedCourseDetail.courseName)}>{selectedCourseDetail.courseName}</span>)</h4>
@@ -1382,6 +1382,8 @@ const ParentOverviewWorkspace: React.FC<ParentOverviewWorkspaceProps> = ({
                     key={`overview-course-v2-${course.courseName}`}
                     type="button"
                     onClick={() => setSelectedOverviewCourse(course.courseName)}
+                    data-testid={`overview-course-detail-btn-${course.courseName}`}
+                    data-course-name={course.courseName}
                     className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.96] ${selectedCourseDetail.courseName === course.courseName ? 'ios-button-active text-white' : `ios-button ${getCourseColorClass(course.courseName)} hover:opacity-80`}`}
                   >
                     {course.courseName}

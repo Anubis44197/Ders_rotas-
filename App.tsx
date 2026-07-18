@@ -45,7 +45,7 @@ import { getNotificationCooldownMs } from './utils/parentDecisionEngine';
 import { isCompletedTask } from './utils/taskStatus';
 import { getAccuracyPercent, getQuestionMetrics, getSolvedQuestionCount, getSuccessPercent, isQuestionTask } from './utils/questionMetrics';
 import { playHaptic } from './utils/haptics';
-import { publishRemoteAppData, RemoteWriteConflictError, startRemoteAppDataSync, type RemoteAppData } from './utils/firebaseLiveSync';
+import type { RemoteAppData } from './utils/firebaseLiveSync';
 import { MAX_IMPORT_BYTES, validateImportDocument } from './utils/importValidation';
 import { GoogleGenAI } from '@google/genai';
 
@@ -448,6 +448,7 @@ const normalizeSafeTasks = (value: unknown): Task[] => {
 
       // Hortlayan test görevlerini engelle ve temizle
       if (
+        !isE2EQaSeedingActive() && (
         idLower.startsWith('live_mini_') ||
         idLower.startsWith('qa_manual_') ||
         idLower.includes('live_mini') ||
@@ -457,6 +458,7 @@ const normalizeSafeTasks = (value: unknown): Task[] => {
         titleLower.includes('soru cozme') ||
         titleLower.includes('canlı test') ||
         titleLower.includes('soru çözme')
+        )
       ) {
         return false;
       }
@@ -1358,6 +1360,8 @@ const seedManualQaRecords = () => {
   if (!qaRecordsMode || qaRecordsMode === 'none') return;
 
   window.localStorage.setItem('__qa_seed_lock', '1');
+  window.localStorage.setItem('courses', JSON.stringify(INITIAL_REAL_COURSES));
+  window.localStorage.setItem('curriculum', JSON.stringify(INITIAL_REAL_CURRICULUM));
 
   const syncQaSeedToIndexedDb = (next: {
     tasks: Task[];
@@ -1366,6 +1370,7 @@ const seedManualQaRecords = () => {
     compositeExamResults: CompositeExamResult[];
   }) => {
     void Promise.all([
+      writeIndexedDbValue('curriculum', INITIAL_REAL_CURRICULUM),
       writeIndexedDbValue('tasks', next.tasks),
       writeIndexedDbValue('performanceData', next.performanceData),
       writeIndexedDbValue('examRecords', next.examRecords),
@@ -2489,6 +2494,7 @@ const secondaryParentWorkspaceIds: ParentWorkspaceView[] = [];
 
 const App: React.FC = () => {
   const isE2EMode = getQueryParam('e2e') === '1';
+  const isRemoteSyncDisabled = isE2EMode || import.meta.env.VITE_DISABLE_FIREBASE_SYNC === 'true';
   const [userType, setUserType] = useStickyState<UserType>(UserType.Parent, 'userType');
   const [courses, setCourses] = useStickyState<Course[]>([], 'courses', normalizeSafeCourses);
   const [tasks, setTasks, tasksHydrated] = useStickyState<Task[]>([], 'tasks', normalizeSafeTasks);
@@ -2883,11 +2889,11 @@ const App: React.FC = () => {
   }, [setBadges, setCompositeExamResults, setCourses, setCurriculum, setExamRecords, setExamScheduleEntries, setPerformanceData, setPlanningEngineSnapshot, setRewards, setSchoolTopicHistory, setStudyPlans, setSuccessPoints, setTasks, setWeeklySchedule, userType, addToast]);
 
   useEffect(() => {
-    if (isE2EMode || !allIdbStatesHydrated) return;
+    if (isRemoteSyncDisabled || !allIdbStatesHydrated) return;
     let unsubscribe: (() => void) | null = null;
     let cancelled = false;
 
-    void startRemoteAppDataSync({
+    void import('./utils/firebaseLiveSync').then(({ startRemoteAppDataSync }) => startRemoteAppDataSync({
       onReady: () => {
         if (cancelled) return;
         remoteSyncReadyRef.current = true;
@@ -2921,7 +2927,7 @@ const App: React.FC = () => {
         console.error('Firebase live sync error:', error);
         addToast('Canli senkron baglanamadi. Yerel kayit devam ediyor.', 'error');
       },
-    }).then((nextUnsubscribe) => {
+    })).then((nextUnsubscribe) => {
       if (cancelled) {
         nextUnsubscribe();
         return;
@@ -2937,17 +2943,18 @@ const App: React.FC = () => {
       if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
       unsubscribe?.();
     };
-  }, [addToast, applyRemoteAppData, isE2EMode, allIdbStatesHydrated]);
+  }, [addToast, applyRemoteAppData, isRemoteSyncDisabled, allIdbStatesHydrated]);
 
   useEffect(() => {
-    if (isE2EMode || !remoteSyncReadyRef.current || !remoteHydratedRef.current || remoteApplyingRef.current || !allIdbStatesHydrated) return;
+    if (isRemoteSyncDisabled || !remoteSyncReadyRef.current || !remoteHydratedRef.current || remoteApplyingRef.current || !allIdbStatesHydrated) return;
     const serialized = JSON.stringify(remoteAppData);
     if (serialized === remoteLastSerializedRef.current) return;
 
     if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
     remotePublishTimerRef.current = window.setTimeout(() => {
       remotePublishInFlightRef.current = true;
-      void publishRemoteAppData(remoteAppData, remoteRevisionRef.current)
+      void import('./utils/firebaseLiveSync')
+        .then(({ publishRemoteAppData }) => publishRemoteAppData(remoteAppData, remoteRevisionRef.current))
         .then((nextRevision) => {
           remoteRevisionRef.current = nextRevision;
           remoteLastSerializedRef.current = serialized;
@@ -2955,7 +2962,7 @@ const App: React.FC = () => {
         })
         .catch((error) => {
           console.error('Firebase live publish error:', error);
-          if (error instanceof RemoteWriteConflictError) {
+          if (error instanceof Error && error.name === 'RemoteWriteConflictError') {
             addToast('Başka cihazda yeni değişiklik var. Yerel veriniz korunuyor; yenileyip tekrar deneyin.', 'error');
             return;
           }
@@ -2965,7 +2972,7 @@ const App: React.FC = () => {
           remotePublishInFlightRef.current = false;
         });
     }, 1000);
-  }, [addToast, isE2EMode, remoteAppData, allIdbStatesHydrated]);
+  }, [addToast, isRemoteSyncDisabled, remoteAppData, allIdbStatesHydrated]);
 
   const handleContinueTask = (taskId: string) => {
     const task = tasks.find((item) => item.id === taskId);
