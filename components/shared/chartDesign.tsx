@@ -355,9 +355,10 @@ const ChartFallback: React.FC<{ height?: number; children?: React.ReactNode }> =
 
 type SafeResponsiveContainerProps = React.ComponentProps<typeof ResponsiveContainer> & {
   fallback?: React.ReactNode;
+  accessibilityLabel?: string;
 };
 
-export const SafeResponsiveContainer: React.FC<SafeResponsiveContainerProps> = ({ children, fallback, debounce = 80, ...props }) => {
+export const SafeResponsiveContainer: React.FC<SafeResponsiveContainerProps> = ({ children, fallback, accessibilityLabel = 'Performans verisi grafiği', debounce = 80, ...props }) => {
   const [mounted, setMounted] = React.useState(false);
   const fallbackHeight = getChartFallbackHeight(props.height);
 
@@ -375,9 +376,11 @@ export const SafeResponsiveContainer: React.FC<SafeResponsiveContainerProps> = (
 
   return (
     <ChartErrorBoundary fallback={fallback || <ChartFallback height={fallbackHeight}>{children}</ChartFallback>}>
-      <ResponsiveContainer debounce={debounce} {...props}>
-        {children}
-      </ResponsiveContainer>
+      <div role="img" aria-label={accessibilityLabel} className="h-full w-full">
+        <ResponsiveContainer debounce={debounce} {...props}>
+          {children}
+        </ResponsiveContainer>
+      </div>
     </ChartErrorBoundary>
   );
 };

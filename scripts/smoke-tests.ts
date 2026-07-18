@@ -1,6 +1,7 @@
 import { deriveAnalysisSnapshot } from '../utils/analysisEngine';
 import { createWeeklyPlanDraft } from '../utils/planEngine';
 import { calculateTaskPoints } from '../utils/scoringAlgorithm';
+import { averageDefined, getCompletionDay, getCompletionHour, getScheduleAdherencePercent, sumDurationMinutes } from '../utils/analyticsPresentation';
 import type { Course, ExamScheduleEntry, PlanningEngineSnapshot, Reward, StoredStudyPlan, StudyPlan, Task, TaskCompletionData, WeeklySchedule } from '../types';
 
 const today = new Date();
@@ -303,8 +304,22 @@ const runAcademicPlanningEndToEndFlow = () => {
   assert(afterCompletion.overall.completedTasks === 1, 'Tamamlanan gorev genel analiz sayacina yansimali.');
 };
 
+const runAnalyticsPresentationChecks = () => {
+  assert(averageDefined([90, undefined, null]) === 90, 'Eksik skorlar sifir kabul edilmemeli.');
+  assert(sumDurationMinutes(Array.from({ length: 100 }, () => ({ actualDuration: 30 }))) === 50, 'Sureler toplandiktan sonra dakikaya yuvarlanmali.');
+  assert(getScheduleAdherencePercent(30, 30 * 60) === 100, 'Planla ayni sure tam uyum olmali.');
+  assert(getScheduleAdherencePercent(30, 5 * 60) === 17, 'Asiri kisa sure yuzde 100 uzerine cikmamali.');
+  assert(getScheduleAdherencePercent(30, 60 * 60) === 0, 'Planin iki kati sure uyumsuz sayilmali.');
+  assert(getCompletionHour({}) === null, 'Saat bilgisi olmayan kayit saat analizine girmemeli.');
+  const localDay = getCompletionDay({ completionDate: '2026-07-18' });
+  assert(localDay?.getHours() === 0, 'Tarih-only kayit yerel gun baslangici olarak okunmali.');
+  const timestamp = new Date('2026-07-18T16:45:00').getTime();
+  assert(getCompletionHour({ completionTimestamp: timestamp }) === 16, 'Gercek timestamp yerel saat analizine girmeli.');
+};
+
 const main = () => {
   runAssignmentCompletionRewardFlow();
+  runAnalyticsPresentationChecks();
   runTaskTypeCoverage();
   runExportImportConsistency();
   runDeterminismCheck();

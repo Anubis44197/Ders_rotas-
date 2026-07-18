@@ -5,6 +5,7 @@ import { Zap, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
 import { ChartTooltip, chartAxisProps, chartBrushProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 import { isCompletedTask } from '../../utils/taskStatus';
+import { averageDefined, getScheduleAdherencePercent } from '../../utils/analyticsPresentation';
 
 interface CompletionSpeedAnalysisProps {
   tasks: Task[];
@@ -40,19 +41,20 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
       .sort((a, b) => new Date(a.completionTimestamp || a.completionDate || a.dueDate).getTime() - new Date(b.completionTimestamp || b.completionDate || b.dueDate).getTime())
       .slice(-20)
       .map((task) => {
-        const actualMinutes = Math.round((task.actualDuration || 0) / 60);
+        const actualSeconds = Math.max(0, task.actualDuration || 0);
+        const actualMinutes = Math.round(actualSeconds / 60);
         return {
           title: task.title.length > 20 ? `${task.title.slice(0, 17)}...` : task.title,
           planned: task.plannedDuration,
           actual: actualMinutes,
-          efficiency: task.plannedDuration > 0 ? Math.round((task.plannedDuration / Math.max(actualMinutes, 1)) * 100) : 0,
+          adherence: getScheduleAdherencePercent(task.plannedDuration, actualSeconds),
         };
       });
   }, [completed]);
 
   const averagePlanned = data.length ? Math.round(data.reduce((sum, item) => sum + item.planned, 0) / data.length) : 0;
   const averageActual = data.length ? Math.round(data.reduce((sum, item) => sum + item.actual, 0) / data.length) : 0;
-  const averageEfficiency = data.length ? Math.round(data.reduce((sum, item) => sum + item.efficiency, 0) / data.length) : 0;
+  const averageAdherence = averageDefined(data.map((item) => item.adherence)) ?? 0;
 
   if (loading) {
     return (
@@ -86,7 +88,7 @@ const CompletionSpeedAnalysis: React.FC<CompletionSpeedAnalysisProps> = ({ tasks
         <div className="grid gap-2 sm:grid-cols-3">
           <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">Ort. plan: <strong className="text-[var(--dr-text-primary)]">{averagePlanned} dk</strong></div>
           <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">Ort. gerçek: <strong className="text-[var(--dr-text-primary)]">{averageActual} dk</strong></div>
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">Verim: <strong className="text-[var(--dr-text-primary)]">{averageEfficiency}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">Süreye uyum: <strong className="text-[var(--dr-text-primary)]">%{averageAdherence}</strong></div>
         </div>
       </div>
 

@@ -469,6 +469,24 @@ const normalizeSafeTasks = (value: unknown): Task[] => {
     .map(normalizeTask);
 };
 
+const getTaskMutationTime = (task: Task): number => {
+  const updatedAt = task.updatedAt ? Date.parse(task.updatedAt) : Number.NaN;
+  if (Number.isFinite(updatedAt)) return updatedAt;
+  if (typeof task.completionTimestamp === 'number' && Number.isFinite(task.completionTimestamp)) return task.completionTimestamp;
+  const createdAt = task.createdAt ? Date.parse(task.createdAt) : Number.NaN;
+  return Number.isFinite(createdAt) ? createdAt : 0;
+};
+
+const mergeTasksByLatestMutation = (localTasks: Task[], remoteTasks: Task[]): Task[] => {
+  const merged = new Map<string, Task>();
+  remoteTasks.forEach((task) => merged.set(task.id, task));
+  localTasks.forEach((localTask) => {
+    const remoteTask = merged.get(localTask.id);
+    if (!remoteTask || getTaskMutationTime(localTask) > getTaskMutationTime(remoteTask)) merged.set(localTask.id, localTask);
+  });
+  return [...merged.values()].sort((left, right) => getTaskMutationTime(right) - getTaskMutationTime(left));
+};
+
 const normalizeSafeRewards = (value: unknown): Reward[] => {
   if (!Array.isArray(value)) return [];
   return value.filter((reward): reward is Reward => {
@@ -2540,6 +2558,7 @@ const App: React.FC = () => {
   const remoteLocalDirtyRef = useRef(false);
   const remotePublishInFlightRef = useRef(false);
   const remoteRevisionRef = useRef(0);
+  const remoteAppDataRef = useRef<RemoteAppData | null>(null);
   const topbarNotificationsRef = useRef<HTMLDivElement | null>(null);
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
   const topbarNotificationsPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -2815,6 +2834,7 @@ const App: React.FC = () => {
     studyPlans,
     planningEngineSnapshot,
   }), [badges, compositeExamResults, courses, curriculum, examRecords, examScheduleEntries, performanceData, planningEngineSnapshot, rewards, schoolTopicHistory, studyPlans, successPoints, tasks, weeklySchedule]);
+  remoteAppDataRef.current = remoteAppData;
 
   const applyRemoteAppData = useCallback((payload: RemoteAppData) => {
     remoteApplyingRef.current = true;
@@ -2833,41 +2853,7 @@ const App: React.FC = () => {
     }
 
     // 2. Aktif seansı ve tamamlanmış yerel görevleri veli güncellemelerinden koruma (Smart Merge)
-    const mergedTasks = incomingTasks.map((inTask) => {
-      const localTask = tasksRef.current.find((t) => t.id === inTask.id);
-      if (localTask) {
-        const status = localTask.status === 'tamamlandı' ? 'tamamlandı' : inTask.status;
-        return {
-          ...inTask,
-          status,
-          ...(localTask.status === 'tamamlandı' ? {
-            actualDuration: localTask.actualDuration,
-            breakTime: localTask.breakTime,
-            pauseTime: localTask.pauseTime,
-            correctCount: localTask.correctCount,
-            incorrectCount: localTask.incorrectCount,
-            emptyCount: localTask.emptyCount,
-            successScore: localTask.successScore,
-            focusScore: localTask.focusScore,
-            pointsAwarded: localTask.pointsAwarded,
-            completionDate: localTask.completionDate,
-            completionTimestamp: localTask.completionTimestamp,
-            selfAssessmentScore: localTask.selfAssessmentScore,
-          } : {}),
-          liveSession: localTask.liveSession || inTask.liveSession,
-          startTimestamp: localTask.startTimestamp || inTask.startTimestamp,
-        };
-      }
-      return inTask;
-    });
-
-    // Yerel olarak oluşturulan ve henüz Firebase'e yansımamış serbest çalışmaları koru
-    const remoteTaskIds = new Set(incomingTasks.map((t) => t.id));
-    const localOnlyTasks = tasksRef.current.filter(
-      (t) => !remoteTaskIds.has(t.id) && t.isSelfAssigned && t.status === 'bekliyor'
-    );
-
-    const finalTasks = [...localOnlyTasks, ...mergedTasks];
+    const finalTasks = mergeTasksByLatestMutation(tasksRef.current, incomingTasks);
 
     setCourses(normalizeSafeCourses(payload.courses));
     setTasks(finalTasks);
@@ -2911,7 +2897,16 @@ const App: React.FC = () => {
         }
         const serialized = JSON.stringify(appData);
         if (remoteLocalDirtyRef.current) {
+          const localSnapshot = remoteAppDataRef.current;
+          remoteRevisionRef.current = syncRevision;
           remoteHydratedRef.current = true;
+          if (localSnapshot) {
+            applyRemoteAppData({
+              ...appData,
+              ...localSnapshot,
+              tasks: mergeTasksByLatestMutation(normalizeSafeTasks(localSnapshot.tasks), normalizeSafeTasks(appData.tasks)),
+            });
+          }
           return;
         }
         if (serialized === remoteLastSerializedRef.current) {
@@ -3332,10 +3327,15 @@ const App: React.FC = () => {
       ? Math.round(rawQuestionCount)
       : undefined;
 
+    const normalizedTitle = task.title.trim();
+    if (!normalizedTitle) throw new Error('Görev başlığı boş olamaz.');
+    const normalizedDueDate = getLocalDateString(parseDate(task.dueDate || getLocalDateString()));
+    if (normalizedDueDate < getLocalDateString()) throw new Error('Geçmiş bir tarihe yeni görev atanamaz.');
+
     return {
       ...task,
-      dueDate: getLocalDateString(parseDate(task.dueDate || getLocalDateString())),
-      title: task.title.trim(),
+      dueDate: normalizedDueDate,
+      title: normalizedTitle,
       plannedDuration: Math.round(plannedDuration),
       ...(questionCount ? { questionCount } : { questionCount: undefined }),
     };
@@ -3356,11 +3356,13 @@ const App: React.FC = () => {
       return duplicatePendingTask;
     }
 
+    const mutationTime = new Date().toISOString();
     const newTask: Task = {
       ...normalizedTask,
       id: createId('task'),
       status: 'bekliyor',
-      createdAt: new Date().toISOString(),
+      createdAt: mutationTime,
+      updatedAt: mutationTime,
     };
     const nextTasks = [newTask, ...tasksRef.current];
     remoteLocalDirtyRef.current = true;
@@ -3486,7 +3488,8 @@ const App: React.FC = () => {
 
   const startTask = (taskId: string) => {
     playHaptic('start');
-    setTasks((prevTasks) => prevTasks.map((task) => (task.id === taskId ? { ...task, startTimestamp: task.startTimestamp || Date.now() } : task)));
+    setTasks((prevTasks) => prevTasks.map((task) => (task.id === taskId ? { ...task, startTimestamp: task.startTimestamp || Date.now(), updatedAt: new Date().toISOString() } : task)));
+    remoteLocalDirtyRef.current = true;
   };
 
   const updateTaskLiveSession = (taskId: string, liveSession?: TaskLiveSession) => {
@@ -3495,8 +3498,9 @@ const App: React.FC = () => {
       const nextLiveSession = liveSession ? normalizeTaskLiveSession(liveSession) : undefined;
       const currentSerialized = JSON.stringify(task.liveSession || null);
       const nextSerialized = JSON.stringify(nextLiveSession || null);
-      return currentSerialized === nextSerialized ? task : { ...task, liveSession: nextLiveSession };
+      return currentSerialized === nextSerialized ? task : { ...task, liveSession: nextLiveSession, updatedAt: new Date().toISOString() };
     }));
+    remoteLocalDirtyRef.current = true;
   };
 
   const completeTask = (taskId: string, data: TaskCompletionData) => {
@@ -3536,9 +3540,7 @@ const App: React.FC = () => {
     let successScore = focusScore;
     if (isQuestionTask(task) && task.questionCount && task.questionCount > 0) {
       const accuracy = getSuccessPercent({ ...task, correctCount: correctAnswers, incorrectCount: incorrectAnswers, emptyCount: emptyAnswers });
-      const timeRatio = data.actualDuration / plannedSeconds;
-      const timeModifier = timeRatio < 1 ? 1 + (1 - timeRatio) * 0.1 : 1 - (timeRatio - 1) * 0.2;
-      successScore = Math.max(0, Math.min(100, accuracy * timeModifier));
+      successScore = Math.max(0, Math.min(100, accuracy));
     }
 
     const normalizedSelfAssessment = typeof data.selfAssessmentScore === 'number'
@@ -3591,6 +3593,7 @@ const App: React.FC = () => {
       focusScore: Math.round(focusScore),
       pointsAwarded: scoringResult.pointsAwarded,
       liveSession: undefined,
+      updatedAt: new Date(completionTimestamp).toISOString(),
     };
 
     setTasks((prevTasks) => prevTasks.map((item) => (item.id === taskId ? completedTask : item)));
@@ -3618,7 +3621,7 @@ const App: React.FC = () => {
   };
 
   const updateTaskStatus = (taskId: string, status: 'bekliyor' | 'tamamland\u0131') => {
-    setTasks((prevTasks) => prevTasks.map((task) => (task.id === taskId ? { ...task, status } : task)));
+    setTasks((prevTasks) => prevTasks.map((task) => (task.id === taskId ? { ...task, status, updatedAt: new Date().toISOString() } : task)));
     remoteLocalDirtyRef.current = true;
   };
 
@@ -3630,6 +3633,7 @@ const App: React.FC = () => {
         ...(typeof updates.plannedDuration === 'number' ? { plannedDuration: updates.plannedDuration } : {}),
         ...(typeof updates.questionCount === 'number' ? { questionCount: updates.questionCount } : {}),
         ...(typeof updates.planLabel === 'string' ? { planLabel: updates.planLabel } : {}),
+        updatedAt: new Date().toISOString(),
       };
     }));
     remoteLocalDirtyRef.current = true;
@@ -3857,7 +3861,29 @@ const App: React.FC = () => {
     }, 5 * 60 * 1000);
     return () => window.clearInterval(intervalId);
   }, [tasks.length, parentAnalysis.sessions.length, emitPipelineEvent, setAnalysisPipelineState]);
-  const today = getLocalDateString();
+  const [today, setToday] = useState(() => getLocalDateString());
+  useEffect(() => {
+    let midnightTimer = 0;
+    const refreshDay = () => setToday((current) => {
+      const next = getLocalDateString();
+      return current === next ? current : next;
+    });
+    const scheduleMidnightRefresh = () => {
+      window.clearTimeout(midnightTimer);
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      midnightTimer = window.setTimeout(() => { refreshDay(); scheduleMidnightRefresh(); }, Math.max(1000, nextMidnight.getTime() - now.getTime() + 250));
+    };
+    const handleVisibility = () => { if (document.visibilityState === 'visible') refreshDay(); };
+    window.addEventListener('focus', refreshDay);
+    document.addEventListener('visibilitychange', handleVisibility);
+    scheduleMidnightRefresh();
+    return () => {
+      window.clearTimeout(midnightTimer);
+      window.removeEventListener('focus', refreshDay);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
   const hasParentOperationalData = useMemo(
     () => courses.length > 0 || tasks.length > 0 || studyPlans.length > 0,
     [courses.length, tasks.length, studyPlans.length],
@@ -5349,7 +5375,8 @@ const App: React.FC = () => {
     return (
       <>
         {/* Planning Workspace */}
-        <div className={isPlanning ? 'block' : 'hidden'} key="planning-container">
+        {isPlanning && (
+        <div className="block" key="planning-container">
           <Suspense fallback={<WorkspaceLoadingFallback label="Planlama yukleniyor..." />}>
             <ParentPlanningWorkspace
               curriculum={curriculum}
@@ -5369,9 +5396,11 @@ const App: React.FC = () => {
             />
           </Suspense>
         </div>
+        )}
 
         {/* Curriculum Showcase Workspace */}
-        <div className={isCurriculum ? 'block' : 'hidden'} key="curriculum-container">
+        {isCurriculum && (
+        <div className="block" key="curriculum-container">
           <Suspense fallback={<WorkspaceLoadingFallback label="Mufredat paneli yukleniyor..." />}>
             <ParentCurriculumShowcaseWorkspace
               courses={courses}
@@ -5385,9 +5414,11 @@ const App: React.FC = () => {
             />
           </Suspense>
         </div>
+        )}
 
         {/* Analysis Workspace */}
-        <div className={isAnalysis ? 'block' : 'hidden'} key="analysis-container">
+        {isAnalysis && (
+        <div className="block" key="analysis-container">
           {!parentDecisionV1Enabled ? (
             <div className="space-y-4">
               <div className="ios-card rounded-[24px] p-4 text-sm font-semibold text-slate-700">
@@ -5436,9 +5467,11 @@ const App: React.FC = () => {
             </Suspense>
           )}
         </div>
+        )}
 
         {/* Overview Workspace */}
-        <div className={isOverview ? 'block' : 'hidden'} key="overview-container">
+        {isOverview && (
+        <div className="block" key="overview-container">
           <Suspense fallback={<WorkspaceLoadingFallback label="Genel bakis yukleniyor..." />}>
             <ParentOverviewWorkspace
               parentSummary={parentSummary}
@@ -5471,6 +5504,7 @@ const App: React.FC = () => {
             />
           </Suspense>
         </div>
+        )}
       </>
     );
   };

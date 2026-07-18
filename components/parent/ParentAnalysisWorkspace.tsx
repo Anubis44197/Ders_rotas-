@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Course, ParentDashboardProps, ReportData, Task } from '../../types';
-import { AnalysisSnapshot } from '../../utils/analysisEngine';
+import { AnalysisSnapshot, deriveAnalysisSnapshot } from '../../utils/analysisEngine';
 import { getTopicDecisionLevel, type ParentDecisionResult } from '../../utils/parentDecisionEngine';
 import { addDays, getLocalDateString, getTodayString } from '../../utils/dateUtils';
 // AnalysisGraphCenter removed for O(1) performance optimization under heavy loads
@@ -177,7 +177,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   tasks,
   courses,
   curriculum,
-  analysis,
+  analysis: fullAnalysis,
   decision,
   examRecords,
   compositeExamResults,
@@ -203,6 +203,32 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     [],
   );
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('Haftalık');
+  const [analysisPeriod, setAnalysisPeriod] = useState<ReportPeriod>('Tüm Zamanlar');
+  const scopedTasks = useMemo(() => {
+    if (analysisPeriod === 'Tüm Zamanlar') return tasks;
+    const days = analysisPeriod === 'Haftalık' ? 7 : analysisPeriod === 'Aylık' ? 30 : 90;
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - (days - 1));
+    return tasks.filter((task) => {
+      const key = task.completionDate || task.dueDate;
+      if (!key) return false;
+      const date = new Date(`${key}T00:00:00`);
+      return !Number.isNaN(date.getTime()) && date >= cutoff;
+    });
+  }, [analysisPeriod, tasks]);
+  const analysis = useMemo(
+    () => analysisPeriod === 'Tüm Zamanlar'
+      ? fullAnalysis
+      : deriveAnalysisSnapshot(
+          scopedTasks,
+          courses,
+          [],
+          examRecords.filter((record) => scopedTasks.some((task) => task.courseId === record.courseId)),
+          compositeExamResults,
+        ),
+    [analysisPeriod, compositeExamResults, courses, examRecords, fullAnalysis, scopedTasks],
+  );
   const [reportViewTab, setReportViewTab] = useState<ReportViewTab>('general');
   const [report, setReport] = useState<ReportData | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -268,6 +294,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
         return {
           courseId: course.id,
           courseName: course.name,
+          totalSessions: 0,
           averageMastery: 0,
           averageFocus: 0,
           averageEfficiency: 0,
@@ -755,6 +782,20 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
     >
       {viewMode === 'analysis' && (
         <div className="flex flex-col gap-4">
+          <label className="ios-widget flex flex-col gap-2 rounded-[20px] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              <span className="block text-sm font-bold text-[var(--dr-text-primary)]">Analiz dönemi</span>
+              <span className="block text-xs text-[var(--dr-text-secondary)]">Bu seçim tüm analiz kartları ve grafik özetleri için geçerlidir.</span>
+            </span>
+            <select
+              value={analysisPeriod}
+              onChange={(event) => setAnalysisPeriod(event.target.value as ReportPeriod)}
+              className="dr-form-field min-h-11 rounded-[14px] px-3 text-sm font-semibold"
+              aria-label="Tüm analizler için dönem seç"
+            >
+              {reportPeriods.map((period) => <option key={period} value={period}>{period}</option>)}
+            </select>
+          </label>
           <div className="ios-panel rounded-[24px] p-2 border border-[var(--dr-std-border-strong)]/20 shadow-md overflow-hidden">
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {analysisWorkspaceTabs.map((tab) => {
@@ -872,9 +913,13 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                     const hasWeakTopics = course.weakTopicCount > 0;
                     
                     return (
-                      <div 
-                        key={course.courseId} 
-                        className={`p-4 ios-card rounded-[22px] flex flex-col justify-between space-y-3.5 transition-all duration-300 hover:scale-[1.01] ${
+                      <button
+                        type="button"
+                        key={course.courseId}
+                        onClick={() => setSelectedCourseDetailId(course.courseId)}
+                        data-testid={`overview-course-detail-btn-${course.courseName}`}
+                        data-course-name={course.courseName}
+                        className={`p-4 ios-card rounded-[22px] flex flex-col justify-between space-y-3.5 text-left transition-all duration-300 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dr-orange)] ${
                           hasWeakTopics 
                             ? 'border-amber-500/20 dark:border-amber-500/15 shadow-[0_0_15px_rgba(255,157,47,0.03)] bg-[var(--dr-surface)]/70' 
                             : 'border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60'
@@ -883,7 +928,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                         {/* Başlık ve Tamamlama Yüzdesi */}
                         <div className="flex items-start justify-between gap-3">
                           <span className="font-extrabold text-sm text-[var(--dr-text-primary)] break-words leading-tight tracking-tight">{course.courseName}</span>
-                          <span className="font-extrabold text-[10px] text-[var(--dr-text-secondary)] bg-[var(--dr-surface)]/70 px-2.5 py-0.5 rounded-full border border-[var(--dr-std-border-strong)]/10 shrink-0 tracking-wide">
+                          <span className="font-extrabold text-[11px] text-[var(--dr-text-secondary)] bg-[var(--dr-surface)]/70 px-2.5 py-0.5 rounded-full border border-[var(--dr-std-border-strong)]/10 shrink-0 tracking-wide">
                             {completedCount}/{totalCount} Konu (%{completionPercent})
                           </span>
                         </div>
@@ -903,15 +948,15 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                         {/* Alt Alan: 3 Mini Gösterge Sütunu */}
                         <div className="grid grid-cols-3 gap-1 pt-2.5 border-t border-[var(--dr-std-border-strong)]/5 text-center">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)]">Hakimiyet</span>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)]">Hakimiyet</span>
                             <span className="text-xs font-black text-indigo-500 dark:text-indigo-400">%{course.averageMastery}</span>
                           </div>
                           <div className="flex flex-col gap-0.5 border-x border-[var(--dr-std-border-strong)]/10">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)]">Verimlilik</span>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)]">Verimlilik</span>
                             <span className="text-xs font-black text-emerald-500 dark:text-emerald-400">%{course.averageEfficiency}</span>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)]">Zayıf Konu</span>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--dr-text-secondary)]">Zayıf Konu</span>
                             <span className={`text-xs font-black ${
                               hasWeakTopics 
                                 ? 'text-[#FF4F18] dark:text-[#FF6A46] font-extrabold' 
@@ -921,10 +966,28 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                             </span>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
+                {selectedCourseDetail && (
+                  <div
+                    className="ios-widget mt-4 rounded-[22px] p-4"
+                    data-testid="overview-course-deep-dive-panel"
+                    data-course-name={selectedCourseDetail.courseName}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h5 className="font-bold text-[var(--dr-text-primary)]">{selectedCourseDetail.courseName} detayları</h5>
+                      <span className="text-xs font-semibold text-[var(--dr-text-secondary)]">{selectedCourseDetail.totalSessions} ölçümlü oturum</span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                      <div><span className="block text-xs text-[var(--dr-text-secondary)]">Hakimiyet</span><strong>%{selectedCourseDetail.averageMastery}</strong></div>
+                      <div><span className="block text-xs text-[var(--dr-text-secondary)]">Odak</span><strong>%{selectedCourseDetail.averageFocus}</strong></div>
+                      <div><span className="block text-xs text-[var(--dr-text-secondary)]">Süre verimi</span><strong>%{selectedCourseDetail.averageEfficiency}</strong></div>
+                      <div><span className="block text-xs text-[var(--dr-text-secondary)]">Takip konusu</span><strong>{selectedCourseTopics.length}</strong></div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -954,18 +1017,18 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                     <div key={topic.key} className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between rounded-[20px] px-4.5 py-4 text-xs shadow-sm hover:border-slate-200 dark:hover:border-slate-600 transition" data-testid={`weak-topic-card-${topicIndex}`}>
                       <div className="min-w-0 pr-4">
                         <div className="font-extrabold text-slate-800 dark:text-slate-200 text-sm break-words">{topic.topicName}</div>
-                        <div className="text-[10px] font-semibold text-slate-500 mt-1 break-words">{topic.courseName} / {topic.unitName}</div>
+                        <div className="text-[11px] font-semibold text-slate-500 mt-1 break-words">{topic.courseName} / {topic.unitName}</div>
                         {getPrerequisiteHint(topic.courseName, topic.topicName) && (
-                          <div className="mt-2 rounded-[12px] bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 text-[10px] font-semibold text-amber-800 dark:text-amber-300 border border-amber-100 dark:border-amber-900/30 inline-block">
+                          <div className="mt-2 rounded-[12px] bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300 border border-amber-100 dark:border-amber-900/30 inline-block">
                             Ön koşul: {getPrerequisiteHint(topic.courseName, topic.topicName)}
                           </div>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-full px-2.5 py-1">
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-full px-2.5 py-1">
                           %{topic.masteryScore} Hakimiyet
                         </span>
-                        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${getDecisionTone(getTopicDecisionLevel(topic.riskScore))}`}>
+                        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${getDecisionTone(getTopicDecisionLevel(topic.riskScore))}`}>
                           {getTopicDecisionLevel(topic.riskScore)} · Risk {topic.riskScore}
                         </span>
                       </div>
@@ -1052,14 +1115,14 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             </div>
             <div className="flex items-center gap-4 bg-slate-50 border border-slate-100 rounded-[20px] p-4 shrink-0 shadow-sm">
               <div className="text-center">
-                <span className="block text-[10px] font-bold uppercase text-slate-400">LGS Geri Sayım</span>
+                <span className="block text-[11px] font-bold uppercase text-slate-400">LGS Geri Sayım</span>
                 <span className="block text-2xl font-bold text-slate-900 mt-1">
                   {lgsDaysLeft === null ? '-' : lgsDaysLeft >= 0 ? `${lgsDaysLeft} Gün` : 'Sınav Geçti'}
                 </span>
               </div>
               <div className="w-px h-10 bg-slate-200" />
               <div className="text-center">
-                <span className="block text-[10px] font-bold uppercase text-slate-400">Hedef Tarih</span>
+                <span className="block text-[11px] font-bold uppercase text-slate-400">Hedef Tarih</span>
                 <span className="block text-sm font-bold text-slate-700 mt-1">
                   {lgsTargetDate ? getLocalDateString(lgsTargetDate) : 'Girilmedi'}
                 </span>
@@ -1070,11 +1133,11 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
           {/* LGS Akademik Durum Özetleri */}
           <div className="grid gap-3 sm:grid-cols-3 text-xs">
             <div className="ios-card rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none">
-              <div className="font-bold text-[var(--dr-text-secondary)] uppercase tracking-wide text-[10px]">Ünite Tamamlama</div>
+              <div className="font-bold text-[var(--dr-text-secondary)] uppercase tracking-wide text-[11px]">Ünite Tamamlama</div>
               <div className="mt-2 text-2xl font-bold text-[var(--dr-text-primary)]">{curriculumCompletionRate === null ? '-' : `%${curriculumCompletionRate}`}</div>
             </div>
             <div className="ios-card rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none">
-              <div className="font-bold text-[var(--dr-text-secondary)] uppercase tracking-wide text-[10px]">Deneme Trendi</div>
+              <div className="font-bold text-[var(--dr-text-secondary)] uppercase tracking-wide text-[11px]">Deneme Trendi</div>
               <div className={`mt-2 flex items-center gap-1 text-2xl font-bold ${latestCompositeAverage === null || previousCompositeAverage === null ? 'text-[var(--dr-text-primary)]' : examDeltaDisplay.tone}`}>
                 {latestCompositeAverage === null || previousCompositeAverage === null
                   ? '-'
@@ -1085,7 +1148,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
             </div>
             <div className="ios-card rounded-[18px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 backdrop-blur-md p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:shadow-none">
-              <div className="font-bold text-[var(--dr-text-secondary)] uppercase tracking-wide text-[10px]">Hedef Net Farkı</div>
+              <div className="font-bold text-[var(--dr-text-secondary)] uppercase tracking-wide text-[11px]">Hedef Net Farkı</div>
               <div className="mt-2 text-2xl font-bold text-[var(--dr-text-primary)]">
                 {lgsReadinessGap === null ? '-' : lgsReadinessGap <= 0 ? `+${Math.abs(lgsReadinessGap)}` : `-${lgsReadinessGap}`}
               </div>
@@ -1290,7 +1353,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                 <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/60 pb-3 mb-4">
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-full px-2 py-0.5">Son Deneme Özeti</span>
+                      <span className="text-[11px] font-bold uppercase text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-full px-2 py-0.5">Son Deneme Özeti</span>
                       <h4 className="mt-1 text-sm font-bold text-slate-800">{latestStateExam.title}</h4>
                       <p className="text-xs text-slate-500">{latestStateExam.date}</p>
                     </div>
@@ -1302,7 +1365,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                   </div>
 
                   <div className="space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Risk Analizi Yapılan Dersler</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Risk Analizi Yapılan Dersler</span>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {latestStateExam.riskCourses.map((course) => (
                         <div key={`${latestStateExam.date}-${course.courseName}`} className="bg-white border border-slate-100 rounded-[16px] p-3 shadow-sm flex items-center justify-between">
@@ -1321,7 +1384,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               )}
 
               <div className="space-y-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Yakın Zamandaki Sınav Kayıtları</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Yakın Zamandaki Sınav Kayıtları</span>
                 {recentExamRecords.map((record) => (
                   <div key={record.id} className="bg-white border border-slate-100 rounded-[18px] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm hover:border-slate-200 transition">
                     <div className="flex items-center gap-3">
@@ -1335,7 +1398,7 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
                     </div>
                     <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
                       <div className="text-left sm:text-right">
-                        <span className="block text-[10px] font-bold uppercase text-slate-400">{examTypeLabelMap[record.examType]}</span>
+                        <span className="block text-[11px] font-bold uppercase text-slate-400">{examTypeLabelMap[record.examType]}</span>
                         <span className="block text-xs font-bold text-slate-500 mt-0.5">{record.date}</span>
                       </div>
                       <div className="bg-slate-50 border border-slate-200/80 rounded-full px-4 py-1.5 text-sm font-bold text-slate-700">
@@ -1412,19 +1475,19 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             {report && (
               <div className="mb-5 grid gap-3 rounded-[20px] border border-[var(--dr-std-border-strong)]/10 bg-[var(--dr-surface)]/60 p-4 md:grid-cols-2">
                 <div className="md:col-span-2">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--dr-text-secondary)]">Uretilen rapor / {report.period}</div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--dr-text-secondary)]">Uretilen rapor / {report.period}</div>
                   <p className="mt-2 text-sm font-semibold leading-6 text-[var(--dr-text-primary)]">{report.aiSummary}</p>
                 </div>
                 <div className="rounded-[16px] bg-emerald-500/8 px-3 py-3 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em]">Guclu alan</div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em]">Guclu alan</div>
                   <div className="mt-1 leading-5">{report.highlights.mostImproved}</div>
                 </div>
                 <div className="rounded-[16px] bg-rose-500/8 px-3 py-3 text-xs font-semibold text-rose-700 dark:text-rose-300">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em]">Odak alani</div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em]">Odak alani</div>
                   <div className="mt-1 leading-5">{report.highlights.needsFocus}</div>
                 </div>
                 <div className="md:col-span-2 rounded-[16px] bg-[var(--dr-orange)]/8 px-3 py-3 text-xs font-semibold text-[var(--dr-text-primary)]">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--dr-orange)]">Oneri</div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--dr-orange)]">Oneri</div>
                   <div className="mt-1 leading-5">{report.aiSuggestion}</div>
                 </div>
               </div>
@@ -1432,40 +1495,40 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
 
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
-                <div className="text-[10px] font-bold uppercase text-slate-400">Ortalama Hakimiyet</div>
+                <div className="text-[11px] font-bold uppercase text-slate-400">Ortalama Hakimiyet</div>
                 <div className="mt-3">
                   <span className="text-2xl font-bold text-slate-900">%{analysis.overall.averageMastery}</span>
-                  <span className="block text-[10px] font-bold text-emerald-600 mt-1">Canlı güncel</span>
+                  <span className="block text-[11px] font-bold text-emerald-600 mt-1">Canlı güncel</span>
                 </div>
               </div>
 
               <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
-                <div className="text-[10px] font-bold uppercase text-slate-400">Toplam Çalışma</div>
+                <div className="text-[11px] font-bold uppercase text-slate-400">Toplam Çalışma</div>
                 <div className="mt-3">
                   <span className="text-2xl font-bold text-slate-900">{Math.floor(studiedMinutes / 60)} sa {studiedMinutes % 60} dk</span>
-                  <span className="block text-[10px] font-bold text-emerald-600 mt-1">
+                  <span className="block text-[11px] font-bold text-emerald-600 mt-1">
                     +%{Math.max(1, Math.round((weeklyStats.minutes / Math.max(1, studiedMinutes)) * 100))} haftalık etki
                   </span>
                 </div>
               </div>
 
               <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
-                <div className="text-[10px] font-bold uppercase text-slate-400">Tamamlanan Görev</div>
+                <div className="text-[11px] font-bold uppercase text-slate-400">Tamamlanan Görev</div>
                 <div className="mt-3">
                   <span className="text-2xl font-bold text-slate-900">{completedCount} / {Math.max(1, completedCount + pendingCount)}</span>
-                  <span className="block text-[10px] font-bold text-indigo-600 mt-1">
+                  <span className="block text-[11px] font-bold text-indigo-600 mt-1">
                     %{Math.round((completedCount / Math.max(1, completedCount + pendingCount)) * 100)} tamamlandı
                   </span>
                 </div>
               </div>
 
               <div className="bg-slate-50 border border-slate-100 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
-                <div className="text-[10px] font-bold uppercase text-slate-400">Deneme Performansı</div>
+                <div className="text-[11px] font-bold uppercase text-slate-400">Deneme Performansı</div>
                 <div className="mt-3">
                   <span className="text-2xl font-bold text-slate-900">
                     {latestCompositeAverage === null ? '-' : `%${latestCompositeAverage}`}
                   </span>
-                  <span className={`block text-[10px] font-bold mt-1 ${latestCompositeAverage !== null && previousCompositeAverage !== null ? examDeltaDisplay.tone : 'text-slate-400'}`}>
+                  <span className={`block text-[11px] font-bold mt-1 ${latestCompositeAverage !== null && previousCompositeAverage !== null ? examDeltaDisplay.tone : 'text-slate-400'}`}>
                     {latestCompositeAverage !== null && previousCompositeAverage !== null
                       ? `${examDeltaDisplay.arrow} ${examDeltaDisplay.text}`
                       : 'Yetersiz deneme verisi'}
@@ -1495,32 +1558,32 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
               <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
                 <div>
-                  <div className="text-[10px] font-bold uppercase text-slate-400">İlk Deneme Başarısı</div>
+                  <div className="text-[11px] font-bold uppercase text-slate-400">İlk Deneme Başarısı</div>
                   <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2">
                     {firstAttemptAverage !== null ? `%${firstAttemptAverage}` : '-'}
                   </div>
                 </div>
-                <p className="mt-3 text-[10px] font-semibold text-slate-500 leading-normal">
+                <p className="mt-3 text-[11px] font-semibold text-slate-500 leading-normal">
                   Konu bazında ilk denemedeki doğruluk ortalaması.
                 </p>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
                 <div>
-                  <div className="text-[10px] font-bold uppercase text-slate-400">En Verimli Saat</div>
+                  <div className="text-[11px] font-bold uppercase text-slate-400">En Verimli Saat</div>
                   <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2">{goldenHourInsight.label}</div>
                 </div>
-                <p className="mt-3 text-[10px] font-semibold text-slate-500 leading-normal">
+                <p className="mt-3 text-[11px] font-semibold text-slate-500 leading-normal">
                   Maksimum performans: Odak {goldenHourInsight.focus !== null ? `%${goldenHourInsight.focus}` : '-'} / Doğruluk {goldenHourInsight.accuracy !== null ? `%${goldenHourInsight.accuracy}` : '-'}
                 </p>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/60 rounded-[20px] p-4 flex flex-col justify-between shadow-sm">
                 <div>
-                  <div className="text-[10px] font-bold uppercase text-slate-400">Çalışma Dengesi & Profil</div>
+                  <div className="text-[11px] font-bold uppercase text-slate-400">Çalışma Dengesi & Profil</div>
                   <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-2 truncate">{throughputInsight.profile}</div>
                 </div>
-                <p className="mt-3 text-[10px] font-semibold text-slate-500 leading-normal">
+                <p className="mt-3 text-[11px] font-semibold text-slate-500 leading-normal">
                   Süre ve doğruluk ilişkisine göre akıllı çalışma tarzı profili.
                 </p>
               </div>
@@ -1546,13 +1609,13 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
 
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
               <div>
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3 block">En Çok Gelişen Konular</h4>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 block">En Çok Gelişen Konular</h4>
                 <div className="space-y-2">
                   {improvingTopics.slice(0, 5).map((topic, index) => (
                     <div key={`impr-${topic.key}`} className="bg-slate-50 border border-slate-100/80 flex items-center justify-between rounded-[16px] px-3.5 py-3 text-xs shadow-sm">
                       <div className="min-w-0 pr-2">
                         <div className="truncate font-bold text-slate-800">{index + 1}. {topic.topicName}</div>
-                        <div className="text-[10px] font-bold text-slate-400 mt-0.5">{topic.courseName}</div>
+                        <div className="text-[11px] font-bold text-slate-400 mt-0.5">{topic.courseName}</div>
                       </div>
                       <div className="text-[11px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5 shrink-0">
                         %{topic.masteryScore} Hakimiyet
@@ -1568,13 +1631,13 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
               </div>
 
               <div>
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3 block">En Çok Zorlanılan Konular</h4>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 block">En Çok Zorlanılan Konular</h4>
                 <div className="space-y-2">
                   {hardestTopics.slice(0, 5).map((topic, index) => (
                     <div key={`hard-${topic.key}`} className="bg-slate-50 border border-slate-100/80 flex items-center justify-between rounded-[16px] px-3.5 py-3 text-xs shadow-sm">
                       <div className="min-w-0 pr-2">
                         <div className="truncate font-bold text-slate-800">{index + 1}. {topic.topicName}</div>
-                        <div className="text-[10px] font-bold text-slate-400 mt-0.5">{topic.courseName}</div>
+                        <div className="text-[11px] font-bold text-slate-400 mt-0.5">{topic.courseName}</div>
                       </div>
                       <div className="text-[11px] font-extrabold text-rose-600 bg-rose-50 border border-rose-100 rounded-full px-2 py-0.5 shrink-0">
                         Risk {topic.riskScore}

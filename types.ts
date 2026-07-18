@@ -83,6 +83,7 @@ export interface Task {
   pointsAwarded?: number;
   isSelfAssigned?: boolean;
   createdAt?: string; // ISO string for Firebase compatibility
+  updatedAt?: string; // Last task mutation; used for cross-device conflict resolution.
   liveSession?: TaskLiveSession;
 }
 

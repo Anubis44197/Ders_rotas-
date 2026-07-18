@@ -17,18 +17,18 @@ type Period = 'Günlük' | 'Haftalık' | 'Aylık';
 
 const LoadingSpinner: React.FC = () => (
   <div className="flex h-48 items-center justify-center">
-    <Loader className="h-8 w-8 animate-spin text-primary-600" />
-    <span className="ml-2 text-slate-600">Veriler yükleniyor...</span>
+    <Loader className="h-8 w-8 animate-spin text-[var(--dr-orange)]" />
+    <span className="ml-2 text-[var(--dr-text-secondary)]">Veriler yükleniyor...</span>
   </div>
 );
 
 const ErrorState: React.FC<{ error: string }> = ({ error }) => (
   <div className="flex h-48 flex-col items-center justify-center text-center">
-    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/20">
       <span className="text-xl text-red-500">!</span>
     </div>
-    <p className="mb-2 text-slate-600">Veriler yüklenirken bir sorun oluştu.</p>
-    <p className="text-sm text-slate-500">{error}</p>
+    <p className="mb-2 text-[var(--dr-text-primary)]">Veriler yüklenirken bir sorun oluştu.</p>
+    <p className="text-sm text-[var(--dr-text-secondary)]">{error}</p>
   </div>
 );
 
@@ -107,12 +107,12 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
     <div className="ios-card mb-6 rounded-[28px] p-6">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h4 className="text-lg font-bold text-slate-900">Görev türü analizi</h4>
-          <p className="text-sm text-slate-500">Son seçili periyotta görev tiplerinin skor ve süre karşılaştırması.</p>
+          <h4 className="text-lg font-bold text-[var(--dr-text-primary)]">Görev türü analizi</h4>
+          <p className="text-sm text-[var(--dr-text-secondary)]">Son seçili periyotta görev tiplerinin skor ve süre karşılaştırması.</p>
         </div>
         <div className="flex gap-2">
           {(['Günlük', 'Haftalık', 'Aylık'] as Period[]).map((value) => (
-            <button key={value} onClick={() => setPeriod(value)} className={`ios-button rounded-full px-3 py-2 text-xs font-bold ${period === value ? 'ios-button-active' : 'text-slate-600'}`}>
+            <button key={value} onClick={() => setPeriod(value)} className={`ios-button rounded-full px-3 py-2 text-xs font-bold ${period === value ? 'ios-button-active' : 'text-[var(--dr-text-secondary)]'}`}>
               {value}
             </button>
           ))}
@@ -122,15 +122,15 @@ const TaskTypeAnalysis: React.FC<Props> = ({ tasks, loading = false, error = nul
       <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="ios-widget rounded-2xl p-4">
           <div className="text-xs font-bold uppercase tracking-wide text-slate-400">En güçlü tip</div>
-          <div className="mt-2 text-lg font-bold text-slate-900">{bestType?.taskType || '-'}</div>
+          <div className="mt-2 text-lg font-bold text-[var(--dr-text-primary)]">{bestType?.taskType || '-'}</div>
         </div>
         <div className="ios-widget rounded-2xl p-4">
           <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Toplam tamamlanan</div>
-          <div className="mt-2 text-lg font-bold text-slate-900">{totalCompleted}</div>
+          <div className="mt-2 text-lg font-bold text-[var(--dr-text-primary)]">{totalCompleted}</div>
         </div>
         <div className="ios-widget rounded-2xl p-4">
           <div className="text-xs font-bold uppercase tracking-wide text-slate-400">En yüksek skor</div>
-          <div className="mt-2 text-lg font-bold text-slate-900">{bestType?.avgScore || 0}</div>
+          <div className="mt-2 text-lg font-bold text-[var(--dr-text-primary)]">{bestType?.avgScore || 0}</div>
         </div>
       </div>
 

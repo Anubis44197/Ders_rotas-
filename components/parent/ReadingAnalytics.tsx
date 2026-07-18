@@ -33,7 +33,8 @@ const ReadingAnalytics: React.FC<ReadingAnalyticsProps> = ({ tasks }) => {
     readingTasks.forEach((task) => {
       const date = parseDate(task.completionDate || task.dueDate);
       const dayIndex = date.getDay();
-      buckets[dayIndex].score += task.successScore || 0;
+      if (typeof task.successScore !== 'number') return;
+      buckets[dayIndex].score += task.successScore;
       buckets[dayIndex].count += 1;
     });
     return buckets.map((item) => ({ day: item.day, score: item.count ? Math.round(item.score / item.count) : 0 }));

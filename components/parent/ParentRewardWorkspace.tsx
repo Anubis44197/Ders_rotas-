@@ -162,11 +162,11 @@ const ParentRewardWorkspace: React.FC<ParentRewardWorkspaceProps> = ({
                         onConfirm: () => deleteReward(reward.id),
                       });
                     }}
-                    className="ml-1 flex h-4 w-4 items-center justify-center rounded-full text-slate-400 hover:bg-rose-500/25 hover:text-rose-600 transition duration-200"
+                    className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-rose-500/25 hover:text-rose-600 transition duration-200"
                     type="button"
                     aria-label={`${reward.name} ödülünü sil`}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               );

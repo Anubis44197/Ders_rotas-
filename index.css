@@ -601,6 +601,16 @@ button svg,
   text-wrap: pretty;
 }
 
+/* Apple HIG: interactive controls keep a reliable 44pt touch target. */
+button.ios-button,
+button.ios-button-active,
+button.dr-icon-button,
+button.dr-destructive-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+
 .ios-panel {
   border: 1px solid rgba(160, 140, 108, 0.24);
   background: rgba(255, 255, 255, 0.65);

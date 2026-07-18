@@ -5,6 +5,7 @@ import { Clock, Loader } from '../icons';
 import EmptyState from '../shared/EmptyState';
 import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 import { isCompletedTask } from '../../utils/taskStatus';
+import { getCompletionDay, getCompletionHour } from '../../utils/analyticsPresentation';
 
 interface BestPeriodAnalysisProps {
   tasks: Task[];
@@ -41,7 +42,8 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
   const weekdayData = useMemo(() => {
     const stats = Array.from({ length: 7 }, () => ({ total: 0, count: 0 }));
     completed.forEach((task) => {
-      const date = new Date(task.completionTimestamp || task.completionDate!);
+      const date = getCompletionDay(task);
+      if (!date) return;
       const day = date.getDay();
       stats[day].total += task.successScore || 0;
       stats[day].count += 1;
@@ -57,8 +59,8 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
   const hourData = useMemo(() => {
     const stats = Array.from({ length: 24 }, () => ({ total: 0, count: 0 }));
     completed.forEach((task) => {
-      const date = new Date(task.completionTimestamp || task.completionDate!);
-      const hour = date.getHours();
+      const hour = getCompletionHour(task);
+      if (hour === null) return;
       stats[hour].total += task.successScore || 0;
       stats[hour].count += 1;
     });
@@ -70,8 +72,12 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
     }));
   }, [completed]);
 
-  const bestDay = [...weekdayData].sort((a, b) => b.score - a.score)[0];
-  const bestHour = [...hourData].sort((a, b) => b.score - a.score)[0];
+  const pickReliableBest = <T extends { score: number; count: number }>(items: T[]): T | null => {
+    const reliable = items.filter((item) => item.count >= 3);
+    return reliable.reduce<T | null>((best, item) => (!best || item.score > best.score ? item : best), null);
+  };
+  const bestDay = pickReliableBest(weekdayData);
+  const bestHour = pickReliableBest(hourData);
 
   if (loading) {
     return (
@@ -103,8 +109,8 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
           <p className="text-sm text-[var(--dr-text-secondary)]">Tamamlanan görevlerde skor ortalaması hangi gün ve saatlerde yükseliyor.</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">En güçlü gün: <strong className="text-[var(--dr-text-primary)]">{bestDay?.day || '-'}</strong></div>
-          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">En güçlü saat: <strong className="text-[var(--dr-text-primary)]">{bestHour?.hour || '-'}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">En güçlü gün: <strong className="text-[var(--dr-text-primary)]">{bestDay?.day || 'En az 3 kayıt gerekli'}</strong></div>
+          <div className="ios-widget rounded-2xl px-4 py-3 text-sm text-[var(--dr-text-secondary)]">En güçlü saat: <strong className="text-[var(--dr-text-primary)]">{bestHour?.hour || 'Saat verisi yetersiz'}</strong></div>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -117,7 +123,6 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
               <YAxis domain={[0, 100]} {...chartAxisProps} />
               <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name === 'Skor' ? `${value} puan` : `${value} görev`} />} />
               <Bar legendType="none" dataKey="score" name="Skor" fill={chartPalette.blue} radius={[10, 10, 0, 0]} />
-              <Bar legendType="none" dataKey="count" name="Görev" fill={chartPalette.mint} radius={[10, 10, 0, 0]} />
             </BarChart>
           </SafeResponsiveContainer>
         </div>
@@ -130,7 +135,6 @@ const BestPeriodAnalysis: React.FC<BestPeriodAnalysisProps> = ({ tasks, loading 
               <YAxis domain={[0, 100]} {...chartAxisProps} />
               <Tooltip content={<ChartTooltip valueFormatter={(value, name) => name === 'Skor' ? `${value} puan` : `${value} görev`} />} />
               <Bar legendType="none" dataKey="score" name="Skor" fill={chartPalette.lilac} radius={[10, 10, 0, 0]} />
-              <Bar legendType="none" dataKey="count" name="Görev" fill={chartPalette.peach} radius={[10, 10, 0, 0]} />
             </BarChart>
           </SafeResponsiveContainer>
         </div>

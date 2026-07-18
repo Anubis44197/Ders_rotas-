@@ -7,64 +7,65 @@ import { deriveAnalysisSnapshot } from '../../utils/analysisEngine';
 import { Info } from '../icons';
 import { ChartTooltip, chartAxisProps, chartGridProps, chartPalette, SafeResponsiveContainer } from '../shared/chartDesign';
 import { getLocalMonthKey, getLocalWeekKey, getLocalYearKey, parseDate } from '../../utils/dateUtils';
+import { averageDefined, sumDurationMinutes } from '../../utils/analyticsPresentation';
 
 interface PerformanceAnalyticsProps {
   tasks: Task[];
 }
 
 function getWeeklyPerformance(tasks: Task[]) {
-  const bucket = new Map<string, { completed: number; duration: number; score: number }>();
+  const bucket = new Map<string, { completed: number; durationSeconds: number; scoreTotal: number; scoreCount: number }>();
   tasks.forEach((task) => {
     if (!isCompletedTask(task) || !task.completionDate) return;
     const date = parseDate(task.completionDate);
     const key = getLocalWeekKey(date);
-    const current = bucket.get(key) || { completed: 0, duration: 0, score: 0 };
+    const current = bucket.get(key) || { completed: 0, durationSeconds: 0, scoreTotal: 0, scoreCount: 0 };
     current.completed += 1;
-    current.duration += Math.round((task.actualDuration || 0) / 60);
-    current.score += task.successScore || 0;
+    current.durationSeconds += Math.max(0, task.actualDuration || 0);
+    if (typeof task.successScore === 'number') { current.scoreTotal += task.successScore; current.scoreCount += 1; }
     bucket.set(key, current);
   });
 
   return [...bucket.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([week, value]) => ({
     week,
     completed: value.completed,
-    duration: value.duration,
-    score: value.completed ? Math.round(value.score / value.completed) : 0,
+    duration: Math.round(value.durationSeconds / 60),
+    score: value.scoreCount ? Math.round(value.scoreTotal / value.scoreCount) : null,
   }));
 }
 function getMonthlyPerformance(tasks: Task[]) {
-  const bucket = new Map<string, { completed: number; duration: number; score: number }>();
+  const bucket = new Map<string, { completed: number; durationSeconds: number; scoreTotal: number; scoreCount: number }>();
   tasks.forEach((task) => {
     if (!isCompletedTask(task) || !task.completionDate) return;
     const date = parseDate(task.completionDate);
     const key = getLocalMonthKey(date);
-    const current = bucket.get(key) || { completed: 0, duration: 0, score: 0 };
+    const current = bucket.get(key) || { completed: 0, durationSeconds: 0, scoreTotal: 0, scoreCount: 0 };
     current.completed += 1;
-    current.duration += Math.round((task.actualDuration || 0) / 60);
-    current.score += task.successScore || 0;
+    current.durationSeconds += Math.max(0, task.actualDuration || 0);
+    if (typeof task.successScore === 'number') { current.scoreTotal += task.successScore; current.scoreCount += 1; }
     bucket.set(key, current);
   });
 
   return [...bucket.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([month, value]) => ({
     month,
     completed: value.completed,
-    duration: value.duration,
-    score: value.completed ? Math.round(value.score / value.completed) : 0,
+    duration: Math.round(value.durationSeconds / 60),
+    score: value.scoreCount ? Math.round(value.scoreTotal / value.scoreCount) : null,
   }));
 }
 function getYearlyPerformance(tasks: Task[]) {
-  const bucket = new Map<string, { completed: number; duration: number }>();
+  const bucket = new Map<string, { completed: number; durationSeconds: number }>();
   tasks.forEach((task) => {
     if (!isCompletedTask(task) || !task.completionDate) return;
     const date = parseDate(task.completionDate);
     const key = getLocalYearKey(date);
-    const current = bucket.get(key) || { completed: 0, duration: 0 };
+    const current = bucket.get(key) || { completed: 0, durationSeconds: 0 };
     current.completed += 1;
-    current.duration += Math.round((task.actualDuration || 0) / 60);
+    current.durationSeconds += Math.max(0, task.actualDuration || 0);
     bucket.set(key, current);
   });
 
-  return [...bucket.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([year, value]) => ({ year, ...value }));
+  return [...bucket.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([year, value]) => ({ year, completed: value.completed, duration: Math.round(value.durationSeconds / 60) }));
 }
 
 const card = 'ios-card rounded-[28px] p-5 text-[var(--dr-text-primary)]';
@@ -76,9 +77,9 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
   const yearlyData = useMemo(() => getYearlyPerformance(tasks), [tasks]);
   const analysis = useMemo(() => deriveAnalysisSnapshot(tasks, []), [tasks]);
 
-  const totalDuration = completedTasks.reduce((sum, task) => sum + Math.round((task.actualDuration || 0) / 60), 0);
-  const averageScore = completedTasks.length ? Math.round(completedTasks.reduce((sum, task) => sum + (task.successScore || 0), 0) / completedTasks.length) : 0;
-  const averageFocus = completedTasks.length ? Math.round(completedTasks.reduce((sum, task) => sum + (task.focusScore || 0), 0) / completedTasks.length) : 0;
+  const totalDuration = sumDurationMinutes(completedTasks);
+  const averageScore = averageDefined(completedTasks.map((task) => task.successScore));
+  const averageFocus = averageDefined(completedTasks.map((task) => task.focusScore));
   const strongestCourse = analysis.courses[0];
   const strongestTaskType = analysis.taskTypes[0];
   const strongestStudyWindow = analysis.studyWindows[0];
@@ -93,8 +94,8 @@ const PerformanceAnalytics: React.FC<PerformanceAnalyticsProps> = ({ tasks }) =>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Tamamlanan</div><div className="mt-2 text-2xl font-bold text-[var(--dr-text-primary)]">{completedTasks.length}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Kayıtlı oturum</div></div>
         <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Toplam süre</div><div className="mt-2 text-2xl font-bold text-[var(--dr-text-primary)]">{totalDuration}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Dakika</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama skor</div><div className="mt-2 text-2xl font-bold text-amber-600">{averageScore}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Başarı ortalaması</div></div>
-        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama odak</div><div className="mt-2 text-2xl font-bold text-[var(--dr-text-primary)]">{averageFocus}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Odak ortalaması</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama skor</div><div className="mt-2 text-2xl font-bold text-amber-600">{averageScore ?? 'Ölçülmedi'}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Yalnızca skoru girilen oturumlar</div></div>
+        <div className={card}><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text-muted)]">Ortalama odak</div><div className="mt-2 text-2xl font-bold text-[var(--dr-text-primary)]">{averageFocus ?? 'Ölçülmedi'}</div><div className="mt-1 text-sm text-[var(--dr-text-secondary)]">Yalnızca odağı ölçülen oturumlar</div></div>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_340px]">
