@@ -2557,7 +2557,9 @@ const App: React.FC = () => {
   const remoteLocalDirtySerializedRef = useRef<string | null>(null);
   const remoteLocalDirtyRef = useRef(false);
   const remotePublishInFlightRef = useRef(false);
+  const remotePublishQueuedRef = useRef(false);
   const remoteRevisionRef = useRef(0);
+  const [remotePublishTick, setRemotePublishTick] = useState(0);
   const remoteAppDataRef = useRef<RemoteAppData | null>(null);
   const topbarNotificationsRef = useRef<HTMLDivElement | null>(null);
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
@@ -2898,7 +2900,7 @@ const App: React.FC = () => {
         const serialized = JSON.stringify(appData);
         if (remoteLocalDirtyRef.current) {
           const localSnapshot = remoteAppDataRef.current;
-          remoteRevisionRef.current = syncRevision;
+          remoteRevisionRef.current = Math.max(remoteRevisionRef.current, syncRevision);
           remoteHydratedRef.current = true;
           if (localSnapshot) {
             applyRemoteAppData({
@@ -2914,7 +2916,7 @@ const App: React.FC = () => {
           return;
         }
         remoteLastSerializedRef.current = serialized;
-        remoteRevisionRef.current = syncRevision;
+        remoteRevisionRef.current = Math.max(remoteRevisionRef.current, syncRevision);
         remoteHydratedRef.current = true;
         applyRemoteAppData(appData);
       },
@@ -2947,27 +2949,44 @@ const App: React.FC = () => {
 
     if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
     remotePublishTimerRef.current = window.setTimeout(() => {
+      if (remotePublishInFlightRef.current) {
+        remotePublishQueuedRef.current = true;
+        return;
+      }
+
       remotePublishInFlightRef.current = true;
+      const expectedRevision = remoteRevisionRef.current;
       void import('./utils/firebaseLiveSync')
-        .then(({ publishRemoteAppData }) => publishRemoteAppData(remoteAppData, remoteRevisionRef.current))
+        .then(({ publishRemoteAppData }) => publishRemoteAppData(remoteAppData, expectedRevision))
         .then((nextRevision) => {
-          remoteRevisionRef.current = nextRevision;
+          remoteRevisionRef.current = Math.max(remoteRevisionRef.current, nextRevision);
           remoteLastSerializedRef.current = serialized;
-          remoteLocalDirtyRef.current = false;
+          const currentSerialized = remoteAppDataRef.current ? JSON.stringify(remoteAppDataRef.current) : serialized;
+          if (currentSerialized === serialized) {
+            remoteLocalDirtyRef.current = false;
+          } else {
+            remoteLocalDirtyRef.current = true;
+            remotePublishQueuedRef.current = true;
+          }
         })
         .catch((error) => {
           console.error('Firebase live publish error:', error);
           if (error instanceof Error && error.name === 'RemoteWriteConflictError') {
-            addToast('Başka cihazda yeni değişiklik var. Yerel veriniz korunuyor; yenileyip tekrar deneyin.', 'error');
+            // A newer remote revision will arrive through onSnapshot; merge it and retry silently.
+            remotePublishQueuedRef.current = true;
             return;
           }
           addToast('Canli veri Firebasee yazilamadi.', 'error');
         })
         .finally(() => {
           remotePublishInFlightRef.current = false;
+          if (remotePublishQueuedRef.current) {
+            remotePublishQueuedRef.current = false;
+            window.setTimeout(() => setRemotePublishTick((value) => value + 1), 1200);
+          }
         });
     }, 1000);
-  }, [addToast, isRemoteSyncDisabled, remoteAppData, allIdbStatesHydrated]);
+  }, [addToast, isRemoteSyncDisabled, remoteAppData, allIdbStatesHydrated, remotePublishTick]);
 
   const handleContinueTask = (taskId: string) => {
     const task = tasks.find((item) => item.id === taskId);
