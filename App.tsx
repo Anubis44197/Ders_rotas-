@@ -5740,7 +5740,9 @@ const App: React.FC = () => {
                       </div>
                     )}
 
-                    {renderParentWorkspace()}
+                    <div className={parentWorkspaceView === 'overview' ? undefined : 'dr-overview-typography'}>
+                      {renderParentWorkspace()}
+                    </div>
                   </div>
                 </div>
               </div>
