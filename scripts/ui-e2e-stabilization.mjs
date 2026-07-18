@@ -549,7 +549,7 @@ const main = async () => {
         name: 'Zaman filtreleri',
         data: 'qaRecords=manual, analysisTab=reports, e2e=1',
         selectors: ['[data-testid="report-period-select"]', '[data-testid="analysis-reports-section"]'],
-        expected: 'Haftalik/Aylik/3 Aylik/Tum Zamanlar secimleri statei dogru guncellemeli.',
+        expected: 'Haftalik/Aylik/2 Aylik/3 Aylik/Tum Zamanlar secimleri statei dogru guncellemeli.',
         related: 'components/parent/ParentAnalysisWorkspace.tsx, App.tsx',
       },
       async () => {

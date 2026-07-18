@@ -35,6 +35,7 @@ import {
   ReplanTriggerRecord,
   PlanBlockType,
   ParentDashboardProps,
+  ReportPeriod,
 } from './types';
 import { GraduationCap, User, Users, BadgeCheck, Home, Sparkles, ClipboardList, BarChart, Menu, X, Bell, Settings, AlertTriangle, Lock, ChevronLeft, ChevronRight, ChevronDown, PlusCircle, BookOpen } from './components/icons';
 import { ALL_ICONS } from './constants';
@@ -48,6 +49,8 @@ import { getAccuracyPercent, getQuestionMetrics, getSolvedQuestionCount, getSucc
 import { playHaptic } from './utils/haptics';
 import type { RemoteAppData } from './utils/firebaseLiveSync';
 import { MAX_IMPORT_BYTES, validateImportDocument } from './utils/importValidation';
+import { shouldRestoreBundledCurriculum, shouldRunLegacyCleanup } from './utils/initialDataPolicy';
+import { isDateInReportPeriod } from './utils/reportPeriod';
 import { GoogleGenAI } from '@google/genai';
 
 const lazyWithRetry = <T extends { default: React.ComponentType<any> }>(
@@ -659,6 +662,7 @@ const isRetainedRealSubject = (value: unknown) => retainedRealSubjectKeys.has(no
 
 const pruneLegacyDemoSubjects = () => {
   if (typeof window === 'undefined') return;
+  if (!shouldRunLegacyCleanup(window.location.search)) return;
   if (isE2EBulkSeedMode() || isE2EQaSeedingActive()) return;
   const migrationKey = 'drLegacyDemoSubjectsPrunedV1';
   if (window.localStorage.getItem(migrationKey) === 'true') return;
@@ -750,6 +754,7 @@ const pruneLegacyDemoSubjects = () => {
 
 const purgeLegacyDemoData = () => {
   if (typeof window === 'undefined') return;
+  if (!shouldRunLegacyCleanup(window.location.search)) return;
   if (isE2EBulkSeedMode() || isE2EQaSeedingActive()) return;
   const coursesPayload = parseStorageJson('courses');
   const curriculumPayload = parseStorageJson('curriculum');
@@ -1238,45 +1243,9 @@ const seedInitialRealCurriculum = () => {
   if (typeof window === 'undefined') return;
   if (isE2EBulkSeedMode()) return;
 
-  const coursesPayload = parseStorageJson('courses');
-  const curriculumPayload = parseStorageJson('curriculum');
-  const hasCourses = Array.isArray(coursesPayload) && coursesPayload.length > 0;
-  const hasCurriculum = Boolean(
-    isIdbStorageMarker(curriculumPayload)
-    || (
-      curriculumPayload
-      && typeof curriculumPayload === 'object'
-      && !Array.isArray(curriculumPayload)
-      && Object.keys(curriculumPayload).length > 0
-    ),
-  );
-
-  const hasAllRealCourses = Array.isArray(coursesPayload) &&
-    INITIAL_REAL_COURSES.every(realCourse =>
-      coursesPayload.some(c => normalizeLegacyDemoText(c?.name) === normalizeLegacyDemoText(realCourse.name))
-    );
-  const hasAllRealCurriculum = Boolean(
-    isIdbStorageMarker(curriculumPayload)
-    || (
-      curriculumPayload
-      && typeof curriculumPayload === 'object'
-      && !Array.isArray(curriculumPayload)
-      && INITIAL_REAL_COURSES.every(realCourse =>
-        Object.keys(curriculumPayload).some(subj => normalizeLegacyDemoText(subj) === normalizeLegacyDemoText(realCourse.name))
-      )
-    )
-  );
-
-  const forceMathSeed = new URLSearchParams(window.location.search).get('reset') === 'math';
-  const shouldReplaceWithRealMath = forceMathSeed
-    || !hasCourses
-    || !hasCurriculum
-    || !hasAllRealCourses
-    || !hasAllRealCurriculum
-    || isLegacyDemoCourseList(coursesPayload)
-    || isLegacyDemoCurriculum(curriculumPayload);
-
-  if (!shouldReplaceWithRealMath) return;
+  // Kullanıcı dersleri, konuları veya programı değiştirdiğinde otomatik geri yükleme yapılmaz.
+  // Paketli müfredat yalnızca kullanıcı açıkça ?reset=math istediğinde geri yüklenir.
+  if (!shouldRestoreBundledCurriculum(window.location.search)) return;
 
   academicStorageKeys.forEach((key) => window.localStorage.removeItem(key));
   void clearIndexedDbKeys(academicStorageKeys);
@@ -3210,20 +3179,11 @@ const App: React.FC = () => {
     }
   };
 
-  const generateReport = async (period: 'Haftal\u0131k' | 'Ayl\u0131k' | '3 Ayl\u0131k' | 'Y\u0131ll\u0131k' | 'T\u00fcm Zamanlar'): Promise<ReportData | null> => {
+  const generateReport = async (period: ReportPeriod): Promise<ReportData | null> => {
     const now = new Date();
-    const startDate = new Date(now);
-
-    if (period === 'Haftal\u0131k') startDate.setDate(now.getDate() - 7);
-    if (period === 'Ayl\u0131k') startDate.setMonth(now.getMonth() - 1);
-    if (period === '3 Ayl\u0131k') startDate.setMonth(now.getMonth() - 3);
-    if (period === 'Y\u0131ll\u0131k') startDate.setFullYear(now.getFullYear() - 1);
-
     const completedTasks = tasks.filter((task) => {
       if (!isCompletedTask(task) || !task.completionDate) return false;
-      if (period === 'T\u00fcm Zamanlar') return true;
-      const taskDate = new Date(`${task.completionDate}T00:00:00`);
-      return taskDate >= startDate;
+      return isDateInReportPeriod(task.completionDate, period, now);
     });
 
     if (completedTasks.length === 0) {

@@ -157,8 +157,10 @@ export interface TimeSeriesData {
   performance: number; // e.g., average score
 }
 
+export type ReportPeriod = 'Haftal\u0131k' | 'Ayl\u0131k' | '2 Ayl\u0131k' | '3 Ayl\u0131k' | 'Y\u0131ll\u0131k' | 'T\u00fcm Zamanlar';
+
 export interface ReportData {
-  period: 'Haftal\u0131k' | 'Ayl\u0131k' | '3 Ayl\u0131k' | 'Y\u0131ll\u0131k' | 'T\u00fcm Zamanlar';
+  period: ReportPeriod;
   aiSummary: string;
   highlights: {
     mostImproved: string;
@@ -205,7 +207,7 @@ export interface ParentDashboardProps {
   updateTaskFromPlan?: (planTaskId: string, updates: Partial<Pick<Task, 'plannedDuration' | 'questionCount'>>) => void;
   addReward: (reward: Omit<Reward, 'id'>) => void;
   deleteReward: (rewardId: string) => void;
-  generateReport: (period: 'Haftal\u0131k' | 'Ayl\u0131k' | '3 Ayl\u0131k' | 'Y\u0131ll\u0131k' | 'T\u00fcm Zamanlar') => Promise<ReportData | null>;
+  generateReport: (period: ReportPeriod) => Promise<ReportData | null>;
   onExportData?: () => Promise<void>;
   onDeleteAllData: () => Promise<void>;
   onImportData: (file: File) => Promise<boolean>;

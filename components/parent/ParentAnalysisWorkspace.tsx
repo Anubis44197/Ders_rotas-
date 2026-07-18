@@ -9,6 +9,7 @@ import { AlertTriangle, BarChart, BookOpen, CheckCircle, ClipboardList, Clock, F
 import ContextHelp from '../shared/ContextHelp';
 import { isCompletedTask } from '../../utils/taskStatus';
 import { getQuestionMetrics, getSolvedQuestionCount, isQuestionTask } from '../../utils/questionMetrics';
+import { isDateInReportPeriod } from '../../utils/reportPeriod';
 
 const surface = 'dr-hig-secondary-card rounded-[30px] p-6';
 const subtleSurface = 'ios-widget rounded-[24px] p-5';
@@ -46,7 +47,7 @@ const analysisWorkspaceTabs: Array<{ id: AnalysisWorkspaceTab; label: string; ic
   { id: 'reports', label: 'Raporlar', icon: BarChart },
 ];
 
-const reportPeriods: ReportPeriod[] = ['Haftalık', 'Aylık', '3 Aylık', 'Tüm Zamanlar'];
+const reportPeriods: ReportPeriod[] = ['Haftalık', 'Aylık', '2 Aylık', '3 Aylık', 'Tüm Zamanlar'];
 const GOAL_CONFIG_STORAGE_KEY = 'parentGoalConfigV1';
 const LGS_TARGET_DATE_STORAGE_KEY = 'parentLgsTargetDate';
 const LGS_TARGET_NET_STORAGE_KEY = 'parentLgsTargetNet';
@@ -206,15 +207,10 @@ const ParentAnalysisWorkspace: React.FC<ParentAnalysisWorkspaceProps> = ({
   const [analysisPeriod, setAnalysisPeriod] = useState<ReportPeriod>('Tüm Zamanlar');
   const scopedTasks = useMemo(() => {
     if (analysisPeriod === 'Tüm Zamanlar') return tasks;
-    const days = analysisPeriod === 'Haftalık' ? 7 : analysisPeriod === 'Aylık' ? 30 : 90;
-    const cutoff = new Date();
-    cutoff.setHours(0, 0, 0, 0);
-    cutoff.setDate(cutoff.getDate() - (days - 1));
+    const now = new Date();
     return tasks.filter((task) => {
       const key = task.completionDate || task.dueDate;
-      if (!key) return false;
-      const date = new Date(`${key}T00:00:00`);
-      return !Number.isNaN(date.getTime()) && date >= cutoff;
+      return isDateInReportPeriod(key, analysisPeriod, now);
     });
   }, [analysisPeriod, tasks]);
   const analysis = useMemo(

@@ -1729,7 +1729,7 @@ const runGraphAccuracyTest = async (
 
   await openAnalysisTab(client, 'reports');
   await waitForSelector(client, '[data-testid="analysis-reports-section"]', 15000);
-  const periods = ['Haftalık', 'Aylık', '3 Aylık', 'Tüm Zamanlar'];
+  const periods = ['Haftalık', 'Aylık', '2 Aylık', '3 Aylık', 'Tüm Zamanlar'];
   for (const period of periods) {
     await setSelect(client, '[data-testid="report-period-select"]', period);
     await wait(120);

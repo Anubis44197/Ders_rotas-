@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "smoke": "tsx scripts/smoke-tests.ts",
     "test:heavy": "tsx scripts/heavy-real-data-tests.ts",
+    "test:periods": "tsx scripts/report-period-tests.ts",
+    "test:data-policy": "tsx scripts/initial-data-policy-tests.ts",
     "test:matrix": "tsx scripts/analysis-test-matrix.ts",
     "test:sync": "tsx scripts/remote-sync-merge-tests.ts",
     "test:acceptance": "tsx scripts/parent-decision-acceptance.ts",
