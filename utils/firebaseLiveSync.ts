@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth';
-import { collection, deleteDoc, doc, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, onSnapshot, serverTimestamp, setDoc, type Unsubscribe } from 'firebase/firestore';
+import { collection, doc, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, onSnapshot, runTransaction, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
 
 export interface RemoteAppData {
   courses: unknown[];
@@ -23,11 +23,19 @@ export interface RemoteSnapshotPayload {
   appData: RemoteAppData;
   updatedAt: string | null;
   updatedBy: string | null;
+  syncRevision: number;
 }
 
 type SectionId = Exclude<keyof RemoteAppData, 'successPoints' | 'planningEngineSnapshot' | 'tasks'> | 'meta';
 
-type SectionValue = unknown[] | Record<string, unknown> | { successPoints: number; planningEngineSnapshot: unknown };
+type SectionValue = unknown[] | Record<string, unknown> | { successPoints: number; planningEngineSnapshot: unknown; syncRevision?: number };
+
+export class RemoteWriteConflictError extends Error {
+  constructor() {
+    super('Remote data changed on another device before this update could be published.');
+    this.name = 'RemoteWriteConflictError';
+  }
+}
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDnolB5eGB4YtZBEklbVpQsJ7qhsQsSQeI',
@@ -248,7 +256,7 @@ const splitRemoteAppData = (appData: RemoteAppData): Record<SectionId, SectionVa
 });
 
 const assembleRemoteAppData = (sections: Map<SectionId, SectionValue>, tasks: unknown[]): RemoteAppData => {
-  const meta = (sections.get('meta') || sectionDefaults.meta) as { successPoints?: number; planningEngineSnapshot?: unknown };
+  const meta = (sections.get('meta') || sectionDefaults.meta) as { successPoints?: number; planningEngineSnapshot?: unknown; syncRevision?: number };
   return {
     courses: (sections.get('courses') || sectionDefaults.courses) as unknown[],
     tasks,
@@ -292,6 +300,7 @@ export const startRemoteAppDataSync = async ({
   let hasSplitState = false;
   let hasTaskChunks = false;
   let hasEmittedMissing = false;
+  let syncRevision = 0;
 
   const getActiveTasks = () => (hasTaskChunks ? chunkTasks : legacyTasks);
 
@@ -312,6 +321,7 @@ export const startRemoteAppDataSync = async ({
       appData: assembleRemoteAppData(sectionValues, getActiveTasks()),
       updatedAt: latestUpdatedAt,
       updatedBy: latestUpdatedBy,
+      syncRevision,
     });
   };
 
@@ -322,6 +332,10 @@ export const startRemoteAppDataSync = async ({
       const value = data.value ?? sectionDefaults[sectionId];
       sectionValues.set(sectionId, value);
       rememberKnownSection(sectionId, value);
+      if (sectionId === 'meta') {
+        const candidate = Number((value as { syncRevision?: unknown }).syncRevision);
+        syncRevision = Number.isSafeInteger(candidate) && candidate >= 0 ? candidate : 0;
+      }
       hasSplitState = true;
       latestUpdatedAt = parseUpdatedAt(data.updatedAt) || latestUpdatedAt;
       latestUpdatedBy = data.updatedBy || latestUpdatedBy;
@@ -392,6 +406,7 @@ export const startRemoteAppDataSync = async ({
       appData: data.appData,
       updatedAt: parseUpdatedAt(data.updatedAt),
       updatedBy: data.updatedBy || null,
+      syncRevision: 0,
     });
   }, (error) => onError(error));
 
@@ -403,73 +418,59 @@ export const startRemoteAppDataSync = async ({
   };
 };
 
-export const publishRemoteAppData = async (appData: RemoteAppData) => {
+export const publishRemoteAppData = async (appData: RemoteAppData, expectedRevision: number): Promise<number> => {
   const user = await getCurrentUser();
   const plainAppData = toPlainJson(appData);
   const sections = splitRemoteAppData(plainAppData);
-  const sectionWrites = sectionIds.flatMap((sectionId) => {
-    const serialized = JSON.stringify(sections[sectionId]);
-    if (serialized === lastPublishedSections.get(sectionId)) return [];
-    return {
-      sectionId,
-      serialized,
-      write: setDoc(sectionRefs[sectionId], {
-        schemaVersion: 2,
-        syncVersion: 3,
-        value: sections[sectionId],
-        updatedAt: serverTimestamp(),
-        updatedBy: user.uid,
-      }, { merge: true }),
-    };
-  });
-
   const nextTaskChunks = splitTaskChunks(asArray(plainAppData.tasks));
   const nextTaskChunkIds = new Set(nextTaskChunks.map((chunk) => chunk.id));
   const taskOrderChunk = nextTaskChunks.find((chunk) => chunk.id === TASK_ORDER_CHUNK_ID);
   const dataTaskChunks = nextTaskChunks.filter((chunk) => chunk.id !== TASK_ORDER_CHUNK_ID);
   const dataTaskChunkIds = new Set(dataTaskChunks.map((chunk) => chunk.id));
-  const createTaskChunkWrite = (chunk: { id: string; index: number; tasks: unknown[]; serialized: string }) => {
-    if (chunk.serialized === lastPublishedTaskChunks.get(chunk.id)) return [];
-    return {
-      chunkId: chunk.id,
-      serialized: chunk.serialized,
-      write: setDoc(taskChunkDocRef(chunk.id), {
-        schemaVersion: 2,
-        syncVersion: 3,
-        chunkIndex: chunk.index,
-        chunkSize: TASK_CHUNK_SIZE,
-        totalChunks: nextTaskChunks.length,
-        value: chunk.tasks,
-        updatedAt: serverTimestamp(),
-        updatedBy: user.uid,
-      }, { merge: true }),
-    };
-  };
-  const taskChunkWrites = dataTaskChunks.flatMap(createTaskChunkWrite);
-  const taskOrderWrites = taskOrderChunk ? [createTaskChunkWrite(taskOrderChunk)].flat() : [];
-  const staleTaskChunkDeletes = [...knownTaskChunkIds]
-    .filter((chunkId) => chunkId !== TASK_ORDER_CHUNK_ID && !dataTaskChunkIds.has(chunkId))
-    .map((chunkId) => ({ chunkId, write: deleteDoc(taskChunkDocRef(chunkId)) }));
+  const changedTaskChunks = dataTaskChunks.filter((chunk) => chunk.serialized !== lastPublishedTaskChunks.get(chunk.id));
+  const changedTaskOrder = taskOrderChunk && taskOrderChunk.serialized !== lastPublishedTaskChunks.get(taskOrderChunk.id)
+    ? taskOrderChunk
+    : null;
+  const staleTaskChunkIds = [...knownTaskChunkIds]
+    .filter((chunkId) => chunkId !== TASK_ORDER_CHUNK_ID && !dataTaskChunkIds.has(chunkId));
 
-  await Promise.all(sectionWrites.map(async ({ sectionId, serialized, write }) => {
-    await write;
-    lastPublishedSections.set(sectionId, serialized);
-  }));
+  let nextRevision = expectedRevision;
+  let changedSections: Array<{ sectionId: SectionId; serialized: string; value: SectionValue }> = [];
+  await runTransaction(db, async (transaction) => {
+    const remoteMetaSnapshot = await transaction.get(sectionRefs.meta);
+    const remoteMetaValue = remoteMetaSnapshot.exists()
+      ? (remoteMetaSnapshot.data().value as { syncRevision?: unknown } | undefined)
+      : undefined;
+    const candidateRevision = Number(remoteMetaValue?.syncRevision);
+    const remoteRevision = Number.isSafeInteger(candidateRevision) && candidateRevision >= 0 ? candidateRevision : 0;
+    if (remoteRevision !== expectedRevision) throw new RemoteWriteConflictError();
 
-  await Promise.all(taskChunkWrites.map(async ({ chunkId, serialized, write }) => {
-    await write;
-    lastPublishedTaskChunks.set(chunkId, serialized);
-  }));
+    nextRevision = remoteRevision + 1;
+    sections.meta = { ...(sections.meta as Record<string, unknown>), syncRevision: nextRevision };
+    changedSections = sectionIds.flatMap((sectionId) => {
+      const serialized = JSON.stringify(sections[sectionId]);
+      if (serialized === lastPublishedSections.get(sectionId)) return [];
+      return [{ sectionId, serialized, value: sections[sectionId] }];
+    });
 
-  await Promise.all(staleTaskChunkDeletes.map(async ({ chunkId, write }) => {
-    await write;
-    lastPublishedTaskChunks.delete(chunkId);
-  }));
+    changedSections.forEach(({ sectionId, value }) => transaction.set(sectionRefs[sectionId], {
+      schemaVersion: 2, syncVersion: 3, value, updatedAt: serverTimestamp(), updatedBy: user.uid,
+    }, { merge: true }));
+    changedTaskChunks.forEach((chunk) => transaction.set(taskChunkDocRef(chunk.id), {
+      schemaVersion: 2, syncVersion: 3, chunkIndex: chunk.index, chunkSize: TASK_CHUNK_SIZE,
+      totalChunks: nextTaskChunks.length, value: chunk.tasks, updatedAt: serverTimestamp(), updatedBy: user.uid,
+    }, { merge: true }));
+    staleTaskChunkIds.forEach((chunkId) => transaction.delete(taskChunkDocRef(chunkId)));
+    if (changedTaskOrder) transaction.set(taskChunkDocRef(changedTaskOrder.id), {
+      schemaVersion: 2, syncVersion: 3, chunkIndex: changedTaskOrder.index, chunkSize: TASK_CHUNK_SIZE,
+      totalChunks: nextTaskChunks.length, value: changedTaskOrder.tasks, updatedAt: serverTimestamp(), updatedBy: user.uid,
+    }, { merge: true });
+  });
 
-  await Promise.all(taskOrderWrites.map(async ({ chunkId, serialized, write }) => {
-    await write;
-    lastPublishedTaskChunks.set(chunkId, serialized);
-  }));
-
+  changedSections.forEach(({ sectionId, serialized }) => lastPublishedSections.set(sectionId, serialized));
+  changedTaskChunks.forEach((chunk) => lastPublishedTaskChunks.set(chunk.id, chunk.serialized));
+  staleTaskChunkIds.forEach((chunkId) => lastPublishedTaskChunks.delete(chunkId));
+  if (changedTaskOrder) lastPublishedTaskChunks.set(changedTaskOrder.id, changedTaskOrder.serialized);
   knownTaskChunkIds = nextTaskChunkIds;
+  return nextRevision;
 };

@@ -14,7 +14,8 @@
     "test:acceptance": "tsx scripts/parent-decision-acceptance.ts",
     "test:ui-e2e": "node scripts/ui-e2e-stabilization.mjs",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:import": "tsx scripts/import-validation-tests.ts"
   },
   "dependencies": {
     "@google/genai": "^1.21.0",

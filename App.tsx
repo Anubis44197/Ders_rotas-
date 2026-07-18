@@ -45,7 +45,8 @@ import { getNotificationCooldownMs } from './utils/parentDecisionEngine';
 import { isCompletedTask } from './utils/taskStatus';
 import { getAccuracyPercent, getQuestionMetrics, getSolvedQuestionCount, getSuccessPercent, isQuestionTask } from './utils/questionMetrics';
 import { playHaptic } from './utils/haptics';
-import { publishRemoteAppData, startRemoteAppDataSync, type RemoteAppData } from './utils/firebaseLiveSync';
+import { publishRemoteAppData, RemoteWriteConflictError, startRemoteAppDataSync, type RemoteAppData } from './utils/firebaseLiveSync';
+import { MAX_IMPORT_BYTES, validateImportDocument } from './utils/importValidation';
 import { GoogleGenAI } from '@google/genai';
 
 const lazyWithRetry = <T extends { default: React.ComponentType<any> }>(
@@ -2532,6 +2533,7 @@ const App: React.FC = () => {
   const remoteLocalDirtySerializedRef = useRef<string | null>(null);
   const remoteLocalDirtyRef = useRef(false);
   const remotePublishInFlightRef = useRef(false);
+  const remoteRevisionRef = useRef(0);
   const topbarNotificationsRef = useRef<HTMLDivElement | null>(null);
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
   const topbarNotificationsPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -2892,9 +2894,10 @@ const App: React.FC = () => {
       },
       onRemoteMissing: () => {
         if (cancelled) return;
+        remoteRevisionRef.current = 0;
         remoteHydratedRef.current = true;
       },
-      onRemoteData: ({ appData }) => {
+      onRemoteData: ({ appData, syncRevision }) => {
         if (cancelled) return;
         const migrationState = window.localStorage.getItem('drCleanLiveTestDataV3');
         if (migrationState === 'pending') {
@@ -2910,6 +2913,7 @@ const App: React.FC = () => {
           return;
         }
         remoteLastSerializedRef.current = serialized;
+        remoteRevisionRef.current = syncRevision;
         remoteHydratedRef.current = true;
         applyRemoteAppData(appData);
       },
@@ -2943,13 +2947,18 @@ const App: React.FC = () => {
     if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
     remotePublishTimerRef.current = window.setTimeout(() => {
       remotePublishInFlightRef.current = true;
-      void publishRemoteAppData(remoteAppData)
-        .then(() => {
+      void publishRemoteAppData(remoteAppData, remoteRevisionRef.current)
+        .then((nextRevision) => {
+          remoteRevisionRef.current = nextRevision;
           remoteLastSerializedRef.current = serialized;
           remoteLocalDirtyRef.current = false;
         })
         .catch((error) => {
           console.error('Firebase live publish error:', error);
+          if (error instanceof RemoteWriteConflictError) {
+            addToast('Başka cihazda yeni değişiklik var. Yerel veriniz korunuyor; yenileyip tekrar deneyin.', 'error');
+            return;
+          }
           addToast('Canli veri Firebasee yazilamadi.', 'error');
         })
         .finally(() => {
@@ -3034,42 +3043,42 @@ const App: React.FC = () => {
     setUserType(nextUserType);
   };
 
-  const getImportPayload = (json: any) => json?.appData && typeof json.appData === 'object' ? json.appData : json;
-
-  const applyImportedData = (json: any): boolean => {
-    const payload = getImportPayload(json);
-    const parsedSuccessPoints = Number(payload?.successPoints);
-    if (!payload || !Array.isArray(payload.courses) || !Array.isArray(payload.tasks) || !Array.isArray(payload.rewards) || !Array.isArray(payload.badges) || !Number.isFinite(parsedSuccessPoints)) {
-      return false;
-    }
-
+  const applyImportedData = (payload: Record<string, unknown>): void => {
+    const parsedSuccessPoints = Number(payload.successPoints);
     const { courses: normalizedCourses, courseIdAliases } = normalizeCoursesWithAliases(payload.courses as Course[]);
-    setCourses(normalizedCourses);
-    setTasks(payload.tasks.map((task: Task) => {
+    const nextTasks = (payload.tasks as Task[]).map((task) => {
       const normalizedTask = normalizeTask(task);
-      return {
-        ...normalizedTask,
-        courseId: remapCourseId(normalizedTask.courseId, courseIdAliases),
-      };
-    }));
-    setPerformanceData(dedupePerformanceData(
+      return { ...normalizedTask, courseId: remapCourseId(normalizedTask.courseId, courseIdAliases) };
+    });
+    const nextPerformanceData = dedupePerformanceData(
       normalizePerformanceData(Array.isArray(payload.performanceData) ? payload.performanceData : []).map((item) => ({
-        ...item,
-        courseId: remapCourseId(item.courseId, courseIdAliases),
+        ...item, courseId: remapCourseId(item.courseId, courseIdAliases),
       })),
       normalizedCourses,
-    ));
-    setRewards(normalizeRewards(payload.rewards as Reward[]));
-    setBadges(normalizeBadges(payload.badges as Badge[]));
-    setSuccessPoints(parsedSuccessPoints || 0);
-    setCurriculum(normalizeCurriculum(payload.curriculum));
-    setWeeklySchedule(normalizeWeeklySchedule(payload.weeklySchedule || defaultWeeklySchedule));
-    setSchoolTopicHistory(normalizeSchoolTopicHistory(payload.schoolTopicHistory));
-    setExamRecords(normalizeExamRecords(payload.examRecords, normalizedCourses));
-    setCompositeExamResults(normalizeCompositeExamResults(payload.compositeExamResults, normalizedCourses));
-    setExamScheduleEntries(normalizeExamScheduleEntries(payload.examScheduleEntries, normalizedCourses));
-    setStudyPlans(normalizeStudyPlans(payload.studyPlans));
-    return true;
+    );
+    const nextRewards = normalizeRewards(payload.rewards as Reward[]);
+    const nextBadges = normalizeBadges(payload.badges as Badge[]);
+    const nextCurriculum = normalizeCurriculum(payload.curriculum);
+    const nextWeeklySchedule = normalizeWeeklySchedule(payload.weeklySchedule || defaultWeeklySchedule);
+    const nextSchoolTopicHistory = normalizeSchoolTopicHistory(payload.schoolTopicHistory);
+    const nextExamRecords = normalizeExamRecords(Array.isArray(payload.examRecords) ? payload.examRecords : [], normalizedCourses);
+    const nextCompositeExamResults = normalizeCompositeExamResults(Array.isArray(payload.compositeExamResults) ? payload.compositeExamResults : [], normalizedCourses);
+    const nextExamScheduleEntries = normalizeExamScheduleEntries(Array.isArray(payload.examScheduleEntries) ? payload.examScheduleEntries : [], normalizedCourses);
+    const nextStudyPlans = normalizeStudyPlans(payload.studyPlans);
+
+    setCourses(normalizedCourses);
+    setTasks(nextTasks);
+    setPerformanceData(nextPerformanceData);
+    setRewards(nextRewards);
+    setBadges(nextBadges);
+    setSuccessPoints(parsedSuccessPoints);
+    setCurriculum(nextCurriculum);
+    setWeeklySchedule(nextWeeklySchedule);
+    setSchoolTopicHistory(nextSchoolTopicHistory);
+    setExamRecords(nextExamRecords);
+    setCompositeExamResults(nextCompositeExamResults);
+    setExamScheduleEntries(nextExamScheduleEntries);
+    setStudyPlans(nextStudyPlans);
   };
 
   const handleExportData = async (): Promise<void> => {
@@ -3143,18 +3152,23 @@ const App: React.FC = () => {
 
   const handleImportDataNew = async (file: File): Promise<boolean> => {
     try {
-      const text = await file.text();
-      const json = JSON.parse(text);
-      const ok = applyImportedData(json);
-      if (ok) {
-        addToast('Veriler başarıyla içe aktarıldı.', 'success');
-      } else {
-        addToast('Geçersiz yedek dosyası: gerekli alanlar eksik veya hatalı.', 'error');
+      if (file.size > MAX_IMPORT_BYTES) {
+        addToast('Yedek dosyası 25 MB sınırını aşıyor.', 'error');
+        return false;
       }
-      return ok;
+      const document = JSON.parse(await file.text());
+      const validation = validateImportDocument(document);
+      if (!validation.ok) {
+        addToast(`Geçersiz yedek dosyası: ${validation.error}`, 'error');
+        return false;
+      }
+      await handleExportData();
+      applyImportedData(validation.payload);
+      addToast('Mevcut verinin güvenlik yedeği indirildi ve yeni veriler içe aktarıldı.', 'success');
+      return true;
     } catch (error) {
       console.error('Import error:', error);
-      addToast('Yedek dosyası okunamadı veya JSON formatı geçersiz.', 'error');
+      addToast('İçe aktarma uygulanmadı; mevcut veriler korundu.', 'error');
       return false;
     }
   };
