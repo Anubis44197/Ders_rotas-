@@ -78,6 +78,7 @@ export interface Task {
   conceptErrorCount?: number;
   processErrorCount?: number;
   attentionErrorCount?: number;
+  errorBreakdownProvided?: boolean;
   successScore?: number; // 0-100 score based on correctness and time
   focusScore?: number; // 0-100 score based on breaks, pauses, and overtime
   pointsAwarded?: number;
@@ -242,6 +243,7 @@ export interface TaskCompletionData {
   conceptErrorCount?: number;
   processErrorCount?: number;
   attentionErrorCount?: number;
+  errorBreakdownProvided?: boolean;
 }
 
 // Props for ChildDashboard

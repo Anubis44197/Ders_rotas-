@@ -5,6 +5,7 @@ import { collection, doc, initializeFirestore, persistentLocalCache, persistentM
 export interface RemoteAppData {
   courses: unknown[];
   tasks: unknown[];
+  taskTombstones: Record<string, string>;
   performanceData: unknown[];
   rewards: unknown[];
   badges: unknown[];
@@ -26,9 +27,9 @@ export interface RemoteSnapshotPayload {
   syncRevision: number;
 }
 
-type SectionId = Exclude<keyof RemoteAppData, 'successPoints' | 'planningEngineSnapshot' | 'tasks'> | 'meta';
+type SectionId = Exclude<keyof RemoteAppData, 'successPoints' | 'planningEngineSnapshot' | 'tasks' | 'taskTombstones'> | 'meta';
 
-type SectionValue = unknown[] | Record<string, unknown> | { successPoints: number; planningEngineSnapshot: unknown; syncRevision?: number };
+type SectionValue = unknown[] | Record<string, unknown> | { successPoints: number; planningEngineSnapshot: unknown; taskTombstones?: Record<string, string>; syncRevision?: number };
 
 export class RemoteWriteConflictError extends Error {
   constructor() {
@@ -252,14 +253,16 @@ const splitRemoteAppData = (appData: RemoteAppData): Record<SectionId, SectionVa
   meta: {
     successPoints: appData.successPoints,
     planningEngineSnapshot: appData.planningEngineSnapshot,
+    taskTombstones: appData.taskTombstones,
   },
 });
 
 const assembleRemoteAppData = (sections: Map<SectionId, SectionValue>, tasks: unknown[]): RemoteAppData => {
-  const meta = (sections.get('meta') || sectionDefaults.meta) as { successPoints?: number; planningEngineSnapshot?: unknown; syncRevision?: number };
+  const meta = (sections.get('meta') || sectionDefaults.meta) as { successPoints?: number; planningEngineSnapshot?: unknown; taskTombstones?: Record<string, string>; syncRevision?: number };
   return {
     courses: (sections.get('courses') || sectionDefaults.courses) as unknown[],
     tasks,
+    taskTombstones: meta.taskTombstones && typeof meta.taskTombstones === 'object' ? meta.taskTombstones : {},
     performanceData: (sections.get('performanceData') || sectionDefaults.performanceData) as unknown[],
     rewards: (sections.get('rewards') || sectionDefaults.rewards) as unknown[],
     badges: (sections.get('badges') || sectionDefaults.badges) as unknown[],

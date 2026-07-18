@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { mergeRemoteSections, mergeTaskTombstones, mergeTasksByLatestMutation } from './utils/remoteSyncMerge';
 import ParentLockScreen from './components/parent/ParentLockScreen';
 import ParentAnalysisShell from './components/parent/ParentAnalysisShell';
 import {
@@ -469,24 +470,6 @@ const normalizeSafeTasks = (value: unknown): Task[] => {
     .map(normalizeTask);
 };
 
-const getTaskMutationTime = (task: Task): number => {
-  const updatedAt = task.updatedAt ? Date.parse(task.updatedAt) : Number.NaN;
-  if (Number.isFinite(updatedAt)) return updatedAt;
-  if (typeof task.completionTimestamp === 'number' && Number.isFinite(task.completionTimestamp)) return task.completionTimestamp;
-  const createdAt = task.createdAt ? Date.parse(task.createdAt) : Number.NaN;
-  return Number.isFinite(createdAt) ? createdAt : 0;
-};
-
-const mergeTasksByLatestMutation = (localTasks: Task[], remoteTasks: Task[]): Task[] => {
-  const merged = new Map<string, Task>();
-  remoteTasks.forEach((task) => merged.set(task.id, task));
-  localTasks.forEach((localTask) => {
-    const remoteTask = merged.get(localTask.id);
-    if (!remoteTask || getTaskMutationTime(localTask) > getTaskMutationTime(remoteTask)) merged.set(localTask.id, localTask);
-  });
-  return [...merged.values()].sort((left, right) => getTaskMutationTime(right) - getTaskMutationTime(left));
-};
-
 const normalizeSafeRewards = (value: unknown): Reward[] => {
   if (!Array.isArray(value)) return [];
   return value.filter((reward): reward is Reward => {
@@ -517,6 +500,12 @@ const normalizeSafeCurriculum = (value: unknown): SubjectCurriculum => {
 };
 
 const normalizeSafeArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? value as T[] : []);
+const normalizeSafeStringRecord = (value: unknown): Record<string, string> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+    .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0));
+};
+
 const normalizeSafeNumberRecord = (value: unknown): Record<string, number> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const entries = Object.entries(value as Record<string, unknown>)
@@ -2516,6 +2505,7 @@ const App: React.FC = () => {
   const [userType, setUserType] = useStickyState<UserType>(UserType.Parent, 'userType');
   const [courses, setCourses] = useStickyState<Course[]>([], 'courses', normalizeSafeCourses);
   const [tasks, setTasks, tasksHydrated] = useStickyState<Task[]>([], 'tasks', normalizeSafeTasks);
+  const [taskTombstones, setTaskTombstones] = useStickyState<Record<string, string>>({}, 'taskTombstones', normalizeSafeStringRecord);
   const [curriculum, setCurriculum, curriculumHydrated] = useStickyState<SubjectCurriculum>({}, 'curriculum', normalizeSafeCurriculum);
   const [weeklySchedule, setWeeklySchedule] = useStickyState<WeeklySchedule>(defaultWeeklySchedule, 'weeklySchedule', normalizeWeeklySchedule);
   const [schoolTopicHistory, setSchoolTopicHistory] = useStickyState<SchoolTopicHistoryEntry[]>([], 'schoolTopicHistory', normalizeSchoolTopicHistory);
@@ -2561,6 +2551,8 @@ const App: React.FC = () => {
   const remoteRevisionRef = useRef(0);
   const [remotePublishTick, setRemotePublishTick] = useState(0);
   const remoteAppDataRef = useRef<RemoteAppData | null>(null);
+  const remoteBaseAppDataRef = useRef<RemoteAppData | null>(null);
+  const remotePublishPendingSinceRef = useRef<number | null>(null);
   const topbarNotificationsRef = useRef<HTMLDivElement | null>(null);
   const topbarSettingsRef = useRef<HTMLDivElement | null>(null);
   const topbarNotificationsPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -2823,6 +2815,7 @@ const App: React.FC = () => {
   const remoteAppData = useMemo<RemoteAppData>(() => ({
     courses,
     tasks,
+    taskTombstones,
     performanceData,
     rewards,
     badges,
@@ -2835,7 +2828,7 @@ const App: React.FC = () => {
     examScheduleEntries,
     studyPlans,
     planningEngineSnapshot,
-  }), [badges, compositeExamResults, courses, curriculum, examRecords, examScheduleEntries, performanceData, planningEngineSnapshot, rewards, schoolTopicHistory, studyPlans, successPoints, tasks, weeklySchedule]);
+  }), [badges, compositeExamResults, courses, curriculum, examRecords, examScheduleEntries, performanceData, planningEngineSnapshot, rewards, schoolTopicHistory, studyPlans, successPoints, taskTombstones, tasks, weeklySchedule]);
   remoteAppDataRef.current = remoteAppData;
 
   const applyRemoteAppData = useCallback((payload: RemoteAppData) => {
@@ -2855,7 +2848,9 @@ const App: React.FC = () => {
     }
 
     // 2. Aktif seansı ve tamamlanmış yerel görevleri veli güncellemelerinden koruma (Smart Merge)
-    const finalTasks = mergeTasksByLatestMutation(tasksRef.current, incomingTasks);
+    const mergedTombstones = mergeTaskTombstones(taskTombstones, normalizeSafeStringRecord(payload.taskTombstones));
+    const finalTasks = mergeTasksByLatestMutation(tasksRef.current, incomingTasks, mergedTombstones);
+    setTaskTombstones(mergedTombstones);
 
     setCourses(normalizeSafeCourses(payload.courses));
     setTasks(finalTasks);
@@ -2874,7 +2869,7 @@ const App: React.FC = () => {
     window.setTimeout(() => {
       remoteApplyingRef.current = false;
     }, 0);
-  }, [setBadges, setCompositeExamResults, setCourses, setCurriculum, setExamRecords, setExamScheduleEntries, setPerformanceData, setPlanningEngineSnapshot, setRewards, setSchoolTopicHistory, setStudyPlans, setSuccessPoints, setTasks, setWeeklySchedule, userType, addToast]);
+  }, [taskTombstones, setTaskTombstones, setBadges, setCompositeExamResults, setCourses, setCurriculum, setExamRecords, setExamScheduleEntries, setPerformanceData, setPlanningEngineSnapshot, setRewards, setSchoolTopicHistory, setStudyPlans, setSuccessPoints, setTasks, setWeeklySchedule, userType, addToast]);
 
   useEffect(() => {
     if (isRemoteSyncDisabled || !allIdbStatesHydrated) return;
@@ -2903,19 +2898,28 @@ const App: React.FC = () => {
           remoteRevisionRef.current = Math.max(remoteRevisionRef.current, syncRevision);
           remoteHydratedRef.current = true;
           if (localSnapshot) {
+            const mergedSections = mergeRemoteSections(remoteBaseAppDataRef.current, localSnapshot, appData);
+            const mergedTombstones = mergeTaskTombstones(normalizeSafeStringRecord(localSnapshot.taskTombstones), normalizeSafeStringRecord(appData.taskTombstones));
             applyRemoteAppData({
-              ...appData,
-              ...localSnapshot,
-              tasks: mergeTasksByLatestMutation(normalizeSafeTasks(localSnapshot.tasks), normalizeSafeTasks(appData.tasks)),
+              ...mergedSections,
+              taskTombstones: mergedTombstones,
+              tasks: mergeTasksByLatestMutation(
+                normalizeSafeTasks(localSnapshot.tasks),
+                normalizeSafeTasks(appData.tasks),
+                mergedTombstones,
+              ),
             });
           }
+          remoteBaseAppDataRef.current = appData;
           return;
         }
         if (serialized === remoteLastSerializedRef.current) {
+          remoteBaseAppDataRef.current = appData;
           remoteHydratedRef.current = true;
           return;
         }
         remoteLastSerializedRef.current = serialized;
+        remoteBaseAppDataRef.current = appData;
         remoteRevisionRef.current = Math.max(remoteRevisionRef.current, syncRevision);
         remoteHydratedRef.current = true;
         applyRemoteAppData(appData);
@@ -2948,6 +2952,10 @@ const App: React.FC = () => {
     if (serialized === remoteLastSerializedRef.current) return;
 
     if (remotePublishTimerRef.current) window.clearTimeout(remotePublishTimerRef.current);
+    const now = Date.now();
+    if (remotePublishPendingSinceRef.current === null) remotePublishPendingSinceRef.current = now;
+    const maxWaitRemaining = Math.max(0, 10_000 - (now - remotePublishPendingSinceRef.current));
+    const publishDelay = Math.min(1000, maxWaitRemaining);
     remotePublishTimerRef.current = window.setTimeout(() => {
       if (remotePublishInFlightRef.current) {
         remotePublishQueuedRef.current = true;
@@ -2961,11 +2969,14 @@ const App: React.FC = () => {
         .then((nextRevision) => {
           remoteRevisionRef.current = Math.max(remoteRevisionRef.current, nextRevision);
           remoteLastSerializedRef.current = serialized;
+          remoteBaseAppDataRef.current = remoteAppData;
           const currentSerialized = remoteAppDataRef.current ? JSON.stringify(remoteAppDataRef.current) : serialized;
           if (currentSerialized === serialized) {
             remoteLocalDirtyRef.current = false;
+            remotePublishPendingSinceRef.current = null;
           } else {
             remoteLocalDirtyRef.current = true;
+            remotePublishPendingSinceRef.current = Date.now();
             remotePublishQueuedRef.current = true;
           }
         })
@@ -2985,7 +2996,7 @@ const App: React.FC = () => {
             window.setTimeout(() => setRemotePublishTick((value) => value + 1), 1200);
           }
         });
-    }, 1000);
+    }, publishDelay);
   }, [addToast, isRemoteSyncDisabled, remoteAppData, allIdbStatesHydrated, remotePublishTick]);
 
   const handleContinueTask = (taskId: string) => {
@@ -3087,6 +3098,7 @@ const App: React.FC = () => {
     const nextExamScheduleEntries = normalizeExamScheduleEntries(Array.isArray(payload.examScheduleEntries) ? payload.examScheduleEntries : [], normalizedCourses);
     const nextStudyPlans = normalizeStudyPlans(payload.studyPlans);
 
+    setTaskTombstones({});
     setCourses(normalizedCourses);
     setTasks(nextTasks);
     setPerformanceData(nextPerformanceData);
@@ -3100,6 +3112,7 @@ const App: React.FC = () => {
     setCompositeExamResults(nextCompositeExamResults);
     setExamScheduleEntries(nextExamScheduleEntries);
     setStudyPlans(nextStudyPlans);
+    remoteLocalDirtyRef.current = true;
   };
 
   const handleExportData = async (): Promise<void> => {
@@ -3148,6 +3161,9 @@ const App: React.FC = () => {
   };
 
   const handleDeleteAllData = async (): Promise<void> => {
+    const deletedAt = new Date().toISOString();
+    setTaskTombstones((prev) => ({ ...prev, ...Object.fromEntries(tasksRef.current.map((task) => [task.id, deletedAt])) }));
+    remoteLocalDirtyRef.current = true;
     setCourses([]);
     setTasks([]);
     setPerformanceData([]);
@@ -3462,6 +3478,8 @@ const App: React.FC = () => {
     const previousIndex = tasks.findIndex((task) => task.id === taskId);
     const previousPlans = studyPlans;
     const nextTasks = tasksRef.current.filter((task) => task.id !== taskId);
+    const deletedAt = new Date().toISOString();
+    setTaskTombstones((prev) => ({ ...prev, [taskId]: deletedAt }));
     setTasks((prev) => prev.filter((task) => task.id !== taskId));
     tasksRef.current = nextTasks;
     remoteLocalDirtyRef.current = true;
@@ -3491,14 +3509,20 @@ const App: React.FC = () => {
     addToast(`"${taskToDelete.title}" silindi.`, 'success', {
       actionLabel: 'Geri al',
       onAction: () => {
+        setTaskTombstones((prev) => {
+          const next = { ...prev };
+          delete next[taskToDelete.id];
+          return next;
+        });
+        const restoredTask = { ...taskToDelete, updatedAt: new Date().toISOString() };
         setTasks((prev) => {
-          if (prev.some((task) => task.id === taskToDelete.id)) return prev;
+          if (prev.some((task) => task.id === restoredTask.id)) return prev;
           const next = [...prev];
-          next.splice(Math.max(0, previousIndex), 0, taskToDelete);
+          next.splice(Math.max(0, previousIndex), 0, restoredTask);
           return next;
         });
         setStudyPlans(previousPlans);
-        tasksRef.current = [taskToDelete, ...tasksRef.current.filter((task) => task.id !== taskToDelete.id)];
+        tasksRef.current = [restoredTask, ...tasksRef.current.filter((task) => task.id !== restoredTask.id)];
         remoteLocalDirtyRef.current = true;
         playHaptic('success');
       },
@@ -3574,13 +3598,9 @@ const App: React.FC = () => {
       typeof data.conceptErrorCount === 'number' ||
       typeof data.processErrorCount === 'number' ||
       typeof data.attentionErrorCount === 'number';
-    const conceptErrorCount = isQuestionTask(task) ? Math.max(0, data.conceptErrorCount || 0) : 0;
-    const processErrorCount = isQuestionTask(task)
-      ? Math.max(0, data.processErrorCount ?? (hasExplicitErrorBreakdown ? 0 : incorrectAnswers))
-      : 0;
-    const attentionErrorCount = isQuestionTask(task)
-      ? Math.max(0, data.attentionErrorCount ?? (hasExplicitErrorBreakdown ? 0 : emptyAnswers))
-      : 0;
+    const conceptErrorCount = isQuestionTask(task) && hasExplicitErrorBreakdown ? Math.max(0, data.conceptErrorCount || 0) : undefined;
+    const processErrorCount = isQuestionTask(task) && hasExplicitErrorBreakdown ? Math.max(0, data.processErrorCount || 0) : undefined;
+    const attentionErrorCount = isQuestionTask(task) && hasExplicitErrorBreakdown ? Math.max(0, data.attentionErrorCount || 0) : undefined;
     const completionTimestamp = typeof data.completionTimestamp === 'number' && Number.isFinite(data.completionTimestamp) && data.completionTimestamp > 0
       ? data.completionTimestamp
       : Date.now();
@@ -3608,6 +3628,7 @@ const App: React.FC = () => {
       conceptErrorCount,
       processErrorCount,
       attentionErrorCount,
+      errorBreakdownProvided: isQuestionTask(task) ? hasExplicitErrorBreakdown : undefined,
       successScore: Math.round(successScore),
       focusScore: Math.round(focusScore),
       pointsAwarded: scoringResult.pointsAwarded,
@@ -4543,10 +4564,10 @@ const App: React.FC = () => {
           testPerf: hasExamTask ? Math.max(0, Math.min(100, Math.round((masteryScore * 0.7) + (avgFocus * 0.3)))) : 0,
           dailyPerf: hasRevisionTask ? Math.max(0, Math.min(100, Math.round((avgFocus * 0.5) + (avgEfficiency * 0.5)))) : 0,
           errors: [
-            { label: 'Islem Hatasi', value: conceptError },
-            { label: 'Kavram Hatasi', value: processError },
-            { label: 'Dikkat Hatasi', value: attentionError },
-            { label: 'Diger', value: otherError },
+            { label: 'Kavram Hatası', value: conceptError },
+            { label: 'İşlem Hatası', value: processError },
+            { label: 'Dikkat Hatası', value: attentionError },
+            { label: 'Belirlenmedi', value: otherError },
           ],
         },
       ];

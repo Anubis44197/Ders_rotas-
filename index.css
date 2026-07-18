@@ -531,6 +531,15 @@ textarea:focus-visible {
 .dr-overview-typography .font-extrabold {
   font-weight: 700 !important;
 }
+/* Mobile legibility and touch targets for non-Overview parent workspaces. */
+.dr-overview-typography :is([class*="text-[9px]"], [class*="text-[10px]"], [class*="text-[11px]"]) {
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
+}
+
+.dr-overview-typography :is(button, input, select, textarea) {
+  min-height: 44px;
+}
 
 h1, h2, h3, h4, .dr-title, .dr-planning-title, .dr-planning-section-title {
   letter-spacing: -0.025em !important;

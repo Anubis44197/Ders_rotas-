@@ -11,6 +11,7 @@
     "smoke": "tsx scripts/smoke-tests.ts",
     "test:heavy": "tsx scripts/heavy-real-data-tests.ts",
     "test:matrix": "tsx scripts/analysis-test-matrix.ts",
+    "test:sync": "tsx scripts/remote-sync-merge-tests.ts",
     "test:acceptance": "tsx scripts/parent-decision-acceptance.ts",
     "test:ui-e2e": "node scripts/ui-e2e-stabilization.mjs",
     "build": "vite build",
