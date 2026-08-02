@@ -147,7 +147,7 @@ const ActiveTaskTimer: React.FC<ActiveTaskTimerProps> = ({ task, tasks, onComple
     const now = Date.now();
     const statusChanged = lastLiveStatusRef.current !== status;
     const noteChanged = lastLiveNoteRef.current !== taskNote;
-    const shouldPublish = statusChanged || noteChanged || now - lastLivePublishRef.current >= 10000;
+    const shouldPublish = lastLivePublishRef.current === 0 || statusChanged || noteChanged;
     if (!shouldPublish) return;
 
     lastLivePublishRef.current = now;

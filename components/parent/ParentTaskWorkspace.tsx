@@ -39,10 +39,19 @@ import {
 type AnalysisSnapshot = ReturnType<typeof deriveAnalysisSnapshot>;
 
 const formatLiveSeconds = (seconds: number) => {
-  const safeSeconds = Math.max(0, seconds);
+  const safeSeconds = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(safeSeconds / 60);
   const remainingSeconds = safeSeconds % 60;
   return String(minutes).padStart(2, '0') + ':' + String(remainingSeconds).padStart(2, '0');
+};
+
+const getLiveMainTime = (task: Task) => {
+  const session = task.liveSession;
+  if (!session) return 0;
+  const baseTime = Math.max(0, session.mainTime || 0);
+  if (session.status !== 'running') return baseTime;
+  const updatedAt = typeof session.updatedAt === 'number' ? session.updatedAt : Date.now();
+  return baseTime + Math.max(0, Math.floor((Date.now() - updatedAt) / 1000));
 };
 
 interface ParentTaskWorkspaceProps {
@@ -571,7 +580,7 @@ const ParentTaskWorkspace: React.FC<ParentTaskWorkspaceProps> = ({
     const taskMetrics = Array.from(new Set([...normalizedSelectedMetrics, ...legacySelectedMetrics]));
     const clockLabel = getTaskClockRangeLabel(task.startTimestamp, task.completionTimestamp);
     const liveStatusLabel = task.status === 'bekliyor' && task.liveSession
-      ? (task.liveSession.status === 'break' ? 'Molada' : task.liveSession.status === 'paused' ? 'Durakladı' : 'Çalışıyor') + ' / ' + formatLiveSeconds(task.liveSession.mainTime)
+      ? (task.liveSession.status === 'break' ? 'Molada' : task.liveSession.status === 'paused' ? 'Durakladı' : 'Çalışıyor') + ' / ' + formatLiveSeconds(getLiveMainTime(task))
       : '';
 
     return (

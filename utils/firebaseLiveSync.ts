@@ -254,7 +254,12 @@ const splitRemoteAppData = (appData: RemoteAppData): Record<SectionId, SectionVa
   studyPlans: appData.studyPlans,
   meta: {
     successPoints: appData.successPoints,
-    planningEngineSnapshot: appData.planningEngineSnapshot,
+    planningEngineSnapshot: appData.planningEngineSnapshot
+      ? {
+        ...appData.planningEngineSnapshot,
+        curriculumTopics: [],
+      }
+      : null,
     taskTombstones: appData.taskTombstones,
   },
 });

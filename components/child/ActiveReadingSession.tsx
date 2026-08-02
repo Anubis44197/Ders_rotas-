@@ -61,7 +61,7 @@ const ActiveReadingSession: React.FC<ActiveReadingSessionProps> = ({ task, tasks
     if (!onLiveSessionChange || showCompleteModal) return;
     const now = Date.now();
     const statusChanged = lastLiveStatusRef.current !== status;
-    const shouldPublish = statusChanged || now - lastLivePublishRef.current >= 10000;
+    const shouldPublish = lastLivePublishRef.current === 0 || statusChanged;
     if (!shouldPublish) return;
 
     lastLivePublishRef.current = now;

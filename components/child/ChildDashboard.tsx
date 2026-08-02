@@ -80,9 +80,19 @@ const getTaskDateKey = (value?: string) => {
 };
 
 const formatTime = (seconds: number) => {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+};
+
+const getLiveMainTime = (task: Task) => {
+  const session = task.liveSession;
+  if (!session) return 0;
+  const baseTime = Math.max(0, session.mainTime || 0);
+  if (session.status !== 'running') return baseTime;
+  const updatedAt = typeof session.updatedAt === 'number' ? session.updatedAt : Date.now();
+  return baseTime + Math.max(0, Math.floor((Date.now() - updatedAt) / 1000));
 };
 
 const hydrateTimerState = (state: ResumeTimerState): ResumeTimerState => {
@@ -261,7 +271,7 @@ const TaskCard: React.FC<{
   const isOverdue = !completed && getTaskDateKey(task.dueDate) < today;
   const clockLabel = getTaskClockRangeLabel(task.startTimestamp, task.completionTimestamp);
   const liveStatusLabel = task.status === 'bekliyor' && task.liveSession
-    ? (task.liveSession.status === 'break' ? 'Molada' : task.liveSession.status === 'paused' ? 'Durakladı' : 'Çalışıyor') + ' / ' + formatTime(task.liveSession.mainTime)
+    ? (task.liveSession.status === 'break' ? 'Molada' : task.liveSession.status === 'paused' ? 'Durakladı' : 'Çalışıyor') + ' / ' + formatTime(getLiveMainTime(task))
     : '';
   const isParentDecisionTask = task.planSource === 'manual' && ((task.planLabel || '').toLocaleLowerCase('tr-TR').includes('veli onerisi') || (task.description || '').toLocaleLowerCase('tr-TR').includes('ebeveyn karar ekranindan'));
 
