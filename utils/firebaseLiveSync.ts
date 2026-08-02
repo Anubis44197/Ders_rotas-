@@ -175,6 +175,8 @@ const restoreTaskOrder = (tasks: unknown[], taskOrder: string[]) => {
 };
 
 const splitTaskChunks = (tasks: unknown[]) => {
+  if (tasks.length === 0) return [] as Array<{ id: string; index: number; tasks: unknown[]; serialized: string }>;
+
   const chunks: Array<{ id: string; index: number; tasks: unknown[]; serialized: string }> = [];
   const bucketedTasks = Array.from({ length: TASK_BUCKET_COUNT }, () => [] as unknown[]);
   const taskOrder = tasks.map((task, index) => {
@@ -305,7 +307,20 @@ export const startRemoteAppDataSync = async ({
   let hasEmittedMissing = false;
   let syncRevision = 0;
 
-  const getActiveTasks = () => (hasTaskChunks ? chunkTasks : legacyTasks);
+  const mergeTaskSources = (primaryTasks: unknown[], fallbackTasks: unknown[]) => {
+    if (fallbackTasks.length === 0) return primaryTasks;
+    const seen = new Set(primaryTasks.map((task, index) => getTaskStableKey(task, index)));
+    const merged = [...primaryTasks];
+    fallbackTasks.forEach((task, index) => {
+      const key = getTaskStableKey(task, index);
+      if (seen.has(key)) return;
+      seen.add(key);
+      merged.push(task);
+    });
+    return merged;
+  };
+
+  const getActiveTasks = () => (hasTaskChunks ? mergeTaskSources(chunkTasks, legacyTasks) : legacyTasks);
 
   const maybeRemoteMissing = () => {
     if (hasEmittedMissing || hasSplitState || hasTaskChunks) return;
@@ -348,7 +363,10 @@ export const startRemoteAppDataSync = async ({
 
   const taskChunksUnsubscribe = onSnapshot(taskChunksRef, (snapshot) => {
     loadedTaskChunks = true;
-    hasTaskChunks = !snapshot.empty;
+    hasTaskChunks = snapshot.docs.some((chunkDoc) => {
+      if (chunkDoc.id === TASK_ORDER_CHUNK_ID) return false;
+      return asArray(chunkDoc.data().value).length > 0;
+    });
     if (hasTaskChunks) {
       let taskOrder: string[] = [];
       const docs = snapshot.docs
@@ -435,7 +453,7 @@ export const publishRemoteAppData = async (appData: RemoteAppData, expectedRevis
     ? taskOrderChunk
     : null;
   const staleTaskChunkIds = [...knownTaskChunkIds]
-    .filter((chunkId) => chunkId !== TASK_ORDER_CHUNK_ID && !dataTaskChunkIds.has(chunkId));
+    .filter((chunkId) => !nextTaskChunkIds.has(chunkId));
 
   let nextRevision = expectedRevision;
   let changedSections: Array<{ sectionId: SectionId; serialized: string; value: SectionValue }> = [];
