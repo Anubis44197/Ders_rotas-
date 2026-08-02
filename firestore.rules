@@ -1,6 +1,12 @@
 rules_version = '2';
 
 service cloud.firestore {
+  function hasSlimPlanningSnapshot() {
+    return !('planningEngineSnapshot' in request.resource.data.value)
+      || !('curriculumTopics' in request.resource.data.value.planningEngineSnapshot)
+      || request.resource.data.value.planningEngineSnapshot.curriculumTopics.size() == 0;
+  }
+
   match /databases/{database}/documents {
     match /families/ders-tak-main/state/current {
       allow read: if request.auth != null;
@@ -13,7 +19,8 @@ service cloud.firestore {
       allow create, update: if request.auth != null
         && request.resource.data.schemaVersion == 2
         && request.resource.data.syncVersion == 3
-        && request.resource.data.keys().hasOnly(['schemaVersion', 'syncVersion', 'value', 'updatedAt', 'updatedBy']);
+        && request.resource.data.keys().hasOnly(['schemaVersion', 'syncVersion', 'value', 'updatedAt', 'updatedBy'])
+        && (sectionId != 'meta' || hasSlimPlanningSnapshot());
       allow delete: if false;
     }
 
